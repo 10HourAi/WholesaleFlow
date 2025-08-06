@@ -14,13 +14,23 @@ export function Landing() {
             The complete AI-powered real estate wholesaling platform. Find deals, analyze properties, 
             negotiate with sellers, and manage your pipeline with intelligent assistance.
           </p>
-          <Button
-            onClick={() => window.location.href = "/api/login"}
-            size="lg"
-            className="px-8 py-3 text-lg"
-          >
-            Get Started
-          </Button>
+          <div className="flex gap-4 justify-center">
+            <Button
+              onClick={() => window.location.href = "/auth"}
+              size="lg"
+              className="px-8 py-3 text-lg"
+            >
+              Get Started
+            </Button>
+            <Button
+              onClick={() => window.location.href = "/auth"}
+              variant="outline"
+              size="lg"
+              className="px-8 py-3 text-lg"
+            >
+              Sign In
+            </Button>
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
