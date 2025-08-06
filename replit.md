@@ -1,8 +1,8 @@
-# WholesaleAI - Real Estate Wholesaling Assistant
+# 10HourAi - Real Estate Wholesaling Assistant
 
 ## Overview
 
-WholesaleAI is a comprehensive real estate wholesaling platform that leverages AI agents to assist with lead generation, deal analysis, negotiation, and closing processes. The application provides a complete CRM system, deal pipeline management, document handling, and integrated AI chat interfaces to streamline real estate wholesaling operations.
+10HourAi is a comprehensive real estate wholesaling platform that leverages AI agents to assist with lead generation, deal analysis, negotiation, and closing processes. The application provides a complete CRM system, deal pipeline management, document handling, and integrated AI chat interfaces to streamline real estate wholesaling operations.
 
 The platform features multiple specialized AI agents (Lead Finder, Deal Analyzer, Negotiation, and Closing agents) that work together to help users identify distressed properties, analyze deals, negotiate with sellers, and manage the closing process.
 
