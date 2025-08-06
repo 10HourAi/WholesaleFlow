@@ -90,16 +90,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Conversations
-  app.get("/api/conversations", async (req, res) => {
+  app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
     try {
-      const conversations = await storage.getConversations();
+      const userId = req.user.claims.sub;
+      const conversations = await storage.getConversations(userId);
       res.json(conversations);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
   });
 
-  app.post("/api/conversations", async (req, res) => {
+  app.post("/api/conversations", isAuthenticated, async (req: any, res) => {
     try {
       const validatedData = insertConversationSchema.parse(req.body);
       const conversation = await storage.createConversation(validatedData);
@@ -110,7 +111,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Messages
-  app.get("/api/conversations/:id/messages", async (req, res) => {
+  app.get("/api/conversations/:id/messages", isAuthenticated, async (req: any, res) => {
     try {
       const messages = await storage.getMessagesByConversation(req.params.id);
       res.json(messages);
@@ -119,8 +120,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/conversations/:id/messages", async (req, res) => {
+  app.post("/api/conversations/:id/messages", isAuthenticated, async (req: any, res) => {
     try {
+      const userId = req.user.claims.sub;
       const validatedData = insertMessageSchema.parse({
         ...req.body,
         conversationId: req.params.id
@@ -137,16 +139,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
             aiResponse = await generateLeadFinderResponse(validatedData.content);
             break;
           case "deal-analyzer":
-            const property = conversation.propertyId ? await storage.getProperty(conversation.propertyId) : undefined;
+            const property = conversation.propertyId ? await storage.getProperty(conversation.propertyId, userId) : undefined;
             aiResponse = await generateDealAnalyzerResponse(validatedData.content, property);
             break;
           case "negotiation":
             const contact = conversation.contactId ? await storage.getContact(conversation.contactId) : undefined;
-            const negotiationProperty = conversation.propertyId ? await storage.getProperty(conversation.propertyId) : undefined;
+            const negotiationProperty = conversation.propertyId ? await storage.getProperty(conversation.propertyId, userId) : undefined;
             aiResponse = await generateNegotiationResponse(validatedData.content, contact, negotiationProperty);
             break;
           case "closing":
-            const closingProperty = conversation.propertyId ? await storage.getProperty(conversation.propertyId) : undefined;
+            const closingProperty = conversation.propertyId ? await storage.getProperty(conversation.propertyId, userId) : undefined;
             aiResponse = await generateClosingResponse(validatedData.content, closingProperty);
             break;
           default:
@@ -166,21 +168,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.json([userMessage]);
       }
     } catch (error: any) {
+      console.error("Error in message handler:", error);
       res.status(400).json({ message: error.message });
     }
   });
 
   // Documents
-  app.get("/api/documents", async (req, res) => {
+  app.get("/api/documents", isAuthenticated, async (req: any, res) => {
     try {
-      const documents = await storage.getDocuments();
+      const userId = req.user.claims.sub;
+      const documents = await storage.getDocuments(userId);
       res.json(documents);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
   });
 
-  app.post("/api/documents", async (req, res) => {
+  app.post("/api/documents", isAuthenticated, async (req: any, res) => {
     try {
       const validatedData = insertDocumentSchema.parse(req.body);
       const document = await storage.createDocument(validatedData);
@@ -191,16 +195,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Deals
-  app.get("/api/deals", async (req, res) => {
+  app.get("/api/deals", isAuthenticated, async (req: any, res) => {
     try {
-      const deals = await storage.getDeals();
+      const userId = req.user.claims.sub;
+      const deals = await storage.getDeals(userId);
       res.json(deals);
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
   });
 
-  app.post("/api/deals", async (req, res) => {
+  app.post("/api/deals", isAuthenticated, async (req: any, res) => {
     try {
       const validatedData = insertDealSchema.parse(req.body);
       const deal = await storage.createDeal(validatedData);
@@ -210,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/deals/:id", async (req, res) => {
+  app.patch("/api/deals/:id", isAuthenticated, async (req: any, res) => {
     try {
       const deal = await storage.updateDeal(req.params.id, req.body);
       res.json(deal);
