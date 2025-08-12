@@ -6,13 +6,49 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
 });
 
-export async function generateLeadFinderResponse(userMessage: string): Promise<string> {
+export async function generateLeadFinderResponse(userMessage: string, userId?: string): Promise<string> {
+  // Check if user is asking for property search
+  const isSearchRequest = /find|search|look|properties|leads|distressed|motivated/i.test(userMessage);
+  
+  if (isSearchRequest && userId) {
+    try {
+      const { batchLeadsService } = await import("./batchleads");
+      const locationMatch = userMessage.match(/in\s+([^,.!?]+)/i);
+      const location = locationMatch ? locationMatch[1].trim() : "Dallas, TX";
+      
+      // Get real distressed properties
+      const properties = await batchLeadsService.getDistressedProperties(location, 5);
+      
+      if (properties.length > 0) {
+        const propertyList = properties.map((prop, index) => 
+          `${index + 1}. **${prop.address}, ${prop.city}, ${prop.state}**
+   - Price: $${prop.estimated_value?.toLocaleString() || 'N/A'}
+   - ${prop.bedrooms}BR/${prop.bathrooms}BA, ${prop.square_feet?.toLocaleString()} sq ft
+   - Owner: ${prop.owner_name || 'N/A'}
+   - Motivation Score: ${prop.motivation_score}/100
+   - Equity: ${prop.equity_percentage}%
+   - Lead Type: ${prop.distressed_indicator || 'Standard'}
+   - Why it's good: ${prop.motivation_score >= 80 ? 'Highly motivated seller' : 'Good equity opportunity'}`
+        ).join('\n\n');
+        
+        return `Great! I found ${properties.length} distressed properties in ${location} that could be excellent wholesale opportunities:
+
+${propertyList}
+
+These are real properties from our BatchLeads database with high motivation scores and distress indicators. Would you like me to help you analyze any of these deals or search for more properties in a different area?`;
+      }
+    } catch (error) {
+      console.error("BatchLeads API error:", error);
+      // Fall through to general response
+    }
+  }
+
   const response = await openai.chat.completions.create({
     model: "gpt-4o",
     messages: [
       {
         role: "system",
-        content: `You are a Lead Finder Agent for real estate wholesaling. Your job is to help find distressed properties, motivated sellers, and off-market deals. You can search by location, property type, price range, and lead criteria. Always be helpful and provide specific property recommendations with details like address, price, condition, and why it's a good lead.`
+        content: `You are a Lead Finder Agent for real estate wholesaling. Your job is to help find distressed properties, motivated sellers, and off-market deals. You can search by location, property type, price range, and lead criteria. Always be helpful and provide guidance on lead generation strategies. When users ask for specific property searches, encourage them to provide a location so you can find real distressed properties from your database.`
       },
       {
         role: "user",

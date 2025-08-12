@@ -136,7 +136,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (conversation) {
         switch (conversation.agentType) {
           case "lead-finder":
-            aiResponse = await generateLeadFinderResponse(validatedData.content);
+            aiResponse = await generateLeadFinderResponse(validatedData.content, userId);
             break;
           case "deal-analyzer":
             const property = conversation.propertyId ? await storage.getProperty(conversation.propertyId, userId) : undefined;
@@ -224,32 +224,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // AI Lead Generation
-  app.post("/api/ai/generate-leads", async (req, res) => {
+  // BatchLeads Property Search
+  app.post("/api/properties/search", isAuthenticated, async (req: any, res) => {
     try {
-      const { location, criteria } = req.body;
-      const leads = await generatePropertyLeads(location, criteria);
+      const userId = req.user.claims.sub;
+      const { location, maxPrice, minEquity, propertyType, distressedOnly, motivationScore } = req.body;
       
-      // Create properties from generated leads
-      const createdProperties = [];
-      for (const lead of leads.properties) {
-        const property = await storage.createProperty({
-          address: lead.address,
-          city: lead.city,
-          state: lead.state,
-          bedrooms: lead.bedrooms,
-          bathrooms: lead.bathrooms,
-          squareFeet: lead.squareFeet,
-          arv: lead.arv.toString(),
-          maxOffer: lead.maxOffer.toString(),
-          status: "new",
-          leadType: lead.leadType
-        });
-        createdProperties.push(property);
+      const { batchLeadsService } = await import("./batchleads");
+      const results = await batchLeadsService.searchProperties({
+        location,
+        maxPrice,
+        minEquity,
+        propertyType,
+        distressedOnly,
+        motivationScore
+      });
+
+      // Convert BatchLeads properties to our format and save them
+      const savedProperties = [];
+      for (const batchProperty of results.data.slice(0, 10)) { // Limit to first 10 results
+        const propertyData = batchLeadsService.convertToProperty(batchProperty, userId);
+        const property = await storage.createProperty(propertyData);
+        savedProperties.push(property);
       }
-      
-      res.json(createdProperties);
+
+      res.json({
+        properties: savedProperties,
+        total: results.total_results,
+        page: results.page
+      });
     } catch (error: any) {
+      console.error("Property search error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get Distressed Properties
+  app.post("/api/properties/distressed", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { location } = req.body;
+      
+      const { batchLeadsService } = await import("./batchleads");
+      const distressedProperties = await batchLeadsService.getDistressedProperties(location);
+
+      // Convert and save distressed properties
+      const savedProperties = [];
+      for (const batchProperty of distressedProperties) {
+        const propertyData = batchLeadsService.convertToProperty(batchProperty, userId);
+        const property = await storage.createProperty(propertyData);
+        savedProperties.push(property);
+      }
+
+      res.json(savedProperties);
+    } catch (error: any) {
+      console.error("Distressed properties error:", error);
       res.status(500).json({ message: error.message });
     }
   });

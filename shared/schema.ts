@@ -39,10 +39,20 @@ export const properties = pgTable("properties", {
   bedrooms: integer("bedrooms"),
   bathrooms: integer("bathrooms"),
   squareFeet: integer("square_feet"),
-  arv: decimal("arv", { precision: 10, scale: 2 }),
-  maxOffer: decimal("max_offer", { precision: 10, scale: 2 }),
+  arv: text("arv"), // Using text for large numbers
+  maxOffer: text("max_offer"), // Using text for large numbers
   status: text("status").notNull().default("new"), // new, contacted, qualified, under_contract, closed
   leadType: text("lead_type"), // foreclosure, motivated_seller, distressed, etc.
+  propertyType: text("property_type"), // single_family, condo, townhouse, etc.
+  yearBuilt: integer("year_built"),
+  lastSalePrice: text("last_sale_price"),
+  lastSaleDate: text("last_sale_date"),
+  ownerName: text("owner_name"),
+  ownerPhone: text("owner_phone"),
+  ownerEmail: text("owner_email"),
+  equityPercentage: integer("equity_percentage"),
+  motivationScore: integer("motivation_score"),
+  distressedIndicator: text("distressed_indicator"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
