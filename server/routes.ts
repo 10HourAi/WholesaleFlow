@@ -224,6 +224,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test BatchLeads API
+  app.post("/api/test-batchleads", isAuthenticated, async (req: any, res) => {
+    try {
+      const { testBatchLeads } = await import("./test-batchleads");
+      const properties = await testBatchLeads();
+      res.json({
+        success: true,
+        message: "BatchLeads API test successful",
+        properties: properties.slice(0, 5)
+      });
+    } catch (error: any) {
+      console.error("BatchLeads test error:", error);
+      res.status(500).json({ 
+        success: false,
+        message: error.message,
+        error: error.toString()
+      });
+    }
+  });
+
   // BatchLeads Property Search
   app.post("/api/properties/search", isAuthenticated, async (req: any, res) => {
     try {
