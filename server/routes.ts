@@ -354,13 +354,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { message, agentType = 'lead_finder' } = req.body;
       
-      if (message.toLowerCase().includes('find properties') || message.toLowerCase().includes('search properties')) {
-        // Extract location from message
-        const locationMatch = message.match(/in\s+(\d{5}|\w+,?\s*\w*)/i);
+      // Check if this is a property search request
+      const isPropertySearch = message.toLowerCase().match(/(find|search|show|get)\s+(properties|distressed|leads)/i) ||
+                               message.toLowerCase().includes('properties in') ||
+                               message.toLowerCase().match(/\d+\s+properties/i) ||
+                               message.toLowerCase().match(/properties.*philadelphia|philadelphia.*properties/i);
+                               
+      if (isPropertySearch) {
+        // Extract location from message - improved regex
+        const locationMatch = message.match(/in\s+([\w\s,]+?)(?:\s|$)/i) || message.match(/(\d{5})/);
         const location = locationMatch ? locationMatch[1].trim() : '17112';
         
         const { batchLeadsService } = await import("./batchleads");
-        const response = await batchLeadsService.searchValidProperties({ location }, 5); // Get exactly 5 valid properties
+        
+        // Determine if this is a distressed property search
+        const searchCriteria: any = { location };
+        if (message.toLowerCase().includes('distressed')) {
+          searchCriteria.distressedOnly = true;
+        }
+        
+        const response = await batchLeadsService.searchValidProperties(searchCriteria, 5);
         
         const convertedProperties = response.data
           .map(prop => batchLeadsService.convertToProperty(prop, 'demo-user'))
@@ -391,7 +404,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         // Regular AI response
         const { generateLeadFinderResponse } = await import("./openai");
-        const response = await generateLeadFinderResponse(message, []);
+        const response = await generateLeadFinderResponse(message, "");
         res.json({ response });
       }
     } catch (error: any) {
