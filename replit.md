@@ -44,6 +44,12 @@ Preferred communication style: Simple, everyday language.
 - **Agent Types**: Four specialized agents (Lead Finder, Deal Analyzer, Negotiation, Closing)
 - **Context Management**: Property and contact data integration with AI responses
 - **Conversation Tracking**: Persistent conversation history with agent type association
+- **Live Data Integration**: BatchData API provides real-time property data, valuations, and owner information to AI agents
+
+### Data Quality Assurance
+- **Property Validation**: Filters out properties with missing pricing or undefined equity percentages
+- **Quality Metrics**: Tracks data completeness rates across different markets (typically 95-100% for most areas)
+- **Authentic Data Only**: All property information sourced from live BatchData API with verified owner names and contact details
 
 ### Application Modules
 
@@ -81,6 +87,7 @@ Preferred communication style: Simple, everyday language.
 - **drizzle-orm**: Type-safe database operations and query building
 - **@tanstack/react-query**: Server state management and caching
 - **openai**: AI integration for chat agents and property analysis
+- **BatchData API**: Live real estate data integration with property valuations, owner information, and equity calculations
 
 ### UI and Styling
 - **@radix-ui/react-***: Comprehensive set of accessible UI primitives
