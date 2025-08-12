@@ -166,14 +166,56 @@ class BatchLeadsService {
     return response.data;
   }
 
+  // Search for valid properties with target count
+  async searchValidProperties(criteria: SearchCriteria, targetCount = 5): Promise<{ success: boolean; data: any[]; total_results: number; validCount: number; filteredCount: number }> {
+    let validProperties: any[] = [];
+    let totalFiltered = 0;
+    let currentPage = 1;
+    const maxPages = 5; // Limit to prevent infinite loops
+    
+    while (validProperties.length < targetCount && currentPage <= maxPages) {
+      const response = await this.searchProperties(criteria, currentPage, 25);
+      
+      if (!response.success || !response.data.length) {
+        break;
+      }
+      
+      // Convert and filter properties
+      for (const prop of response.data) {
+        const converted = this.convertToProperty(prop, 'temp-user');
+        if (converted !== null) {
+          validProperties.push(prop); // Store original property for return
+          if (validProperties.length >= targetCount) break;
+        } else {
+          totalFiltered++;
+        }
+      }
+      
+      currentPage++;
+    }
+    
+    return {
+      success: true,
+      data: validProperties,
+      total_results: validProperties.length + totalFiltered,
+      validCount: validProperties.length,
+      filteredCount: totalFiltered
+    };
+  }
+
   // Convert BatchData property to our schema format
   convertToProperty(batchProperty: any, userId: string): any {
     const estimatedValue = batchProperty.valuation?.estimatedValue || 0;
     const equityPercent = batchProperty.valuation?.equityPercent;
     
-    // Skip properties with invalid pricing or equity data
-    if (!estimatedValue || estimatedValue <= 1000 || equityPercent === undefined || equityPercent === null) {
-      return null; // Filter out properties under $1,000 ARV as they're likely data errors
+    // Comprehensive validation - filter out any invalid data
+    if (!estimatedValue || 
+        estimatedValue <= 1000 || 
+        equityPercent === undefined || 
+        equityPercent === null || 
+        isNaN(estimatedValue) ||
+        isNaN(equityPercent)) {
+      return null;
     }
     
     const maxOffer = Math.floor(estimatedValue * 0.7); // 70% rule

@@ -360,18 +360,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const location = locationMatch ? locationMatch[1].trim() : '17112';
         
         const { batchLeadsService } = await import("./batchleads");
-        const response = await batchLeadsService.searchProperties({ location }, 1, 3);
+        const response = await batchLeadsService.searchValidProperties({ location }, 5); // Get exactly 5 valid properties
         
-        const totalProperties = response.data.length;
         const convertedProperties = response.data
           .map(prop => batchLeadsService.convertToProperty(prop, 'demo-user'))
           .filter(prop => prop !== null); // Remove invalid properties
         
-        const filteredCount = totalProperties - convertedProperties.length;
-        
         if (convertedProperties.length === 0) {
           res.json({
-            response: `Found ${totalProperties} properties in ${location}, but all were filtered out due to missing price or equity data. This ensures you only get actionable wholesale leads with complete valuation information.`
+            response: `Searched ${response.filteredCount} properties in ${location}, but all were filtered out due to missing price or equity data. This ensures you only get actionable wholesale leads with complete valuation information.`
           });
           return;
         }
@@ -381,8 +378,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ).join('\n\n');
         
         let qualityNote = "";
-        if (filteredCount > 0) {
-          qualityNote = `\n\n✅ Data Quality: Filtered out ${filteredCount} properties with incomplete pricing/equity data to ensure you get only actionable leads.`;
+        if (response.filteredCount > 0) {
+          qualityNote = `\n\n✅ Data Quality: Filtered out ${response.filteredCount} properties with incomplete pricing/equity data to ensure you get only actionable leads.`;
         }
         
         const aiResponse = `Found ${convertedProperties.length} quality properties in ${location}:\n\n${propertiesText}${qualityNote}\n\nThese are REAL properties from BatchData API with complete market data, verified equity calculations, and owner information perfect for your wholesaling business!`;
