@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import path from "path";
 import { storage } from "./storage";
 import { insertPropertySchema, insertContactSchema, insertConversationSchema, insertMessageSchema, insertDocumentSchema, insertDealSchema } from "@shared/schema";
 import { generateLeadFinderResponse, generateDealAnalyzerResponse, generateNegotiationResponse, generateClosingResponse, generatePropertyLeads } from "./openai";
@@ -300,6 +301,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Distressed properties error:", error);
       res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Serve demo page
+  app.get('/demo', (req, res) => {
+    res.sendFile(path.join(process.cwd(), 'demo.html'));
+  });
+
+  // Public demo endpoints (no auth required for testing)
+  app.get('/api/demo/batchleads/:location?', async (req, res) => {
+    try {
+      const location = req.params.location || '17112';
+      const { batchLeadsService } = await import("./batchleads");
+      const response = await batchLeadsService.searchProperties({ location }, 1, 5);
+      
+      const convertedProperties = response.data.map(prop => 
+        batchLeadsService.convertToProperty(prop, 'demo-user')
+      );
+      
+      res.json({
+        success: true,
+        message: 'BatchData API integration working!',
+        location: location,
+        total_results: response.total_results,
+        properties_returned: convertedProperties.length,
+        properties: convertedProperties.slice(0, 3).map(p => ({
+          address: p.address,
+          city: p.city,
+          state: p.state,
+          zipCode: p.zipCode,
+          arv: p.arv,
+          maxOffer: p.maxOffer,
+          equityPercentage: p.equityPercentage,
+          motivationScore: p.motivationScore,
+          leadType: p.leadType,
+          distressedIndicator: p.distressedIndicator,
+          ownerName: p.ownerName
+        }))
+      });
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
+    }
+  });
+
+  app.post('/api/demo/chat', async (req, res) => {
+    try {
+      const { message, agentType = 'lead_finder' } = req.body;
+      
+      if (message.toLowerCase().includes('find properties') || message.toLowerCase().includes('search properties')) {
+        // Extract location from message
+        const locationMatch = message.match(/in\s+(\d{5}|\w+,?\s*\w*)/i);
+        const location = locationMatch ? locationMatch[1].trim() : '17112';
+        
+        const { batchLeadsService } = await import("./batchleads");
+        const response = await batchLeadsService.searchProperties({ location }, 1, 3);
+        
+        const convertedProperties = response.data.map(prop => 
+          batchLeadsService.convertToProperty(prop, 'demo-user')
+        );
+        
+        const propertiesText = convertedProperties.map(p => 
+          `**${p.address}**\n${p.city}, ${p.state} ${p.zipCode}\nARV: $${parseInt(p.arv).toLocaleString()}\nMax Offer: $${parseInt(p.maxOffer).toLocaleString()}\nEquity: ${p.equityPercentage}%\nMotivation Score: ${p.motivationScore}/100\nOwner: ${p.ownerName || 'Available'}\nLead Type: ${p.leadType.replace('_', ' ')}`
+        ).join('\n\n');
+        
+        const aiResponse = `Found ${convertedProperties.length} properties in ${location}:\n\n${propertiesText}\n\nThese are REAL properties from BatchData API with live market data, owner information, and equity calculations perfect for your wholesaling business!`;
+        
+        res.json({
+          response: aiResponse,
+          properties: convertedProperties
+        });
+      } else {
+        // Regular AI response
+        const { openAIService } = await import("./openai");
+        const response = await openAIService.chatWithAgent(message, agentType, []);
+        res.json({ response });
+      }
+    } catch (error: any) {
+      res.status(500).json({
+        success: false,
+        error: error.message
+      });
     }
   });
 
