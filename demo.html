@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>10HourAi - Live BatchLeads Integration Demo</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .chat-container {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            background: #f8f9fa;
+        }
+        .input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .response {
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 10px 0;
+            white-space: pre-line;
+            line-height: 1.6;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        .success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            border-color: #f1b0b7;
+        }
+        .agent-select {
+            margin-bottom: 15px;
+        }
+        select {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .examples {
+            background: #e8f4fd;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .examples h3 {
+            margin-top: 0;
+            color: #0066cc;
+        }
+        .example-btn {
+            background: #28a745;
+            margin: 5px;
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+        .example-btn:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏠 10HourAi</h1>
+        <p class="subtitle">Live BatchLeads API Integration Demo</p>
+        
+        <div class="examples">
+            <h3>🚀 Try These Live Property Searches:</h3>
+            <button class="example-btn" onclick="setMessage('Find properties in ZIP 17112')">
+                Find properties in ZIP 17112
+            </button>
+            <button class="example-btn" onclick="setMessage('Search properties in Phoenix, AZ')">
+                Search properties in Phoenix, AZ
+            </button>
+            <button class="example-btn" onclick="setMessage('Find distressed properties in Dallas, TX')">
+                Find distressed properties in Dallas, TX
+            </button>
+            <button class="example-btn" onclick="setMessage('Show me high equity properties in 90210')">
+                Show me high equity properties in 90210
+            </button>
+        </div>
+
+        <div class="chat-container">
+            <div class="agent-select">
+                <label for="agentSelect">AI Agent: </label>
+                <select id="agentSelect">
+                    <option value="lead_finder">🔍 Lead Finder (Live Property Search)</option>
+                    <option value="deal_analyzer">📊 Deal Analyzer</option>
+                    <option value="negotiation">🤝 Negotiation Agent</option>
+                    <option value="closing">📄 Closing Agent</option>
+                </select>
+            </div>
+            
+            <div class="input-group">
+                <input type="text" id="messageInput" placeholder="Ask me to find properties in any location..." 
+                       onkeypress="if(event.key==='Enter') sendMessage()">
+                <button onclick="sendMessage()" id="sendBtn">Send</button>
+            </div>
+            
+            <div id="response" class="response" style="display: none;"></div>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px; color: #666;">
+            <small>✅ Connected to live BatchData API with real property data, owner info, and equity calculations</small>
+        </div>
+    </div>
+
+    <script>
+        function setMessage(message) {
+            document.getElementById('messageInput').value = message;
+        }
+
+        async function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const agentSelect = document.getElementById('agentSelect');
+            const responseDiv = document.getElementById('response');
+            const sendBtn = document.getElementById('sendBtn');
+            
+            const message = messageInput.value.trim();
+            if (!message) return;
+            
+            // Show loading state
+            responseDiv.style.display = 'block';
+            responseDiv.innerHTML = '<div class="loading">🔄 Searching live property data...</div>';
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Searching...';
+            
+            try {
+                const response = await fetch('/api/demo/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        agentType: agentSelect.value
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const data = await response.json();
+                responseDiv.innerHTML = `<div class="success">${data.response || 'Response received successfully!'}</div>`;
+                
+            } catch (error) {
+                responseDiv.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Send';
+            }
+        }
+    </script>
+</body>
+</html>
