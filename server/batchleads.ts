@@ -169,8 +169,14 @@ class BatchLeadsService {
   // Convert BatchData property to our schema format
   convertToProperty(batchProperty: any, userId: string): any {
     const estimatedValue = batchProperty.valuation?.estimatedValue || 0;
+    const equityPercent = batchProperty.valuation?.equityPercent;
+    
+    // Skip properties with invalid pricing or equity data
+    if (!estimatedValue || estimatedValue <= 1000 || equityPercent === undefined || equityPercent === null) {
+      return null; // Filter out properties under $1,000 ARV as they're likely data errors
+    }
+    
     const maxOffer = Math.floor(estimatedValue * 0.7); // 70% rule
-    const equityPercent = batchProperty.valuation?.equityPercent || 0;
     
     return {
       userId,

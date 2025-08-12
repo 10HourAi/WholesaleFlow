@@ -265,8 +265,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const savedProperties = [];
       for (const batchProperty of results.data.slice(0, 10)) { // Limit to first 10 results
         const propertyData = batchLeadsService.convertToProperty(batchProperty, userId);
-        const property = await storage.createProperty(propertyData);
-        savedProperties.push(property);
+        if (propertyData !== null) { // Only save valid properties
+          const property = await storage.createProperty(propertyData);
+          savedProperties.push(property);
+        }
       }
 
       res.json({
@@ -360,15 +362,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const { batchLeadsService } = await import("./batchleads");
         const response = await batchLeadsService.searchProperties({ location }, 1, 3);
         
-        const convertedProperties = response.data.map(prop => 
-          batchLeadsService.convertToProperty(prop, 'demo-user')
-        );
+        const totalProperties = response.data.length;
+        const convertedProperties = response.data
+          .map(prop => batchLeadsService.convertToProperty(prop, 'demo-user'))
+          .filter(prop => prop !== null); // Remove invalid properties
+        
+        const filteredCount = totalProperties - convertedProperties.length;
+        
+        if (convertedProperties.length === 0) {
+          res.json({
+            response: `Found ${totalProperties} properties in ${location}, but all were filtered out due to missing price or equity data. This ensures you only get actionable wholesale leads with complete valuation information.`
+          });
+          return;
+        }
         
         const propertiesText = convertedProperties.map(p => 
           `**${p.address}**\n${p.city}, ${p.state} ${p.zipCode}\nARV: $${parseInt(p.arv).toLocaleString()}\nMax Offer: $${parseInt(p.maxOffer).toLocaleString()}\nEquity: ${p.equityPercentage}%\nMotivation Score: ${p.motivationScore}/100\nOwner: ${p.ownerName || 'Available'}\nLead Type: ${p.leadType.replace('_', ' ')}`
         ).join('\n\n');
         
-        const aiResponse = `Found ${convertedProperties.length} properties in ${location}:\n\n${propertiesText}\n\nThese are REAL properties from BatchData API with live market data, owner information, and equity calculations perfect for your wholesaling business!`;
+        let qualityNote = "";
+        if (filteredCount > 0) {
+          qualityNote = `\n\n✅ Data Quality: Filtered out ${filteredCount} properties with incomplete pricing/equity data to ensure you get only actionable leads.`;
+        }
+        
+        const aiResponse = `Found ${convertedProperties.length} quality properties in ${location}:\n\n${propertiesText}${qualityNote}\n\nThese are REAL properties from BatchData API with complete market data, verified equity calculations, and owner information perfect for your wholesaling business!`;
         
         res.json({
           response: aiResponse,
