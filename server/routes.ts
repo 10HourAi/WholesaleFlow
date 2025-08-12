@@ -376,8 +376,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       } else {
         // Regular AI response
-        const { openAIService } = await import("./openai");
-        const response = await openAIService.chatWithAgent(message, agentType, []);
+        const { generateLeadFinderResponse } = await import("./openai");
+        const response = await generateLeadFinderResponse(message, []);
         res.json({ response });
       }
     } catch (error: any) {
