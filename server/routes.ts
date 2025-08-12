@@ -386,9 +386,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return;
         }
         
-        const propertiesText = convertedProperties.map(p => 
-          `**${p.address}**\n${p.city}, ${p.state} ${p.zipCode}\nARV: $${parseInt(p.arv).toLocaleString()}\nMax Offer: $${parseInt(p.maxOffer).toLocaleString()}\nEquity: ${p.equityPercentage}%\nMotivation Score: ${p.motivationScore}/100\nOwner: ${p.ownerName || 'Available'}\nLead Type: ${p.leadType.replace('_', ' ')}`
-        ).join('\n\n');
+        const propertiesText = convertedProperties.map(p => {
+          let contactInfo = `Owner: ${p.ownerName || 'Not available'}`;
+          
+          // Add mailing address (mark if different from property address)
+          if (p.ownerMailingAddress) {
+            const propertyAddress = `${p.address}, ${p.city}, ${p.state} ${p.zipCode}`;
+            const isDifferent = p.ownerMailingAddress.toLowerCase() !== propertyAddress.toLowerCase();
+            contactInfo += `\nMailing Address: ${p.ownerMailingAddress}${isDifferent ? ' 🏃 (Absentee)' : ' 🏠 (Owner Occupied)'}`;
+          }
+          
+          if (p.ownerPhone) contactInfo += `\nPhone: ${p.ownerPhone}`;
+          if (p.ownerEmail) contactInfo += `\nEmail: ${p.ownerEmail}`;
+          
+          return `**${p.address}**\n${p.city}, ${p.state} ${p.zipCode}\nARV: $${parseInt(p.arv).toLocaleString()}\nMax Offer: $${parseInt(p.maxOffer).toLocaleString()}\nEquity: ${p.equityPercentage}%\nMotivation Score: ${p.motivationScore}/100\n${contactInfo}\nLead Type: ${p.leadType.replace('_', ' ')}`
+        }).join('\n\n');
         
         let qualityNote = "";
         if (response.filteredCount > 0) {

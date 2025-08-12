@@ -238,8 +238,10 @@ class BatchLeadsService {
       lastSalePrice: batchProperty.sale?.lastSalePrice?.toString() || null,
       lastSaleDate: batchProperty.sale?.lastSaleDate || null,
       ownerName: batchProperty.owner?.fullName || null,
-      ownerPhone: null,
-      ownerEmail: null,
+      ownerPhone: batchProperty.owner?.phoneNumbers?.[0] || null,
+      ownerEmail: batchProperty.owner?.emailAddresses?.[0] || null,
+      ownerMailingAddress: batchProperty.owner?.mailingAddress ? 
+        `${batchProperty.owner.mailingAddress.street}, ${batchProperty.owner.mailingAddress.city}, ${batchProperty.owner.mailingAddress.state} ${batchProperty.owner.mailingAddress.zip}` : null,
       equityPercentage: Math.round(equityPercent),
       motivationScore: this.calculateMotivationScore(batchProperty),
       distressedIndicator: this.getDistressedIndicator(batchProperty)
