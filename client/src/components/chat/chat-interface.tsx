@@ -108,6 +108,8 @@ export default function ChatInterface() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations", currentConversation, "messages"] });
       setInputMessage("");
+      // Reset conversation creation state
+      createConversationMutation.reset();
     },
   });
 
@@ -118,19 +120,20 @@ export default function ChatInterface() {
   const handleSendMessage = () => {
     if (!inputMessage.trim()) return;
 
+    const messageContent = inputMessage.trim();
+
     if (!currentConversation) {
-      // Create new conversation
+      // Create new conversation and store message to send after creation
       const agentName = agentTypes.find(a => a.id === selectedAgent)?.name || "Chat";
       createConversationMutation.mutate({
         agentType: selectedAgent,
-        title: inputMessage.slice(0, 50) + (inputMessage.length > 50 ? "..." : ""),
+        title: messageContent.slice(0, 50) + (messageContent.length > 50 ? "..." : ""),
       });
-    }
-
-    // Send message will be handled after conversation is created or if conversation exists
-    if (currentConversation) {
+      // Don't clear input yet - it will be handled after conversation creation
+    } else {
+      // Send message immediately if conversation exists
       sendMessageMutation.mutate({
-        content: inputMessage,
+        content: messageContent,
         role: "user",
       });
     }
@@ -138,9 +141,10 @@ export default function ChatInterface() {
 
   // Send message after conversation is created
   useEffect(() => {
-    if (currentConversation && inputMessage && createConversationMutation.isSuccess) {
+    if (currentConversation && inputMessage.trim() && createConversationMutation.isSuccess) {
+      const messageContent = inputMessage.trim();
       sendMessageMutation.mutate({
-        content: inputMessage,
+        content: messageContent,
         role: "user",
       });
     }
