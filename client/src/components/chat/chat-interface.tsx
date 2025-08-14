@@ -529,22 +529,77 @@ export default function ChatInterface() {
                 <Button size="sm" variant="outline" className="flex-1">Analyze Deal</Button>
                 <Button size="sm" variant="outline">Contact Owner</Button>
               </div>
-              {content.includes("Say 'next'") && (
-                <div className="pt-2">
-                  <Button 
-                    size="sm" 
-                    variant="default" 
-                    className="w-full bg-blue-600 hover:bg-blue-700"
-                    onClick={() => handleSendMessage("next")}
-                  >
-                    🔍 Show Next Property
-                  </Button>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
       );
+    }
+    return null;
+  };
+
+  const renderMultipleProperties = (content: string) => {
+    // Check if this is a multiple properties response
+    if (content.includes("Found multiple properties") || content.includes("property results")) {
+      try {
+        // Extract property data from the content
+        const propertyMatches = content.match(/\*\*PROPERTY \d+:\*\*([\s\S]*?)(?=\*\*PROPERTY \d+:\*\*|$)/g);
+        
+        if (propertyMatches && propertyMatches.length > 1) {
+          return (
+            <div className="mt-3 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-slate-900">Property Search Results</h3>
+                <Badge variant="secondary" className="bg-blue-100 text-blue-700">
+                  {propertyMatches.length} Properties Found
+                </Badge>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {propertyMatches.map((propertyContent, index) => (
+                  <Card key={index} className="border-green-200 bg-green-50">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h4 className="font-medium text-green-800">Property #{index + 1}</h4>
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                        </div>
+                        
+                        <div className="text-xs space-y-1 max-h-48 overflow-y-auto">
+                          {propertyContent.split('\n').map((line, lineIndex) => {
+                            if (line.includes('**') && line.includes('**')) {
+                              const text = line.replace(/\*\*/g, '');
+                              return <div key={lineIndex} className="font-semibold text-slate-800">{text}</div>;
+                            } else if (line.trim() && !line.includes('💡') && !line.includes('Say')) {
+                              return <div key={lineIndex} className="text-slate-700">{line}</div>;
+                            }
+                            return null;
+                          })}
+                        </div>
+                        
+                        <div className="pt-2 border-t border-green-200 flex gap-1">
+                          <Button size="sm" variant="outline" className="flex-1 text-xs">Save</Button>
+                          <Button size="sm" variant="outline" className="flex-1 text-xs">Analyze</Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              
+              <div className="text-center pt-4">
+                <Button 
+                  onClick={() => handleSendMessage("show me 5 more properties")}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  🔍 Load More Properties
+                </Button>
+              </div>
+            </div>
+          );
+        }
+      } catch (error) {
+        console.error('Error parsing multiple properties:', error);
+      }
     }
     return null;
   };
@@ -607,27 +662,36 @@ export default function ChatInterface() {
                           <Search className="h-4 w-4" />
                           Use Lead Finder Wizard
                         </Button>
-                        <Badge 
-                          variant="secondary" 
-                          className="cursor-pointer hover:bg-slate-200"
-                          onClick={() => setInputMessage("Find distressed properties in Philadelphia, PA")}
-                        >
-                          Find distressed properties
-                        </Badge>
-                        <Badge 
-                          variant="secondary" 
-                          className="cursor-pointer hover:bg-slate-200"
-                          onClick={() => setInputMessage("Search properties in Dallas, TX")}
-                        >
-                          Search by location
-                        </Badge>
-                        <Badge 
-                          variant="secondary" 
-                          className="cursor-pointer hover:bg-slate-200"
-                          onClick={() => setInputMessage("Find high equity properties in 90210")}
-                        >
-                          High equity properties
-                        </Badge>
+                        <div className="flex flex-wrap gap-2">
+                          <Badge 
+                            variant="secondary" 
+                            className="cursor-pointer hover:bg-slate-200"
+                            onClick={() => setInputMessage("Show me 5 properties in Orlando, FL")}
+                          >
+                            5 Properties Grid View
+                          </Badge>
+                          <Badge 
+                            variant="secondary" 
+                            className="cursor-pointer hover:bg-slate-200"
+                            onClick={() => setInputMessage("Find distressed properties in Philadelphia, PA")}
+                          >
+                            Find distressed properties
+                          </Badge>
+                          <Badge 
+                            variant="secondary" 
+                            className="cursor-pointer hover:bg-slate-200"
+                            onClick={() => setInputMessage("Show me 3 high equity properties in Dallas, TX")}
+                          >
+                            Multiple high equity
+                          </Badge>
+                          <Badge 
+                            variant="secondary" 
+                            className="cursor-pointer hover:bg-slate-200"
+                            onClick={() => setInputMessage("Find high equity properties in 90210")}
+                          >
+                            Single property search
+                          </Badge>
+                        </div>
                       </>
                     )}
                     {selectedAgent === "deal-analyzer" && (
@@ -672,7 +736,7 @@ export default function ChatInterface() {
               <Card className={message.role === "user" ? "bg-primary text-primary-foreground" : ""}>
                 <CardContent className="p-4">
                   <p className="text-sm">{message.content}</p>
-                  {message.role === "assistant" && renderPropertyCard(message.content)}
+                  {message.role === "assistant" && (renderMultipleProperties(message.content) || renderPropertyCard(message.content))}
                 </CardContent>
               </Card>
             </div>

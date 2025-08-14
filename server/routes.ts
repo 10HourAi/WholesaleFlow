@@ -306,48 +306,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get next property one at a time
-  app.post("/api/properties/next", isAuthenticated, async (req: any, res) => {
+  // Get multiple properties at once
+  app.post("/api/properties/batch", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { location, maxPrice, minEquity, propertyType, distressedOnly, motivationScore, minBedrooms, sessionState } = req.body;
+      const { location, maxPrice, minEquity, propertyType, distressedOnly, motivationScore, count = 5 } = req.body; // Default to 5 properties
 
       const { batchLeadsService } = await import("./batchleads");
-      const result = await batchLeadsService.getNextValidProperty({
+      const results = await batchLeadsService.searchProperties({
         location,
         maxPrice,
         minEquity,
         propertyType,
         distressedOnly,
         motivationScore
-      }, sessionState);
+      });
 
-      if (result.property) {
-        // Convert to our format
-        const propertyData = batchLeadsService.convertToProperty(result.property, userId);
+      const propertiesToReturn = [];
+      let propertiesChecked = 0;
+      let propertiesFiltered = 0;
 
-        res.json({
-          property: propertyData,
-          hasMore: result.hasMore,
-          sessionState: result.sessionState,
-          stats: {
-            totalChecked: result.totalChecked,
-            filtered: result.filtered
-          }
-        });
-      } else {
-        res.json({
-          property: null,
-          hasMore: false,
-          sessionState: result.sessionState,
-          stats: {
-            totalChecked: result.totalChecked,
-            filtered: result.filtered
-          }
-        });
+      for (const batchProperty of results.data) {
+        if (propertiesToReturn.length >= count) break; // Stop once we have enough properties
+
+        propertiesChecked++;
+        const propertyData = batchLeadsService.convertToProperty(batchProperty, userId);
+
+        if (propertyData !== null) { // Only save valid properties
+          await storage.createProperty(propertyData); // Save to storage
+          propertiesToReturn.push(propertyData);
+        } else {
+          propertiesFiltered++;
+        }
       }
+
+      res.json({
+        properties: propertiesToReturn,
+        total: results.total_results,
+        page: results.page,
+        hasMore: results.data.length > propertiesToReturn.length, // Indicates if there were more results in the API call
+        stats: {
+          totalChecked: propertiesChecked,
+          filtered: propertiesFiltered
+        }
+      });
     } catch (error: any) {
-      console.error("Next property error:", error);
+      console.error("Batch properties error:", error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -569,7 +573,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             qualityNote = `\n✅ Data Quality: Filtered out ${result.filtered} properties with incomplete data to show you only actionable leads.`;
           }
 
-          const aiResponse = `🎯 Found a HIGH-PRIORITY wholesale opportunity in ${location}:\n\n${propertyText}${foreclosureInfo}${qualityNote}\n\n💡 This is LIVE property data from BatchData API with complete owner and mortgage details! ${result.hasMore ? "Say 'next' to see another property." : "This was the only quality property found."}`;
+          const aiResponse = `💡 This is LIVE property data from BatchData API with complete owner and mortgage details! ${result.hasMore ? "Say 'next' to see another property." : "This was the only quality property found."}`;
 
           // Also convert for storage format
           const convertedProperty = batchLeadsService.convertToProperty(result.property, 'demo-user');
@@ -616,21 +620,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Determine search criteria based on query content
         const searchCriteria: any = { location };
-        
+
         // Check for seller type indicators
-        if (message.toLowerCase().includes('distressed') || 
-            message.toLowerCase().includes('pre-foreclosure') || 
+        if (message.toLowerCase().includes('distressed') ||
+            message.toLowerCase().includes('pre-foreclosure') ||
             message.toLowerCase().includes('vacant') ||
-            message.toLowerCase().includes('absentee') || 
-            message.toLowerCase().includes('out-of-state') || 
+            message.toLowerCase().includes('absentee') ||
+            message.toLowerCase().includes('out-of-state') ||
             message.toLowerCase().includes('non-resident')) {
           searchCriteria.distressedOnly = true;
         }
-        
+
         if (message.toLowerCase().includes('high equity') || message.toLowerCase().includes('70%')) {
           searchCriteria.minEquity = 70;
         }
-        
+
         if (message.toLowerCase().includes('motivated seller') || message.toLowerCase().includes('multiple indicators')) {
           searchCriteria.distressedOnly = true;
         }
@@ -640,14 +644,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (bedroomMatch) {
           searchCriteria.minBedrooms = parseInt(bedroomMatch[1]);
         }
-        
+
         // Extract price limits
         const priceMatch = message.match(/under\s+\$?([\d,]+)/i);
         if (priceMatch) {
           const price = parseInt(priceMatch[1].replace(/,/g, ''));
           searchCriteria.maxPrice = price;
         }
-        
+
         // Property type - default to single family for most searches
         if (message.toLowerCase().includes('single family')) {
           searchCriteria.propertyType = 'single_family';
@@ -719,7 +723,7 @@ Try expanding your search area or checking a nearby city.`;
         // Property vs Mailing Address Analysis
         const propertyAddress = `${convertedPropertyForStorage.address}, ${convertedPropertyForStorage.city}, ${convertedPropertyForStorage.state} ${convertedPropertyForStorage.zipCode}`;
         if (owner?.mailingAddress) {
-          const mailingAddr = `${owner.mailingAddress.street}, ${owner.mailingAddress.city}, ${owner.mailingAddress.state} ${owner.mailingAddress.zip || ''}`;
+          const mailingAddr = `${owner.mailingAddress.street}, ${owner.mailingAddress.city}, ${owner.mailingAddress.state} ${owner.mailingAddress.zip}`;
           const isDifferent = mailingAddr.toLowerCase() !== propertyAddress.toLowerCase();
           contactInfo += `🏠 Property: ${propertyAddress}\n`;
           contactInfo += `📬 Mailing: ${mailingAddr}\n`;
@@ -783,7 +787,7 @@ Try expanding your search area or checking a nearby city.`;
           qualityNote = `\n✅ Data Quality: Filtered out ${result.filtered} properties with incomplete data to show you only actionable leads.`;
         }
 
-        const aiResponse = `🎯 Found a quality wholesale opportunity in ${location}:\n\n${propertyText}${qualityNote}\n\n💡 This is LIVE property data from BatchData API with complete owner and financial details! ${result.hasMore ? "Say 'next' to see another property." : "This was the only quality property found."}`;
+        const aiResponse = `💡 This is LIVE property data from BatchData API with complete owner and financial details! ${result.hasMore ? "Say 'next' to see another property." : "This was the only quality property found."}`;
 
         res.json({
           response: aiResponse,
