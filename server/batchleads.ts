@@ -294,16 +294,16 @@ class BatchLeadsService {
   convertToProperty(batchProperty: any, userId: string): any {
     const estimatedValue = batchProperty.valuation?.estimatedValue || 0;
     const equityPercent = batchProperty.valuation?.equityPercent;
-    const bedrooms = batchProperty.building?.bedrooms;
-    const bathrooms = batchProperty.building?.bathrooms;
-    const squareFeet = batchProperty.building?.livingArea;
+    const bedrooms = batchProperty.building?.bedrooms || 0;
+    const bathrooms = batchProperty.building?.bathrooms || 0;
+    const squareFeet = batchProperty.building?.livingArea || 0;
     const address = batchProperty.address?.street;
     const city = batchProperty.address?.city;
     const state = batchProperty.address?.state;
     const zipCode = batchProperty.address?.zip;
     const ownerName = batchProperty.owner?.fullName;
     
-    // Strict validation - filter out properties with missing critical data
+    // Essential validation - only filter out properties missing core financial and contact data
     if (!estimatedValue || 
         estimatedValue <= 1000 || 
         equityPercent === undefined || 
@@ -314,12 +314,6 @@ class BatchLeadsService {
         !city || 
         !state || 
         !zipCode ||
-        !bedrooms || 
-        bedrooms < 1 ||
-        !bathrooms || 
-        bathrooms < 1 ||
-        !squareFeet || 
-        squareFeet < 500 ||
         !ownerName) {
       return null;
     }
@@ -332,9 +326,9 @@ class BatchLeadsService {
       city: city,
       state: state,
       zipCode: zipCode,
-      bedrooms: bedrooms,
-      bathrooms: bathrooms,
-      squareFeet: squareFeet,
+      bedrooms: bedrooms || null,
+      bathrooms: bathrooms || null,
+      squareFeet: squareFeet || null,
       arv: estimatedValue.toString(),
       maxOffer: maxOffer.toString(),
       status: 'new',
