@@ -112,9 +112,9 @@ export default function ChatInterface() {
         return response.json();
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations", currentConversation, "messages"] });
-      setInputMessage("");
+      // Don't clear input here - it's handled in handleSendMessage
       // Reset conversation creation state
       createConversationMutation.reset();
     },
@@ -128,6 +128,11 @@ export default function ChatInterface() {
     const messageToSend = messageOverride || inputMessage.trim();
     if (!messageToSend) return;
 
+    // Clear input immediately for better UX
+    if (!messageOverride) {
+      setInputMessage("");
+    }
+
     if (!currentConversation) {
       // Create new conversation and store message to send after creation
       const agentName = agentTypes.find(a => a.id === selectedAgent)?.name || "Chat";
@@ -135,7 +140,8 @@ export default function ChatInterface() {
         agentType: selectedAgent,
         title: messageToSend.slice(0, 50) + (messageToSend.length > 50 ? "..." : ""),
       });
-      // Don't clear input yet - it will be handled after conversation creation
+      // Store message to send after conversation creation
+      setInputMessage(messageToSend);
     } else {
       // Send message immediately if conversation exists
       sendMessageMutation.mutate({
