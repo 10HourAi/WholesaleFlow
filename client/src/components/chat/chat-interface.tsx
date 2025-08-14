@@ -506,6 +506,19 @@ export default function ChatInterface() {
                           {fields['Mailing Address'] && <div><span className="font-medium">📬 Mailing Address:</span> {fields['Mailing Address']}</div>}
                           {fields['Owner Status'] && <div><span className="font-medium">🏠 Status:</span> {fields['Owner Status']}</div>}
                           {fields['Distance Factor'] && <div><span className="font-medium">📍 Distance:</span> {fields['Distance Factor']}</div>}
+                          
+                          {/* Contact Information */}
+                          {fields['Contact Phone'] && <div><span className="font-medium">☎️ Contact Phone:</span> {fields['Contact Phone']}</div>}
+                          {fields['Skip Trace Phone'] && <div><span className="font-medium">📱 Skip Trace Phone:</span> {fields['Skip Trace Phone']}</div>}
+                          {fields['Skip Trace Email'] && <div><span className="font-medium">✉️ Skip Trace Email:</span> {fields['Skip Trace Email']}</div>}
+                          
+                          {/* Portfolio Information */}
+                          {fields['Properties Count'] && <div><span className="font-medium">🏘️ Properties Owned:</span> {fields['Properties Count']}</div>}
+                          {fields['Portfolio Value'] && <div><span className="font-medium">💰 Portfolio Value:</span> {fields['Portfolio Value']}</div>}
+                          {fields['Average Purchase Price'] && <div><span className="font-medium">📊 Avg Purchase Price:</span> {fields['Average Purchase Price']}</div>}
+                          {fields['Total Equity'] && <div><span className="font-medium">📈 Total Equity:</span> {fields['Total Equity']}</div>}
+                          {fields['Investor Profile'] && <div><span className="font-medium">🎯 Investor Profile:</span> {fields['Investor Profile']}</div>}
+                          
                           {fields["Why it's good"] && <div><span className="font-medium">💡 Opportunity:</span> {fields["Why it's good"]}</div>}
                         </div>
                       </div>
@@ -562,6 +575,9 @@ export default function ChatInterface() {
           return;
         } else if (trimmedLine.includes('**CONTACT INFORMATION:**')) {
           currentSection = 'contact';
+          return;
+        } else if (trimmedLine.includes('**OWNER PORTFOLIO:**') || trimmedLine.includes('**PORTFOLIO:**')) {
+          currentSection = 'portfolio';
           return;
         } else if (trimmedLine.includes('**MOTIVATION SCORE:**')) {
           currentSection = 'motivation';
@@ -630,7 +646,7 @@ export default function ChatInterface() {
               {/* Owner Information */}
               {parsedSections.owner && (
                 <div className="bg-white p-3 rounded border">
-                  <h5 className="font-semibold text-gray-800 mb-2">👤 Owner & Contact Info</h5>
+                  <h5 className="font-semibold text-gray-800 mb-2">👤 Owner Information</h5>
                   <div className="text-sm text-gray-700 whitespace-pre-line">{parsedSections.owner}</div>
                 </div>
               )}
@@ -640,6 +656,14 @@ export default function ChatInterface() {
                 <div className="bg-blue-50 p-3 rounded border border-blue-200">
                   <h5 className="font-semibold text-blue-800 mb-2">📞 Contact Details</h5>
                   <div className="text-sm text-blue-700 whitespace-pre-line">{parsedSections.contact}</div>
+                </div>
+              )}
+
+              {/* Portfolio Information */}
+              {parsedSections.portfolio && (
+                <div className="bg-purple-50 p-3 rounded border border-purple-200">
+                  <h5 className="font-semibold text-purple-800 mb-2">🏘️ Owner Portfolio</h5>
+                  <div className="text-sm text-purple-700 whitespace-pre-line">{parsedSections.portfolio}</div>
                 </div>
               )}
 
