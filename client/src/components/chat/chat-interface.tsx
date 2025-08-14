@@ -435,27 +435,8 @@ export default function ChatInterface() {
   };
 
   const renderPropertyCard = (content: string) => {
-    // Enhanced property card rendering for lead finder responses
-    if (content.includes("PROPERTY DETAILS") || content.includes("FINANCIAL ANALYSIS") || content.includes("OWNER INFORMATION") || (content.includes("Found a") && content.includes("property"))) {
-      // Extract key information for structured display
-      const lines = content.split('\n');
-      let address = '';
-      let value = '';
-      let equity = '';
-      let ownerName = '';
-      let motivationScore = '';
-      
-      lines.forEach(line => {
-        if (line.includes('Estimated Value:')) value = line.split(':')[1]?.trim() || '';
-        if (line.includes('Equity Percentage:')) equity = line.split(':')[1]?.trim() || '';
-        if (line.includes('Full Name:')) ownerName = line.split(':')[1]?.trim() || '';
-        if (line.includes('MOTIVATION SCORE:')) motivationScore = line.split(':')[1]?.trim().split('/')[0] || '';
-        if (line.includes('**PROPERTY DETAILS:**')) {
-          const nextLineIndex = lines.indexOf(line) + 1;
-          if (nextLineIndex < lines.length) address = lines[nextLineIndex]?.trim() || '';
-        }
-      });
-
+    // Check if this is a property response with structured data
+    if (content.includes("PROPERTY DETAILS") || content.includes("FINANCIAL ANALYSIS") || content.includes("OWNER INFORMATION")) {
       return (
         <Card className="mt-3 border-green-200 bg-green-50">
           <CardContent className="p-4">
@@ -468,62 +449,10 @@ export default function ChatInterface() {
                 <Badge variant="secondary" className="bg-green-100 text-green-700">BatchData API</Badge>
               </div>
               
-              {/* Quick stats */}
-              {(address || value || equity) && (
-                <div className="grid grid-cols-2 gap-3 p-3 bg-white rounded-lg border">
-                  {address && (
-                    <div>
-                      <div className="text-xs font-medium text-slate-500">ADDRESS</div>
-                      <div className="text-sm font-semibold text-slate-900">{address}</div>
-                    </div>
-                  )}
-                  {value && (
-                    <div>
-                      <div className="text-xs font-medium text-slate-500">ESTIMATED VALUE</div>
-                      <div className="text-sm font-semibold text-green-700">{value}</div>
-                    </div>
-                  )}
-                  {equity && (
-                    <div>
-                      <div className="text-xs font-medium text-slate-500">EQUITY</div>
-                      <div className="text-sm font-semibold text-blue-700">{equity}</div>
-                    </div>
-                  )}
-                  {ownerName && ownerName !== 'Not available' && (
-                    <div>
-                      <div className="text-xs font-medium text-slate-500">OWNER</div>
-                      <div className="text-sm font-semibold text-slate-900">{ownerName}</div>
-                    </div>
-                  )}
-                </div>
-              )}
-              
-              {motivationScore && (
-                <div className="p-2 bg-orange-50 rounded border border-orange-200">
-                  <div className="text-xs font-medium text-orange-700">MOTIVATION SCORE</div>
-                  <div className="text-lg font-bold text-orange-800">{motivationScore}/100</div>
-                </div>
-              )}
-
-              <div className="text-sm space-y-1 max-h-64 overflow-y-auto">
-                {content.split('\n').map((line, index) => {
-                  if (line.includes('**') && line.includes('**')) {
-                    // Bold headers
-                    const text = line.replace(/\*\*/g, '');
-                    return <div key={index} className="font-semibold text-slate-800 mt-2 mb-1 border-b border-slate-200 pb-1">{text}</div>;
-                  } else if (line.trim().startsWith('🎯') || line.trim().startsWith('🚨')) {
-                    // Important alerts
-                    return <div key={index} className="font-semibold text-red-700 bg-red-50 p-2 rounded">{line}</div>;
-                  } else if (line.trim().startsWith('-') || line.trim().startsWith('•') || line.trim().startsWith('  •')) {
-                    // Bullet points
-                    return <div key={index} className="text-slate-600 ml-2 text-xs">{line}</div>;
-                  } else if (line.trim() && !line.includes('💡') && !line.includes('Say')) {
-                    // Regular text (exclude call to action)
-                    return <div key={index} className="text-slate-700 text-xs">{line}</div>;
-                  }
-                  return null;
-                })}
+              <div className="text-sm space-y-1 max-h-64 overflow-y-auto whitespace-pre-wrap">
+                {content}
               </div>
+              
               <div className="pt-2 border-t border-green-200 flex gap-2">
                 <Button size="sm" variant="outline" className="flex-1">Save Lead</Button>
                 <Button size="sm" variant="outline" className="flex-1">Analyze Deal</Button>
@@ -533,73 +462,6 @@ export default function ChatInterface() {
           </CardContent>
         </Card>
       );
-    }
-    return null;
-  };
-
-  const renderMultipleProperties = (content: string) => {
-    // Check if this is a multiple properties response
-    if (content.includes("Found multiple properties") || content.includes("property results")) {
-      try {
-        // Extract property data from the content
-        const propertyMatches = content.match(/\*\*PROPERTY \d+:\*\*([\s\S]*?)(?=\*\*PROPERTY \d+:\*\*|$)/g);
-        
-        if (propertyMatches && propertyMatches.length > 1) {
-          return (
-            <div className="mt-3 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-slate-900">Property Search Results</h3>
-                <Badge variant="secondary" className="bg-blue-100 text-blue-700">
-                  {propertyMatches.length} Properties Found
-                </Badge>
-              </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {propertyMatches.map((propertyContent, index) => (
-                  <Card key={index} className="border-green-200 bg-green-50">
-                    <CardContent className="p-4">
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-medium text-green-800">Property #{index + 1}</h4>
-                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                        </div>
-                        
-                        <div className="text-xs space-y-1 max-h-48 overflow-y-auto">
-                          {propertyContent.split('\n').map((line, lineIndex) => {
-                            if (line.includes('**') && line.includes('**')) {
-                              const text = line.replace(/\*\*/g, '');
-                              return <div key={lineIndex} className="font-semibold text-slate-800">{text}</div>;
-                            } else if (line.trim() && !line.includes('💡') && !line.includes('Say')) {
-                              return <div key={lineIndex} className="text-slate-700">{line}</div>;
-                            }
-                            return null;
-                          })}
-                        </div>
-                        
-                        <div className="pt-2 border-t border-green-200 flex gap-1">
-                          <Button size="sm" variant="outline" className="flex-1 text-xs">Save</Button>
-                          <Button size="sm" variant="outline" className="flex-1 text-xs">Analyze</Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-              
-              <div className="text-center pt-4">
-                <Button 
-                  onClick={() => handleSendMessage("show me 5 more properties")}
-                  className="bg-blue-600 hover:bg-blue-700"
-                >
-                  🔍 Load More Properties
-                </Button>
-              </div>
-            </div>
-          );
-        }
-      } catch (error) {
-        console.error('Error parsing multiple properties:', error);
-      }
     }
     return null;
   };
