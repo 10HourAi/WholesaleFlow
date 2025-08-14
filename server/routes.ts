@@ -613,9 +613,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const { batchLeadsService } = await import("./batchleads");
 
-        // Determine if this is a distressed property search
+        // Determine search criteria based on query content
         const searchCriteria: any = { location };
-        if (message.toLowerCase().includes('distressed') || message.toLowerCase().includes('motivated')) {
+        
+        // Check for seller type indicators
+        if (message.toLowerCase().includes('distressed') || message.toLowerCase().includes('pre-foreclosure') || message.toLowerCase().includes('vacant')) {
+          searchCriteria.distressedOnly = true;
+        }
+        
+        if (message.toLowerCase().includes('absentee') || message.toLowerCase().includes('out-of-state') || message.toLowerCase().includes('non-resident')) {
+          searchCriteria.distressedOnly = true; // Absentee owners are part of distressed search
+        }
+        
+        if (message.toLowerCase().includes('high equity') || message.toLowerCase().includes('70%')) {
+          searchCriteria.minEquity = 70;
+        }
+        
+        if (message.toLowerCase().includes('motivated seller') || message.toLowerCase().includes('multiple indicators')) {
           searchCriteria.distressedOnly = true;
         }
 
@@ -623,6 +637,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const bedroomMatch = message.match(/(\d+)\s+bedrooms?/i) || message.match(/at least\s+(\d+)\s+bedrooms?/i);
         if (bedroomMatch) {
           searchCriteria.minBedrooms = parseInt(bedroomMatch[1]);
+        }
+        
+        // Extract price limits
+        const priceMatch = message.match(/under\s+\$?([\d,]+)/i);
+        if (priceMatch) {
+          const price = parseInt(priceMatch[1].replace(/,/g, ''));
+          searchCriteria.maxPrice = price;
+        }
+        
+        // Property type - default to single family for most searches
+        if (message.toLowerCase().includes('single family')) {
+          searchCriteria.propertyType = 'single_family';
+        } else if (message.toLowerCase().includes('multi')) {
+          searchCriteria.propertyType = 'multi_family';
+        } else {
+          searchCriteria.propertyType = 'single_family'; // Default
         }
 
         console.log(`📋 Search criteria:`, searchCriteria);
