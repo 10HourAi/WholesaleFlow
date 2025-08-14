@@ -292,6 +292,9 @@ class BatchLeadsService {
 
   // Convert BatchData property to our schema format
   convertToProperty(batchProperty: any, userId: string): any {
+    console.log(`🔍 Converting property with ID: ${batchProperty._id}`);
+    console.log(`📊 Raw property data:`, JSON.stringify(batchProperty, null, 2));
+
     const estimatedValue = batchProperty.valuation?.estimatedValue || 0;
     const equityPercent = batchProperty.valuation?.equityPercent;
     const bedrooms = batchProperty.building?.bedrooms || 0;
@@ -303,6 +306,19 @@ class BatchLeadsService {
     const zipCode = batchProperty.address?.zip;
     const ownerName = batchProperty.owner?.fullName;
     
+    console.log(`📋 Extracted values:`, {
+      estimatedValue,
+      equityPercent,
+      address,
+      city,
+      state,
+      zipCode,
+      ownerName,
+      bedrooms,
+      bathrooms,
+      squareFeet
+    });
+    
     // Relaxed validation - only filter out properties missing critical financial data
     if (!estimatedValue || 
         estimatedValue <= 10000 || 
@@ -310,6 +326,7 @@ class BatchLeadsService {
         !city || 
         !state || 
         !zipCode) {
+      console.log(`❌ Property filtered out - missing critical data`);
       return null;
     }
     
@@ -318,7 +335,7 @@ class BatchLeadsService {
     
     const maxOffer = Math.floor(estimatedValue * 0.7); // 70% rule
     
-    return {
+    const convertedProperty = {
       userId,
       address: address,
       city: city,
@@ -345,6 +362,9 @@ class BatchLeadsService {
       motivationScore: this.calculateMotivationScore(batchProperty),
       distressedIndicator: this.getDistressedIndicator(batchProperty)
     };
+
+    console.log(`✅ Successfully converted property:`, convertedProperty);
+    return convertedProperty;
   }
 
   private getLeadType(property: any): string {

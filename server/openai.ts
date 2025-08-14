@@ -7,57 +7,129 @@ const openai = new OpenAI({
 });
 
 export async function generateLeadFinderResponse(userMessage: string, userId?: string): Promise<string> {
-  // Check if user is asking for property search
-  const isSearchRequest = /find|search|look|properties|leads|distressed|motivated/i.test(userMessage);
-  
-  if (isSearchRequest && userId) {
-    try {
+  try {
+    // Check if this is a property search request
+    const isPropertySearch = userMessage.toLowerCase().match(/(find|search|show|get)\s+(properties|distressed|leads)/i) ||
+                             userMessage.toLowerCase().includes('properties in') ||
+                             userMessage.match(/\d+\s+properties/i);
+
+    if (isPropertySearch && userId) {
+      // Extract location from message
+      let location = 'Orlando, FL'; // Default
+
+      const locationMatch = userMessage.match(/in\s+([^,\n]+)/i);
+      if (locationMatch) {
+        location = locationMatch[1].trim();
+      }
+
+      // Extract number of properties requested
+      const numberMatch = userMessage.match(/(\d+)\s+properties/i);
+      const requestedCount = numberMatch ? parseInt(numberMatch[1]) : 5;
+
+      console.log(`🔍 Searching for ${requestedCount} properties in: ${location}`);
+
+      // Import and use BatchLeads service
       const { batchLeadsService } = await import("./batchleads");
-      const locationMatch = userMessage.match(/in\s+([^,.!?]+)/i);
-      const location = locationMatch ? locationMatch[1].trim() : "Dallas, TX";
-      
-      // Get real distressed properties
-      const properties = await batchLeadsService.getDistressedProperties(location, 5);
-      
-      if (properties.length > 0) {
-        const propertyList = properties.map((prop, index) => 
-          `${index + 1}. **${prop.address}, ${prop.city}, ${prop.state}**
-   - Price: $${prop.estimated_value?.toLocaleString() || 'N/A'}
-   - ${prop.bedrooms}BR/${prop.bathrooms}BA, ${prop.square_feet?.toLocaleString()} sq ft
-   - Owner: ${prop.owner_name || 'N/A'}
-   - Motivation Score: ${prop.motivation_score}/100
-   - Equity: ${prop.equity_percentage}%
-   - Lead Type: ${prop.distressed_indicator || 'Standard'}
-   - Why it's good: ${prop.motivation_score >= 80 ? 'Highly motivated seller' : 'Good equity opportunity'}`
-        ).join('\n\n');
-        
-        return `Great! I found ${properties.length} distressed properties in ${location} that could be excellent wholesale opportunities:
 
-${propertyList}
+      // Search for properties
+      const results = await batchLeadsService.searchValidProperties({
+        location,
+        distressedOnly: true,
+        propertyType: 'single_family'
+      }, requestedCount);
 
-These are real properties from our BatchLeads database with high motivation scores and distress indicators. Would you like me to help you analyze any of these deals or search for more properties in a different area?`;
+      console.log(`📊 Search results: ${results.data.length} raw properties, ${results.filteredCount} filtered`);
+
+      if (results.data.length === 0) {
+        return `I couldn't find any properties matching your criteria in ${location}. This could be due to:
+
+• No distressed properties available in that area
+• Location not recognized (try using a ZIP code or "City, State" format)
+• All properties filtered out due to missing data
+
+Try searching in a different location or expanding your criteria.`;
       }
-    } catch (error) {
-      console.error("BatchLeads API error:", error);
-      // Fall through to general response
+
+      // Convert properties to our format and log the conversion
+      const properties = results.data.map((prop, index) => {
+        console.log(`🔄 Converting property ${index + 1}:`, {
+          address: prop.address?.street,
+          city: prop.address?.city,
+          estimatedValue: prop.valuation?.estimatedValue,
+          owner: prop.owner?.fullName
+        });
+
+        return batchLeadsService.convertToProperty(prop, userId);
+      }).filter(prop => prop !== null);
+
+      console.log(`✅ Final converted properties: ${properties.length}`);
+
+      if (properties.length === 0) {
+        return `Found ${results.data.length} properties in ${location}, but they were filtered out due to missing critical data. Try a different location.`;
+      }
+
+      // Format response with actual property data
+      let response = `Great! I found ${properties.length} distressed properties in ${location} that could be excellent wholesale opportunities:\n\n`;
+
+      properties.forEach((property, index) => {
+        console.log(`📝 Formatting property ${index + 1}:`, {
+          address: property.address,
+          arv: property.arv,
+          owner: property.ownerName,
+          bedrooms: property.bedrooms
+        });
+
+        response += `${index + 1}. **${property.address}, ${property.city}, ${property.state}**\n`;
+        response += `   - Price: $${property.arv ? parseInt(property.arv).toLocaleString() : 'N/A'}\n`;
+        response += `   - ${property.bedrooms || 0}BR/${property.bathrooms || 0}BA, ${property.squareFeet?.toLocaleString() || 0} sq ft\n`;
+        response += `   - Owner: ${property.ownerName || 'N/A'}\n`;
+        response += `   - Motivation Score: ${property.motivationScore || 0}/100\n`;
+        response += `   - Equity: ${property.equityPercentage || 0}%\n`;
+        response += `   - Lead Type: ${property.leadType ? property.leadType.replace('_', ' ').toUpperCase() : 'Standard'}\n`;
+        response += `   - Why it's good: ${property.distressedIndicator ? property.distressedIndicator.replace('_', ' ') : 'Good equity opportunity'}\n\n`;
+      });
+
+      response += `💡 These are LIVE properties from BatchData API with verified owner information and equity calculations!`;
+
+      console.log(`📤 Final response length: ${response.length} characters`);
+      return response;
     }
+
+    // Regular AI response for non-property searches
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: `You are a Lead Finder Agent for real estate wholesaling. You help investors find off-market properties, distressed sales, and motivated sellers.
+
+          When users ask about finding properties, searching for leads, or mention specific locations, guide them to use specific search terms like:
+          - "Find 5 properties in Orlando, FL"
+          - "Show me distressed properties in 32803"
+          - "Search for high equity properties in Philadelphia"
+
+          You have access to live property data through BatchData API that includes:
+          - Property details (address, size, year built)
+          - Financial analysis (ARV, equity, max offer calculations)
+          - Owner information (name, mailing address, contact details)
+          - Motivation indicators (distressed signals, foreclosure status)
+
+          Be helpful, professional, and focus on actionable wholesale opportunities.`
+        },
+        {
+          role: "user",
+          content: userMessage
+        }
+      ],
+      max_tokens: 500,
+      temperature: 0.7,
+    });
+
+    return completion.choices[0]?.message?.content || "I'm here to help you find wholesale real estate opportunities!";
+  } catch (error) {
+    console.error("Error generating lead finder response:", error);
+    return "I'm having trouble processing your request right now. Please try again or contact support.";
   }
-
-  const response = await openai.chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      {
-        role: "system",
-        content: `You are a Lead Finder Agent for real estate wholesaling. Your job is to help find distressed properties, motivated sellers, and off-market deals. You can search by location, property type, price range, and lead criteria. Always be helpful and provide guidance on lead generation strategies. When users ask for specific property searches, encourage them to provide a location so you can find real distressed properties from your database.`
-      },
-      {
-        role: "user",
-        content: userMessage
-      }
-    ],
-  });
-
-  return response.choices[0].message.content || "I'm sorry, I couldn't process your request.";
 }
 
 export async function generateDealAnalyzerResponse(userMessage: string, property?: Property): Promise<string> {
