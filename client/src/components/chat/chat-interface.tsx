@@ -501,6 +501,11 @@ export default function ChatInterface() {
                         <h5 className="font-semibold text-gray-800 mb-2">👤 Owner Information</h5>
                         <div className="space-y-1 text-sm text-gray-700">
                           {fields['Owner'] && <div><span className="font-medium">📝 Owner Name:</span> {fields['Owner']}</div>}
+                          {fields['Owner Phone'] && <div><span className="font-medium">📞 Phone:</span> {fields['Owner Phone']}</div>}
+                          {fields['Owner Email'] && <div><span className="font-medium">📧 Email:</span> {fields['Owner Email']}</div>}
+                          {fields['Mailing Address'] && <div><span className="font-medium">📬 Mailing Address:</span> {fields['Mailing Address']}</div>}
+                          {fields['Owner Status'] && <div><span className="font-medium">🏠 Status:</span> {fields['Owner Status']}</div>}
+                          {fields['Distance Factor'] && <div><span className="font-medium">📍 Distance:</span> {fields['Distance Factor']}</div>}
                           {fields["Why it's good"] && <div><span className="font-medium">💡 Opportunity:</span> {fields["Why it's good"]}</div>}
                         </div>
                       </div>
@@ -552,8 +557,11 @@ export default function ChatInterface() {
         } else if (trimmedLine.includes('**FINANCIAL ANALYSIS:**')) {
           currentSection = 'financial';
           return;
-        } else if (trimmedLine.includes('**OWNER INFORMATION:**') || trimmedLine.includes('**CONTACT INFORMATION:**')) {
+        } else if (trimmedLine.includes('**OWNER INFORMATION:**')) {
           currentSection = 'owner';
+          return;
+        } else if (trimmedLine.includes('**CONTACT INFORMATION:**')) {
+          currentSection = 'contact';
           return;
         } else if (trimmedLine.includes('**MOTIVATION SCORE:**')) {
           currentSection = 'motivation';
@@ -624,6 +632,14 @@ export default function ChatInterface() {
                 <div className="bg-white p-3 rounded border">
                   <h5 className="font-semibold text-gray-800 mb-2">👤 Owner & Contact Info</h5>
                   <div className="text-sm text-gray-700 whitespace-pre-line">{parsedSections.owner}</div>
+                </div>
+              )}
+
+              {/* Contact Information */}
+              {parsedSections.contact && (
+                <div className="bg-blue-50 p-3 rounded border border-blue-200">
+                  <h5 className="font-semibold text-blue-800 mb-2">📞 Contact Details</h5>
+                  <div className="text-sm text-blue-700 whitespace-pre-line">{parsedSections.contact}</div>
                 </div>
               )}
 
