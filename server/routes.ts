@@ -460,50 +460,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const result = await batchLeadsService.getNextValidProperty(sessionState.searchCriteria, sessionState);
 
         if (result.property) {
-          const convertedProperty = batchLeadsService.convertToProperty(result.property, 'demo-user');
+          // Use raw property data directly from API for better data display
+          const rawProperty = result.property;
+          const address = rawProperty.address;
+          const valuation = rawProperty.valuation;
+          const owner = rawProperty.owner;
+          const quickLists = rawProperty.quickLists || {};
+          const foreclosure = rawProperty.foreclosure;
+
+          console.log(`🏠 Displaying property:`, rawProperty._id);
 
           // Enhanced contact information display
           let contactInfo = `**CONTACT INFORMATION:**\n`;
-          contactInfo += `Owner Name: ${convertedProperty.ownerName || 'Not available'}\n`;
+          contactInfo += `Owner Name: ${owner?.fullName || 'Not available'}\n`;
 
-          // Property vs Mailing Address Analysis
-          if (convertedProperty.ownerMailingAddress) {
-            const propertyAddress = `${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}`;
-            const isDifferent = convertedProperty.ownerMailingAddress.toLowerCase() !== propertyAddress.toLowerCase();
+          // Property vs Mailing Address Analysis  
+          const propertyAddress = `${address?.street}, ${address?.city}, ${address?.state} ${address?.zip}`;
+          if (owner?.mailingAddress) {
+            const mailingAddr = `${owner.mailingAddress.street}, ${owner.mailingAddress.city}, ${owner.mailingAddress.state} ${owner.mailingAddress.zip}`;
+            const isDifferent = mailingAddr.toLowerCase() !== propertyAddress.toLowerCase();
             contactInfo += `Property Address: ${propertyAddress}\n`;
-            contactInfo += `Mailing Address: ${convertedProperty.ownerMailingAddress}\n`;
+            contactInfo += `Mailing Address: ${mailingAddr}\n`;
             contactInfo += `Owner Status: ${isDifferent ? '🏃 Absentee Owner (Lives elsewhere)' : '🏠 Owner Occupied'}\n`;
           } else {
-            contactInfo += `Property Address: ${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}\n`;
+            contactInfo += `Property Address: ${propertyAddress}\n`;
             contactInfo += `Mailing Address: Not available\n`;
           }
 
-          // Contact methods
-          if (convertedProperty.ownerPhone) {
-            contactInfo += `📞 Phone: ${convertedProperty.ownerPhone}\n`;
-          } else {
-            contactInfo += `📞 Phone: Not available\n`;
-          }
+          // Contact methods (BatchData doesn't provide phone/email in demo)
+          contactInfo += `📞 Phone: Contact data available via skip trace\n`;
+          contactInfo += `📧 Email: Contact data available via skip trace\n`;
 
-          if (convertedProperty.ownerEmail) {
-            contactInfo += `📧 Email: ${convertedProperty.ownerEmail}\n`;
-          } else {
-            contactInfo += `📧 Email: Not available\n`;
-          }
-
-          // Format building details with fallbacks for missing data
+          // Building details
+          const building = rawProperty.building;
           const buildingDetails = [];
-          if (convertedProperty.bedrooms) buildingDetails.push(`${convertedProperty.bedrooms}bd`);
-          if (convertedProperty.bathrooms) buildingDetails.push(`${convertedProperty.bathrooms}ba`);
-          if (convertedProperty.squareFeet) buildingDetails.push(`${convertedProperty.squareFeet.toLocaleString()} sq ft`);
+          if (building?.bedrooms) buildingDetails.push(`${building.bedrooms}bd`);
+          if (building?.bathrooms) buildingDetails.push(`${building.bathrooms}ba`);
+          if (building?.livingArea) buildingDetails.push(`${building.livingArea.toLocaleString()} sq ft`);
+          if (building?.yearBuilt) buildingDetails.push(`Built ${building.yearBuilt}`);
           const buildingInfo = buildingDetails.length > 0 ? buildingDetails.join(' • ') : 'Building details not available';
 
-          const propertyText = `**PROPERTY DETAILS:**\n${convertedProperty.address}\n${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}\n${buildingInfo}\n\n**FINANCIAL ANALYSIS:**\nARV: $${parseInt(convertedProperty.arv).toLocaleString()}\nMax Offer (70% Rule): $${parseInt(convertedProperty.maxOffer).toLocaleString()}\nEquity: ${convertedProperty.equityPercentage}%\nMotivation Score: ${convertedProperty.motivationScore}/100\nLead Type: ${convertedProperty.leadType.replace('_', ' ')}\n\n${contactInfo}`;
+          // Financial analysis
+          const estimatedValue = valuation?.estimatedValue || 0;
+          const equityPercent = valuation?.equityPercent || 0;
+          const maxOffer = Math.floor(estimatedValue * 0.7);
+
+          // Motivation indicators
+          const motivationFactors = [];
+          if (quickLists.preforeclosure) motivationFactors.push('🚨 Pre-foreclosure');
+          if (quickLists.vacant) motivationFactors.push('🏚️ Vacant');
+          if (quickLists.absenteeOwner) motivationFactors.push('🏃 Absentee Owner');
+          if (quickLists.highEquity) motivationFactors.push('💰 High Equity');
+          if (foreclosure) motivationFactors.push(`⚖️ Foreclosure Sale: ${foreclosure.auctionDate ? new Date(foreclosure.auctionDate).toLocaleDateString() : 'Scheduled'}`);
+
+          const propertyText = `**PROPERTY DETAILS:**\n${address?.street}\n${address?.city}, ${address?.state} ${address?.zip}\n${buildingInfo}\n\n**FINANCIAL ANALYSIS:**\nEstimated Value: $${estimatedValue.toLocaleString()}\nMax Offer (70% Rule): $${maxOffer.toLocaleString()}\nEquity: ${equityPercent}%\nConfidence Score: ${valuation?.confidenceScore || 'N/A'}%\n\n**MOTIVATION FACTORS:**\n${motivationFactors.join('\n') || 'Standard property'}\n\n${contactInfo}`;
+
+          // Additional foreclosure details
+          let foreclosureInfo = "";
+          if (foreclosure) {
+            foreclosureInfo = `\n**FORECLOSURE DETAILS:**\nStatus: ${foreclosure.status}\nUnpaid Balance: $${foreclosure.unpaidBalance?.toLocaleString() || 'N/A'}\nAuction Date: ${foreclosure.auctionDate ? new Date(foreclosure.auctionDate).toLocaleDateString() : 'TBD'}\nCase Number: ${foreclosure.caseNumber}\nTrustee: ${foreclosure.trusteeName}\n`;
+          }
+
+          let qualityNote = "";
+          if (result.filtered > 0) {
+            qualityNote = `\n✅ Data Quality: Filtered out ${result.filtered} properties with incomplete data to show you only actionable leads.`;
+          }
+
+          const aiResponse = `🎯 Found a HIGH-PRIORITY property lead in ${location}:\n\n${propertyText}${foreclosureInfo}${qualityNote}\n\n💡 This is REAL property data from BatchData API with complete market analysis! ${result.hasMore ? "Say 'next' to see another property." : "This was the only quality property found."}`;
+
+          // Also convert for storage format
+          const convertedProperty = batchLeadsService.convertToProperty(result.property, 'demo-user');
 
           res.json({
-            response: `Found a quality lead with complete contact information:\n\n${propertyText}\n${result.hasMore ? "💡 Say 'next' to see another property!" : "That's all the quality properties I found in this search."}`,
+            response: aiResponse,
             property: convertedProperty,
-            sessionState: { ...result.sessionState, searchCriteria: sessionState.searchCriteria },
+            sessionState: { ...result.sessionState, searchCriteria },
             hasMore: result.hasMore
           });
         } else {
