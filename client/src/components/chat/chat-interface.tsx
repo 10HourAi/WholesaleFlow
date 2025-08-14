@@ -485,10 +485,29 @@ export default function ChatInterface() {
         content.includes("CONTACT INFORMATION") ||
         (content.includes("Address:") && content.includes("ARV:")) ||
         (content.includes("**") && (content.includes("Property") || content.includes("Owner")))) {
+      
+      // Parse sections for better display
+      const sections = content.split('**').filter(section => section.trim());
+      const parsedSections: any = {};
+      
+      sections.forEach(section => {
+        if (section.includes('PROPERTY DETAILS:') || section.includes('PROPERTY OVERVIEW:')) {
+          parsedSections.property = section.replace('PROPERTY DETAILS:', '').replace('PROPERTY OVERVIEW:', '').trim();
+        } else if (section.includes('FINANCIAL ANALYSIS:')) {
+          parsedSections.financial = section.replace('FINANCIAL ANALYSIS:', '').trim();
+        } else if (section.includes('OWNER INFORMATION:') || section.includes('CONTACT INFORMATION:')) {
+          parsedSections.owner = section.replace('OWNER INFORMATION:', '').replace('CONTACT INFORMATION:', '').trim();
+        } else if (section.includes('FORECLOSURE DETAILS')) {
+          parsedSections.foreclosure = section.replace('FORECLOSURE DETAILS - TIME SENSITIVE! 🚨', '').trim();
+        } else if (section.includes('MOTIVATION SCORE:')) {
+          parsedSections.motivation = section.trim();
+        }
+      });
+
       return (
         <Card className="mt-3 border-green-200 bg-green-50">
           <CardContent className="p-4">
-            <div className="space-y-3">
+            <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
                   <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
@@ -496,10 +515,53 @@ export default function ChatInterface() {
                 </div>
                 <Badge variant="secondary" className="bg-green-100 text-green-700">BatchData API</Badge>
               </div>
-              
-              <div className="text-sm space-y-1 max-h-64 overflow-y-auto whitespace-pre-wrap">
-                {content}
-              </div>
+
+              {/* Property Details */}
+              {parsedSections.property && (
+                <div className="bg-white p-3 rounded border">
+                  <h5 className="font-semibold text-gray-800 mb-2">🏠 Property Details</h5>
+                  <div className="text-sm text-gray-700 whitespace-pre-line">{parsedSections.property}</div>
+                </div>
+              )}
+
+              {/* Financial Analysis */}
+              {parsedSections.financial && (
+                <div className="bg-white p-3 rounded border">
+                  <h5 className="font-semibold text-gray-800 mb-2">💰 Financial Analysis</h5>
+                  <div className="text-sm text-gray-700 whitespace-pre-line">{parsedSections.financial}</div>
+                </div>
+              )}
+
+              {/* Motivation Score */}
+              {parsedSections.motivation && (
+                <div className="bg-orange-50 p-3 rounded border border-orange-200">
+                  <h5 className="font-semibold text-orange-800 mb-2">🎯 Motivation</h5>
+                  <div className="text-sm text-orange-700 whitespace-pre-line">{parsedSections.motivation}</div>
+                </div>
+              )}
+
+              {/* Foreclosure Warning */}
+              {parsedSections.foreclosure && (
+                <div className="bg-red-50 p-3 rounded border border-red-200">
+                  <h5 className="font-semibold text-red-800 mb-2">🚨 Foreclosure Alert</h5>
+                  <div className="text-sm text-red-700 whitespace-pre-line">{parsedSections.foreclosure}</div>
+                </div>
+              )}
+
+              {/* Owner Information */}
+              {parsedSections.owner && (
+                <div className="bg-white p-3 rounded border">
+                  <h5 className="font-semibold text-gray-800 mb-2">👤 Owner & Contact Info</h5>
+                  <div className="text-sm text-gray-700 whitespace-pre-line">{parsedSections.owner}</div>
+                </div>
+              )}
+
+              {/* Fallback for unsectioned content */}
+              {!parsedSections.property && !parsedSections.financial && !parsedSections.owner && (
+                <div className="text-sm space-y-1 max-h-64 overflow-y-auto whitespace-pre-wrap">
+                  {content}
+                </div>
+              )}
               
               <div className="pt-2 border-t border-green-200 flex gap-2">
                 <Button size="sm" variant="outline" className="flex-1">Save Lead</Button>
