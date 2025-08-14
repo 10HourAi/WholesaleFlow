@@ -536,7 +536,7 @@ export default function ChatInterface() {
             <Avatar>
               <AvatarImage />
               <AvatarFallback>
-                <currentAgent.icon className="h-4 w-4" />
+                {currentAgent && <currentAgent.icon className="h-4 w-4" />}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
@@ -626,7 +626,7 @@ export default function ChatInterface() {
               <Avatar>
                 <AvatarImage />
                 <AvatarFallback>
-                  <currentAgent.icon className="h-4 w-4" />
+                  {currentAgent && <currentAgent.icon className="h-4 w-4" />}
                 </AvatarFallback>
               </Avatar>
             )}
@@ -667,7 +667,7 @@ export default function ChatInterface() {
             />
           </div>
           <Button 
-            onClick={handleSendMessage}
+            onClick={() => handleSendMessage()}
             disabled={!inputMessage.trim() || sendMessageMutation.isPending}
             size="lg"
           >
