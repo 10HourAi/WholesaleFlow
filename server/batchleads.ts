@@ -57,6 +57,7 @@ interface SearchCriteria {
   propertyType?: string;
   distressedOnly?: boolean;
   motivationScore?: number;
+  minBedrooms?: number;
 }
 
 class BatchLeadsService {
@@ -93,6 +94,8 @@ class BatchLeadsService {
   }
 
   async searchProperties(criteria: SearchCriteria, page = 1, perPage = 50): Promise<BatchLeadsResponse> {
+    console.log(`🔍 BatchLeads API search for: "${criteria.location}"`);
+    
     const requestBody: any = {
       searchCriteria: {
         query: criteria.location
@@ -119,6 +122,16 @@ class BatchLeadsService {
       ];
     }
 
+    // Add bedroom filter
+    if (criteria.minBedrooms) {
+      if (!requestBody.searchCriteria.building) {
+        requestBody.searchCriteria.building = {};
+      }
+      requestBody.searchCriteria.building.bedrooms = {
+        min: criteria.minBedrooms
+      };
+    }
+
     // Add equity filter
     if (criteria.minEquity) {
       if (!requestBody.searchCriteria.valuation) {
@@ -139,7 +152,16 @@ class BatchLeadsService {
       };
     }
 
+    console.log(`📋 Full request body:`, JSON.stringify(requestBody, null, 2));
+    
     const response = await this.makeRequest('/api/v1/property/search', requestBody);
+    
+    console.log(`📊 BatchLeads API response:`, {
+      propertiesFound: response.results?.properties?.length || 0,
+      totalResults: response.meta?.totalResults || 0,
+      page: page,
+      rawResponse: JSON.stringify(response, null, 2)
+    });
     
     // Transform response to match expected format
     return {
@@ -203,32 +225,108 @@ class BatchLeadsService {
     };
   }
 
+  // Get next valid property one at a time with session state
+  async getNextValidProperty(criteria: SearchCriteria, sessionState?: { page: number; index: number; currentBatch?: any[] }): Promise<{ property: any | null; hasMore: boolean; sessionState: { page: number; index: number; currentBatch?: any[] }; totalChecked: number; filtered: number }> {
+    let currentPage = sessionState?.page || 1;
+    let currentIndex = sessionState?.index || 0;
+    let currentBatch = sessionState?.currentBatch || [];
+    let totalChecked = 0;
+    let filtered = 0;
+    const maxPages = 10; // Allow more pages for one-at-a-time searching
+    
+    while (currentPage <= maxPages) {
+      // If we need a new batch of data
+      if (currentBatch.length === 0 || currentIndex >= currentBatch.length) {
+        const response = await this.searchProperties(criteria, currentPage, 25);
+        
+        if (!response.success || !response.data.length) {
+          return {
+            property: null,
+            hasMore: false,
+            sessionState: { page: currentPage, index: 0, currentBatch: [] },
+            totalChecked,
+            filtered
+          };
+        }
+        
+        currentBatch = response.data;
+        currentIndex = 0;
+      }
+      
+      // Check properties one by one
+      while (currentIndex < currentBatch.length) {
+        const prop = currentBatch[currentIndex];
+        totalChecked++;
+        
+        const converted = this.convertToProperty(prop, 'temp-user');
+        if (converted !== null) {
+          // Found a valid property - return it and update session state
+          return {
+            property: prop,
+            hasMore: true,
+            sessionState: { page: currentPage, index: currentIndex + 1, currentBatch },
+            totalChecked,
+            filtered
+          };
+        } else {
+          filtered++;
+        }
+        
+        currentIndex++;
+      }
+      
+      // Move to next page
+      currentPage++;
+      currentBatch = [];
+      currentIndex = 0;
+    }
+    
+    return {
+      property: null,
+      hasMore: false,
+      sessionState: { page: currentPage, index: 0, currentBatch: [] },
+      totalChecked,
+      filtered
+    };
+  }
+
   // Convert BatchData property to our schema format
   convertToProperty(batchProperty: any, userId: string): any {
     const estimatedValue = batchProperty.valuation?.estimatedValue || 0;
     const equityPercent = batchProperty.valuation?.equityPercent;
+    const bedrooms = batchProperty.building?.bedrooms || 0;
+    const bathrooms = batchProperty.building?.bathrooms || 0;
+    const squareFeet = batchProperty.building?.livingArea || 0;
+    const address = batchProperty.address?.street;
+    const city = batchProperty.address?.city;
+    const state = batchProperty.address?.state;
+    const zipCode = batchProperty.address?.zip;
+    const ownerName = batchProperty.owner?.fullName;
     
-    // Comprehensive validation - filter out any invalid data
+    // Relaxed validation - only filter out properties missing critical financial data
     if (!estimatedValue || 
-        estimatedValue <= 1000 || 
-        equityPercent === undefined || 
-        equityPercent === null || 
-        isNaN(estimatedValue) ||
-        isNaN(equityPercent)) {
+        estimatedValue <= 10000 || 
+        !address || 
+        !city || 
+        !state || 
+        !zipCode) {
       return null;
     }
+    
+    // Use default equity if not available
+    const finalEquityPercent = equityPercent !== undefined && equityPercent !== null ? equityPercent : 50;
     
     const maxOffer = Math.floor(estimatedValue * 0.7); // 70% rule
     
     return {
       userId,
-      address: batchProperty.address?.street || '',
-      city: batchProperty.address?.city || '',
-      state: batchProperty.address?.state || '',
-      zipCode: batchProperty.address?.zip || '',
-      bedrooms: batchProperty.building?.bedrooms || null,
-      bathrooms: batchProperty.building?.bathrooms || null,
-      squareFeet: batchProperty.building?.livingArea || null,
+      address: address,
+      city: city,
+      state: state,
+      zipCode: zipCode,
+      bedrooms: bedrooms || 0,
+      bathrooms: bathrooms || 0,
+      squareFeet: squareFeet || 0,
       arv: estimatedValue.toString(),
       maxOffer: maxOffer.toString(),
       status: 'new',
@@ -237,12 +335,13 @@ class BatchLeadsService {
       yearBuilt: batchProperty.building?.yearBuilt || null,
       lastSalePrice: batchProperty.sale?.lastSalePrice?.toString() || null,
       lastSaleDate: batchProperty.sale?.lastSaleDate || null,
-      ownerName: batchProperty.owner?.fullName || null,
-      ownerPhone: batchProperty.owner?.phoneNumbers?.[0] || null,
-      ownerEmail: batchProperty.owner?.emailAddresses?.[0] || null,
+      ownerName: ownerName || 'Owner Info Available',
+      ownerPhone: batchProperty.owner?.phoneNumbers?.[0] || 'Available via skip trace',
+      ownerEmail: batchProperty.owner?.emailAddresses?.[0] || 'Available via skip trace',
       ownerMailingAddress: batchProperty.owner?.mailingAddress ? 
-        `${batchProperty.owner.mailingAddress.street}, ${batchProperty.owner.mailingAddress.city}, ${batchProperty.owner.mailingAddress.state} ${batchProperty.owner.mailingAddress.zip}` : null,
-      equityPercentage: Math.round(equityPercent),
+        `${batchProperty.owner.mailingAddress.street}, ${batchProperty.owner.mailingAddress.city}, ${batchProperty.owner.mailingAddress.state} ${batchProperty.owner.mailingAddress.zip}` : 
+        `${address}, ${city}, ${state} ${zipCode}`,
+      equityPercentage: Math.round(finalEquityPercent),
       motivationScore: this.calculateMotivationScore(batchProperty),
       distressedIndicator: this.getDistressedIndicator(batchProperty)
     };
