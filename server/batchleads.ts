@@ -57,6 +57,7 @@ interface SearchCriteria {
   propertyType?: string;
   distressedOnly?: boolean;
   motivationScore?: number;
+  minBedrooms?: number;
 }
 
 class BatchLeadsService {
@@ -117,6 +118,16 @@ class BatchLeadsService {
         'absentee-owner',
         'vacant'
       ];
+    }
+
+    // Add bedroom filter
+    if (criteria.minBedrooms) {
+      if (!requestBody.searchCriteria.building) {
+        requestBody.searchCriteria.building = {};
+      }
+      requestBody.searchCriteria.building.bedrooms = {
+        min: criteria.minBedrooms
+      };
     }
 
     // Add equity filter
@@ -207,14 +218,33 @@ class BatchLeadsService {
   convertToProperty(batchProperty: any, userId: string): any {
     const estimatedValue = batchProperty.valuation?.estimatedValue || 0;
     const equityPercent = batchProperty.valuation?.equityPercent;
+    const bedrooms = batchProperty.building?.bedrooms;
+    const bathrooms = batchProperty.building?.bathrooms;
+    const squareFeet = batchProperty.building?.livingArea;
+    const address = batchProperty.address?.street;
+    const city = batchProperty.address?.city;
+    const state = batchProperty.address?.state;
+    const zipCode = batchProperty.address?.zip;
+    const ownerName = batchProperty.owner?.fullName;
     
-    // Comprehensive validation - filter out any invalid data
+    // Strict validation - filter out properties with missing critical data
     if (!estimatedValue || 
         estimatedValue <= 1000 || 
         equityPercent === undefined || 
         equityPercent === null || 
         isNaN(estimatedValue) ||
-        isNaN(equityPercent)) {
+        isNaN(equityPercent) ||
+        !address || 
+        !city || 
+        !state || 
+        !zipCode ||
+        !bedrooms || 
+        bedrooms < 1 ||
+        !bathrooms || 
+        bathrooms < 1 ||
+        !squareFeet || 
+        squareFeet < 500 ||
+        !ownerName) {
       return null;
     }
     
@@ -222,13 +252,13 @@ class BatchLeadsService {
     
     return {
       userId,
-      address: batchProperty.address?.street || '',
-      city: batchProperty.address?.city || '',
-      state: batchProperty.address?.state || '',
-      zipCode: batchProperty.address?.zip || '',
-      bedrooms: batchProperty.building?.bedrooms || null,
-      bathrooms: batchProperty.building?.bathrooms || null,
-      squareFeet: batchProperty.building?.livingArea || null,
+      address: address,
+      city: city,
+      state: state,
+      zipCode: zipCode,
+      bedrooms: bedrooms,
+      bathrooms: bathrooms,
+      squareFeet: squareFeet,
       arv: estimatedValue.toString(),
       maxOffer: maxOffer.toString(),
       status: 'new',
@@ -237,7 +267,7 @@ class BatchLeadsService {
       yearBuilt: batchProperty.building?.yearBuilt || null,
       lastSalePrice: batchProperty.sale?.lastSalePrice?.toString() || null,
       lastSaleDate: batchProperty.sale?.lastSaleDate || null,
-      ownerName: batchProperty.owner?.fullName || null,
+      ownerName: ownerName,
       ownerPhone: batchProperty.owner?.phoneNumbers?.[0] || null,
       ownerEmail: batchProperty.owner?.emailAddresses?.[0] || null,
       ownerMailingAddress: batchProperty.owner?.mailingAddress ? 

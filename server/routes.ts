@@ -373,6 +373,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           searchCriteria.distressedOnly = true;
         }
         
+        // Extract bedroom requirements
+        const bedroomMatch = message.match(/(\d+)\s+bedrooms?/i) || message.match(/at least\s+(\d+)\s+bedrooms?/i);
+        if (bedroomMatch) {
+          searchCriteria.minBedrooms = parseInt(bedroomMatch[1]);
+        }
+        
         const response = await batchLeadsService.searchValidProperties(searchCriteria, 5);
         
         const convertedProperties = response.data
