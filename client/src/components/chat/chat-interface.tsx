@@ -40,6 +40,7 @@ export default function ChatInterface() {
     sellerType: "",
     propertyType: ""
   });
+  const [sessionState, setSessionState] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -76,7 +77,8 @@ export default function ChatInterface() {
           },
           body: JSON.stringify({
             message: data.content,
-            agentType: 'lead_finder'
+            agentType: 'lead_finder',
+            sessionState: sessionState
           })
         });
         
@@ -85,6 +87,11 @@ export default function ChatInterface() {
         }
         
         const demoResult = await demoResponse.json();
+        
+        // Update session state if provided
+        if (demoResult.sessionState) {
+          setSessionState(demoResult.sessionState);
+        }
         
         // Create both user and AI messages in the conversation
         await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
@@ -117,23 +124,22 @@ export default function ChatInterface() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSendMessage = () => {
-    if (!inputMessage.trim()) return;
-
-    const messageContent = inputMessage.trim();
+  const handleSendMessage = (messageOverride?: string) => {
+    const messageToSend = messageOverride || inputMessage.trim();
+    if (!messageToSend) return;
 
     if (!currentConversation) {
       // Create new conversation and store message to send after creation
       const agentName = agentTypes.find(a => a.id === selectedAgent)?.name || "Chat";
       createConversationMutation.mutate({
         agentType: selectedAgent,
-        title: messageContent.slice(0, 50) + (messageContent.length > 50 ? "..." : ""),
+        title: messageToSend.slice(0, 50) + (messageToSend.length > 50 ? "..." : ""),
       });
       // Don't clear input yet - it will be handled after conversation creation
     } else {
       // Send message immediately if conversation exists
       sendMessageMutation.mutate({
-        content: messageContent,
+        content: messageToSend,
         role: "user",
       });
     }
@@ -523,6 +529,18 @@ export default function ChatInterface() {
                 <Button size="sm" variant="outline" className="flex-1">Analyze Deal</Button>
                 <Button size="sm" variant="outline">Contact Owner</Button>
               </div>
+              {content.includes("Say 'next'") && (
+                <div className="pt-2">
+                  <Button 
+                    size="sm" 
+                    variant="default" 
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    onClick={() => handleSendMessage("next")}
+                  >
+                    🔍 Show Next Property
+                  </Button>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

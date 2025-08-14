@@ -452,7 +452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                message.match(/\d+\s+properties/i) ||
                                message.toLowerCase().match(/properties.*philadelphia|philadelphia.*properties/i);
 
-      if (isNextPropertyRequest && sessionState) {
+      if (isNextPropertyRequest && sessionState && sessionState.searchCriteria) {
         // User wants the next property in the current search
         const { batchLeadsService } = await import("./batchleads");
 
@@ -577,7 +577,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           res.json({
             response: aiResponse,
             property: convertedProperty,
-            sessionState: { ...result.sessionState, searchCriteria },
+            sessionState: { ...result.sessionState, searchCriteria: searchCriteria },
             hasMore: result.hasMore
           });
         } else {
@@ -788,7 +788,7 @@ Try expanding your search area or checking a nearby city.`;
         res.json({
           response: aiResponse,
           property: convertedPropertyForStorage,
-          sessionState: { ...result.sessionState, searchCriteria },
+          sessionState: { ...result.sessionState, searchCriteria: searchCriteria },
           hasMore: result.hasMore
         });
       } else {
