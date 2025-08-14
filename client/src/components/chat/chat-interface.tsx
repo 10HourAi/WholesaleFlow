@@ -477,32 +477,81 @@ export default function ChatInterface() {
   };
 
   const renderPropertyCard = (content: string) => {
-    // Check if this is a property response with structured data
+    // Check if this is a property response with structured data - improved detection
     if (content.includes("PROPERTY DETAILS") || 
         content.includes("FINANCIAL ANALYSIS") || 
         content.includes("OWNER INFORMATION") ||
         content.includes("PROPERTY OVERVIEW") ||
         content.includes("CONTACT INFORMATION") ||
+        content.includes("MORTGAGE") ||
+        content.includes("BatchData API") ||
+        content.includes("Est. Value:") ||
+        content.includes("Max Offer:") ||
+        content.includes("Motivation:") ||
         (content.includes("Address:") && content.includes("ARV:")) ||
-        (content.includes("**") && (content.includes("Property") || content.includes("Owner")))) {
+        content.includes("🏠") || content.includes("💰") || content.includes("👤")) {
       
-      // Parse sections for better display
-      const sections = content.split('**').filter(section => section.trim());
-      const parsedSections: any = {};
+      // Enhanced parsing for live BatchData API responses
+      const lines = content.split('\n').filter(line => line.trim());
+      const parsedSections: any = {
+        property: '',
+        financial: '',
+        owner: '',
+        motivation: '',
+        foreclosure: ''
+      };
       
-      sections.forEach(section => {
-        if (section.includes('PROPERTY DETAILS:') || section.includes('PROPERTY OVERVIEW:')) {
-          parsedSections.property = section.replace('PROPERTY DETAILS:', '').replace('PROPERTY OVERVIEW:', '').trim();
-        } else if (section.includes('FINANCIAL ANALYSIS:')) {
-          parsedSections.financial = section.replace('FINANCIAL ANALYSIS:', '').trim();
-        } else if (section.includes('OWNER INFORMATION:') || section.includes('CONTACT INFORMATION:')) {
-          parsedSections.owner = section.replace('OWNER INFORMATION:', '').replace('CONTACT INFORMATION:', '').trim();
-        } else if (section.includes('FORECLOSURE DETAILS')) {
-          parsedSections.foreclosure = section.replace('FORECLOSURE DETAILS - TIME SENSITIVE! 🚨', '').trim();
-        } else if (section.includes('MOTIVATION SCORE:')) {
-          parsedSections.motivation = section.trim();
+      let currentSection = '';
+      
+      lines.forEach(line => {
+        const trimmedLine = line.trim();
+        
+        // Section headers
+        if (trimmedLine.includes('PROPERTY OVERVIEW:') || trimmedLine.includes('PROPERTY DETAILS:')) {
+          currentSection = 'property';
+          return;
+        } else if (trimmedLine.includes('FINANCIAL ANALYSIS:')) {
+          currentSection = 'financial';
+          return;
+        } else if (trimmedLine.includes('OWNER INFORMATION:') || trimmedLine.includes('CONTACT INFORMATION:')) {
+          currentSection = 'owner';
+          return;
+        } else if (trimmedLine.includes('MOTIVATION SCORE:') || trimmedLine.includes('Motivation:')) {
+          currentSection = 'motivation';
+          return;
+        } else if (trimmedLine.includes('FORECLOSURE') || trimmedLine.includes('🚨')) {
+          currentSection = 'foreclosure';
+          return;
+        }
+        
+        // Add content to current section
+        if (currentSection && trimmedLine) {
+          if (parsedSections[currentSection]) {
+            parsedSections[currentSection] += '\n' + trimmedLine;
+          } else {
+            parsedSections[currentSection] = trimmedLine;
+          }
         }
       });
+
+      // If no sections were found, try to extract key property info directly
+      if (!parsedSections.property && !parsedSections.financial && !parsedSections.owner) {
+        // Extract basic property info from content
+        const addressMatch = content.match(/🏠\s*(.+?)(?:\n|📍)/);
+        const locationMatch = content.match(/📍\s*(.+?)(?:\n|💵)/);
+        const valueMatch = content.match(/💵\s*Est\. Value:\s*(.+?)(?:\n|🎯)/);
+        const offerMatch = content.match(/🎯\s*Max Offer:\s*(.+?)(?:\n|📈)/);
+        const equityMatch = content.match(/📈\s*Equity:\s*(.+?)(?:\n|⭐)/);
+        const motivationMatch = content.match(/⭐\s*Motivation:\s*(.+?)(?:\n|🏷️)/);
+        const ownerMatch = content.match(/👤\s*Owner:\s*(.+?)(?:\n|🏠)/);
+        
+        if (addressMatch || valueMatch || ownerMatch) {
+          parsedSections.property = `${addressMatch?.[1] || ''}\n${locationMatch?.[1] || ''}`.trim();
+          parsedSections.financial = `Est. Value: ${valueMatch?.[1] || 'N/A'}\nMax Offer: ${offerMatch?.[1] || 'N/A'}\nEquity: ${equityMatch?.[1] || 'N/A'}`.trim();
+          parsedSections.motivation = `Motivation Score: ${motivationMatch?.[1] || 'N/A'}`.trim();
+          parsedSections.owner = `Owner: ${ownerMatch?.[1] || 'Available'}`.trim();
+        }
+      }
 
       return (
         <Card className="mt-3 border-green-200 bg-green-50">
@@ -556,10 +605,13 @@ export default function ChatInterface() {
                 </div>
               )}
 
-              {/* Fallback for unsectioned content */}
-              {!parsedSections.property && !parsedSections.financial && !parsedSections.owner && (
-                <div className="text-sm space-y-1 max-h-64 overflow-y-auto whitespace-pre-wrap">
-                  {content}
+              {/* Fallback - show all content if sections weren't parsed properly */}
+              {(!parsedSections.property && !parsedSections.financial && !parsedSections.owner && !parsedSections.motivation) && (
+                <div className="bg-white p-3 rounded border">
+                  <h5 className="font-semibold text-gray-800 mb-2">📋 Property Information</h5>
+                  <div className="text-sm text-gray-700 whitespace-pre-line max-h-96 overflow-y-auto">
+                    {content}
+                  </div>
                 </div>
               )}
               
