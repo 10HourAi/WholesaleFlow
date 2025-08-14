@@ -263,7 +263,7 @@ export default function ChatInterface() {
                   <Label htmlFor="city">City</Label>
                   <Input
                     id="city"
-                    placeholder="e.g., Philadelphia, Dallas, Orlando"
+                    placeholder="e.g., Valley Forge, Philadelphia, Orlando"
                     value={wizardData.city}
                     onChange={(e) => setWizardData({...wizardData, city: e.target.value})}
                   />

@@ -590,17 +590,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Improved location extraction - handle multiple formats
         let location = '17112'; // Default fallback
 
-        // Try different location patterns
-        const cityStateMatch = message.match(/in\s+([\w\s]+),?\s*([A-Z]{2})/i);
-        const cityOnlyMatch = message.match(/in\s+([\w\s]+?)(?:\s|$)/i);
+        // Try different location patterns - improved to handle multi-word cities
+        const cityStateMatch = message.match(/in\s+([\w\s\-'\.]+),?\s*([A-Z]{2})/i);
+        const cityOnlyMatch = message.match(/in\s+([\w\s\-'\.]+?)(?:\s*,|\s+[A-Z]{2}|\s*$)/i);
         const zipMatch = message.match(/(\d{5})/);
 
         if (cityStateMatch) {
           location = `${cityStateMatch[1].trim()}, ${cityStateMatch[2].trim()}`;
         } else if (cityOnlyMatch && cityOnlyMatch[1].length > 2) {
           const cityName = cityOnlyMatch[1].trim();
-          // Add PA as default state for common PA cities
-          if (['hershey', 'philadelphia', 'pittsburgh', 'allentown', 'erie'].includes(cityName.toLowerCase())) {
+          // Add PA as default state for common PA cities (including multi-word ones)
+          const paCities = ['hershey', 'philadelphia', 'pittsburgh', 'allentown', 'erie', 'valley forge', 'king of prussia', 'west chester'];
+          if (paCities.includes(cityName.toLowerCase())) {
             location = `${cityName}, PA`;
           } else {
             location = cityName;
