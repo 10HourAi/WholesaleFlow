@@ -434,6 +434,42 @@ export default function ChatInterface() {
     );
   };
 
+  const renderMultipleProperties = (content: string) => {
+    // Check if this is a multiple properties response
+    if (content.includes("Here are") && content.includes("properties") && content.includes("PROPERTY OVERVIEW")) {
+      return (
+        <div className="mt-3 space-y-3">
+          {content.split("PROPERTY OVERVIEW").slice(1).map((propertyText, index) => (
+            <Card key={index} className="border-green-200 bg-green-50">
+              <CardContent className="p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                      <h4 className="font-medium text-green-800">Property {index + 1}</h4>
+                    </div>
+                    <Badge variant="secondary" className="bg-green-100 text-green-700">BatchData API</Badge>
+                  </div>
+                  
+                  <div className="text-sm space-y-1 max-h-64 overflow-y-auto whitespace-pre-wrap">
+                    **PROPERTY OVERVIEW:**{propertyText}
+                  </div>
+                  
+                  <div className="pt-2 border-t border-green-200 flex gap-2">
+                    <Button size="sm" variant="outline" className="flex-1">Save Lead</Button>
+                    <Button size="sm" variant="outline" className="flex-1">Analyze Deal</Button>
+                    <Button size="sm" variant="outline">Contact Owner</Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
   const renderPropertyCard = (content: string) => {
     // Check if this is a property response with structured data
     if (content.includes("PROPERTY DETAILS") || content.includes("FINANCIAL ANALYSIS") || content.includes("OWNER INFORMATION")) {
