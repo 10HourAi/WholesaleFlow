@@ -131,37 +131,98 @@ export default function ChatInterface() {
 
   const renderPropertyCard = (content: string) => {
     // Enhanced property card rendering for lead finder responses
-    if (content.includes("PROPERTY DETAILS") || content.includes("FINANCIAL ANALYSIS") || content.includes("Found a") && content.includes("property")) {
+    if (content.includes("PROPERTY DETAILS") || content.includes("FINANCIAL ANALYSIS") || content.includes("OWNER INFORMATION") || (content.includes("Found a") && content.includes("property"))) {
+      // Extract key information for structured display
+      const lines = content.split('\n');
+      let address = '';
+      let value = '';
+      let equity = '';
+      let ownerName = '';
+      let motivationScore = '';
+      
+      lines.forEach(line => {
+        if (line.includes('Estimated Value:')) value = line.split(':')[1]?.trim() || '';
+        if (line.includes('Equity Percentage:')) equity = line.split(':')[1]?.trim() || '';
+        if (line.includes('Full Name:')) ownerName = line.split(':')[1]?.trim() || '';
+        if (line.includes('MOTIVATION SCORE:')) motivationScore = line.split(':')[1]?.trim().split('/')[0] || '';
+        if (line.includes('**PROPERTY DETAILS:**')) {
+          const nextLineIndex = lines.indexOf(line) + 1;
+          if (nextLineIndex < lines.length) address = lines[nextLineIndex]?.trim() || '';
+        }
+      });
+
       return (
         <Card className="mt-3 border-green-200 bg-green-50">
           <CardContent className="p-4">
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-                  <h4 className="font-medium text-green-800">Live Property Data</h4>
+                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                  <h4 className="font-medium text-green-800">Live Property Lead</h4>
                 </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-700">BatchLeads API</Badge>
+                <Badge variant="secondary" className="bg-green-100 text-green-700">BatchData API</Badge>
               </div>
-              <div className="text-sm space-y-2">
+              
+              {/* Quick stats */}
+              {(address || value || equity) && (
+                <div className="grid grid-cols-2 gap-3 p-3 bg-white rounded-lg border">
+                  {address && (
+                    <div>
+                      <div className="text-xs font-medium text-slate-500">ADDRESS</div>
+                      <div className="text-sm font-semibold text-slate-900">{address}</div>
+                    </div>
+                  )}
+                  {value && (
+                    <div>
+                      <div className="text-xs font-medium text-slate-500">ESTIMATED VALUE</div>
+                      <div className="text-sm font-semibold text-green-700">{value}</div>
+                    </div>
+                  )}
+                  {equity && (
+                    <div>
+                      <div className="text-xs font-medium text-slate-500">EQUITY</div>
+                      <div className="text-sm font-semibold text-blue-700">{equity}</div>
+                    </div>
+                  )}
+                  {ownerName && ownerName !== 'Not available' && (
+                    <div>
+                      <div className="text-xs font-medium text-slate-500">OWNER</div>
+                      <div className="text-sm font-semibold text-slate-900">{ownerName}</div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {motivationScore && (
+                <div className="p-2 bg-orange-50 rounded border border-orange-200">
+                  <div className="text-xs font-medium text-orange-700">MOTIVATION SCORE</div>
+                  <div className="text-lg font-bold text-orange-800">{motivationScore}/100</div>
+                </div>
+              )}
+
+              <div className="text-sm space-y-1 max-h-64 overflow-y-auto">
                 {content.split('\n').map((line, index) => {
                   if (line.includes('**') && line.includes('**')) {
                     // Bold headers
                     const text = line.replace(/\*\*/g, '');
-                    return <div key={index} className="font-semibold text-slate-800">{text}</div>;
-                  } else if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
+                    return <div key={index} className="font-semibold text-slate-800 mt-2 mb-1 border-b border-slate-200 pb-1">{text}</div>;
+                  } else if (line.trim().startsWith('🎯') || line.trim().startsWith('🚨')) {
+                    // Important alerts
+                    return <div key={index} className="font-semibold text-red-700 bg-red-50 p-2 rounded">{line}</div>;
+                  } else if (line.trim().startsWith('-') || line.trim().startsWith('•') || line.trim().startsWith('  •')) {
                     // Bullet points
-                    return <div key={index} className="text-slate-600 ml-2">{line}</div>;
-                  } else if (line.trim()) {
-                    // Regular text
-                    return <div key={index} className="text-slate-700">{line}</div>;
+                    return <div key={index} className="text-slate-600 ml-2 text-xs">{line}</div>;
+                  } else if (line.trim() && !line.includes('💡') && !line.includes('Say')) {
+                    // Regular text (exclude call to action)
+                    return <div key={index} className="text-slate-700 text-xs">{line}</div>;
                   }
                   return null;
                 })}
               </div>
-              <div className="pt-2 border-t border-green-200">
-                <Button size="sm" variant="outline" className="mr-2">Save Lead</Button>
-                <Button size="sm" variant="outline">Analyze Deal</Button>
+              <div className="pt-2 border-t border-green-200 flex gap-2">
+                <Button size="sm" variant="outline" className="flex-1">Save Lead</Button>
+                <Button size="sm" variant="outline" className="flex-1">Analyze Deal</Button>
+                <Button size="sm" variant="outline">Contact Owner</Button>
               </div>
             </div>
           </CardContent>
