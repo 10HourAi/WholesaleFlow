@@ -214,6 +214,71 @@ class BatchLeadsService {
     };
   }
 
+  // Get next valid property one at a time with session state
+  async getNextValidProperty(criteria: SearchCriteria, sessionState?: { page: number; index: number; currentBatch?: any[] }): Promise<{ property: any | null; hasMore: boolean; sessionState: { page: number; index: number; currentBatch?: any[] }; totalChecked: number; filtered: number }> {
+    let currentPage = sessionState?.page || 1;
+    let currentIndex = sessionState?.index || 0;
+    let currentBatch = sessionState?.currentBatch || [];
+    let totalChecked = 0;
+    let filtered = 0;
+    const maxPages = 10; // Allow more pages for one-at-a-time searching
+    
+    while (currentPage <= maxPages) {
+      // If we need a new batch of data
+      if (currentBatch.length === 0 || currentIndex >= currentBatch.length) {
+        const response = await this.searchProperties(criteria, currentPage, 25);
+        
+        if (!response.success || !response.data.length) {
+          return {
+            property: null,
+            hasMore: false,
+            sessionState: { page: currentPage, index: 0, currentBatch: [] },
+            totalChecked,
+            filtered
+          };
+        }
+        
+        currentBatch = response.data;
+        currentIndex = 0;
+      }
+      
+      // Check properties one by one
+      while (currentIndex < currentBatch.length) {
+        const prop = currentBatch[currentIndex];
+        totalChecked++;
+        
+        const converted = this.convertToProperty(prop, 'temp-user');
+        if (converted !== null) {
+          // Found a valid property - return it and update session state
+          return {
+            property: prop,
+            hasMore: true,
+            sessionState: { page: currentPage, index: currentIndex + 1, currentBatch },
+            totalChecked,
+            filtered
+          };
+        } else {
+          filtered++;
+        }
+        
+        currentIndex++;
+      }
+      
+      // Move to next page
+      currentPage++;
+      currentBatch = [];
+      currentIndex = 0;
+    }
+    
+    return {
+      property: null,
+      hasMore: false,
+      sessionState: { page: currentPage, index: 0, currentBatch: [] },
+      totalChecked,
+      filtered
+    };
+  }
+
   // Convert BatchData property to our schema format
   convertToProperty(batchProperty: any, userId: string): any {
     const estimatedValue = batchProperty.valuation?.estimatedValue || 0;

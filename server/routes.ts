@@ -306,6 +306,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get next property one at a time
+  app.post("/api/properties/next", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { location, maxPrice, minEquity, propertyType, distressedOnly, motivationScore, minBedrooms, sessionState } = req.body;
+      
+      const { batchLeadsService } = await import("./batchleads");
+      const result = await batchLeadsService.getNextValidProperty({
+        location,
+        maxPrice,
+        minEquity,
+        propertyType,
+        distressedOnly,
+        motivationScore,
+        minBedrooms
+      }, sessionState);
+
+      if (result.property) {
+        // Convert to our format
+        const propertyData = batchLeadsService.convertToProperty(result.property, userId);
+        
+        res.json({
+          property: propertyData,
+          hasMore: result.hasMore,
+          sessionState: result.sessionState,
+          stats: {
+            totalChecked: result.totalChecked,
+            filtered: result.filtered
+          }
+        });
+      } else {
+        res.json({
+          property: null,
+          hasMore: false,
+          sessionState: result.sessionState,
+          stats: {
+            totalChecked: result.totalChecked,
+            filtered: result.filtered
+          }
+        });
+      }
+    } catch (error: any) {
+      console.error("Next property error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Serve demo page
   app.get('/demo', (req, res) => {
     res.sendFile(path.join(process.cwd(), 'demo.html'));
@@ -352,7 +399,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/demo/chat', async (req, res) => {
     try {
-      const { message, agentType = 'lead_finder' } = req.body;
+      const { message, agentType = 'lead_finder', sessionState } = req.body;
+      
+      // Check if this is a "next property" request
+      const isNextPropertyRequest = message.toLowerCase().match(/(next|another|more|show me another)/i);
       
       // Check if this is a property search request
       const isPropertySearch = message.toLowerCase().match(/(find|search|show|get)\s+(properties|distressed|leads)/i) ||
@@ -360,7 +410,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                message.toLowerCase().match(/\d+\s+properties/i) ||
                                message.toLowerCase().match(/properties.*philadelphia|philadelphia.*properties/i);
                                
-      if (isPropertySearch) {
+      if (isNextPropertyRequest && sessionState) {
+        // User wants the next property in the current search
+        const { batchLeadsService } = await import("./batchleads");
+        
+        const result = await batchLeadsService.getNextValidProperty(sessionState.searchCriteria, sessionState);
+        
+        if (result.property) {
+          const convertedProperty = batchLeadsService.convertToProperty(result.property, 'demo-user');
+          
+          let contactInfo = `Owner: ${convertedProperty.ownerName || 'Not available'}`;
+          if (convertedProperty.ownerMailingAddress) {
+            const propertyAddress = `${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}`;
+            const isDifferent = convertedProperty.ownerMailingAddress.toLowerCase() !== propertyAddress.toLowerCase();
+            contactInfo += `\nMailing Address: ${convertedProperty.ownerMailingAddress}${isDifferent ? ' 🏃 (Absentee)' : ' 🏠 (Owner Occupied)'}`;
+          }
+          if (convertedProperty.ownerPhone) contactInfo += `\nPhone: ${convertedProperty.ownerPhone}`;
+          if (convertedProperty.ownerEmail) contactInfo += `\nEmail: ${convertedProperty.ownerEmail}`;
+          
+          const propertyText = `**${convertedProperty.address}**\n${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}\nARV: $${parseInt(convertedProperty.arv).toLocaleString()}\nMax Offer: $${parseInt(convertedProperty.maxOffer).toLocaleString()}\nEquity: ${convertedProperty.equityPercentage}%\nMotivation Score: ${convertedProperty.motivationScore}/100\n${contactInfo}\nLead Type: ${convertedProperty.leadType.replace('_', ' ')}`;
+          
+          res.json({
+            response: `Here's your next property:\n\n${propertyText}\n\n${result.hasMore ? "Say 'next' to see another property!" : "That's all the quality properties I found in this search."}`,
+            property: convertedProperty,
+            sessionState: { ...result.sessionState, searchCriteria: sessionState.searchCriteria },
+            hasMore: result.hasMore
+          });
+        } else {
+          res.json({
+            response: `No more properties found in your current search. Try a new search with different criteria!`,
+            hasMore: false
+          });
+        }
+      } else if (isPropertySearch) {
         // Extract location from message - improved regex
         const locationMatch = message.match(/in\s+([\w\s,]+?)(?:\s|$)/i) || message.match(/(\d{5})/);
         const location = locationMatch ? locationMatch[1].trim() : '17112';
@@ -379,45 +461,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
           searchCriteria.minBedrooms = parseInt(bedroomMatch[1]);
         }
         
-        const response = await batchLeadsService.searchValidProperties(searchCriteria, 5);
+        // Get first property only
+        const result = await batchLeadsService.getNextValidProperty(searchCriteria);
         
-        const convertedProperties = response.data
-          .map(prop => batchLeadsService.convertToProperty(prop, 'demo-user'))
-          .filter(prop => prop !== null); // Remove invalid properties
-        
-        if (convertedProperties.length === 0) {
+        if (!result.property) {
           res.json({
-            response: `Searched ${response.filteredCount} properties in ${location}, but all were filtered out due to missing price or equity data. This ensures you only get actionable wholesale leads with complete valuation information.`
+            response: `Searched ${result.filtered} properties in ${location}, but all were filtered out due to missing price or equity data. This ensures you only get actionable wholesale leads with complete valuation information.`
           });
           return;
         }
         
-        const propertiesText = convertedProperties.map(p => {
-          let contactInfo = `Owner: ${p.ownerName || 'Not available'}`;
-          
-          // Add mailing address (mark if different from property address)
-          if (p.ownerMailingAddress) {
-            const propertyAddress = `${p.address}, ${p.city}, ${p.state} ${p.zipCode}`;
-            const isDifferent = p.ownerMailingAddress.toLowerCase() !== propertyAddress.toLowerCase();
-            contactInfo += `\nMailing Address: ${p.ownerMailingAddress}${isDifferent ? ' 🏃 (Absentee)' : ' 🏠 (Owner Occupied)'}`;
-          }
-          
-          if (p.ownerPhone) contactInfo += `\nPhone: ${p.ownerPhone}`;
-          if (p.ownerEmail) contactInfo += `\nEmail: ${p.ownerEmail}`;
-          
-          return `**${p.address}**\n${p.city}, ${p.state} ${p.zipCode}\nARV: $${parseInt(p.arv).toLocaleString()}\nMax Offer: $${parseInt(p.maxOffer).toLocaleString()}\nEquity: ${p.equityPercentage}%\nMotivation Score: ${p.motivationScore}/100\n${contactInfo}\nLead Type: ${p.leadType.replace('_', ' ')}`
-        }).join('\n\n');
+        const convertedProperty = batchLeadsService.convertToProperty(result.property, 'demo-user');
         
-        let qualityNote = "";
-        if (response.filteredCount > 0) {
-          qualityNote = `\n\n✅ Data Quality: Filtered out ${response.filteredCount} properties with incomplete pricing/equity data to ensure you get only actionable leads.`;
+        let contactInfo = `Owner: ${convertedProperty.ownerName || 'Not available'}`;
+        
+        // Add mailing address (mark if different from property address)
+        if (convertedProperty.ownerMailingAddress) {
+          const propertyAddress = `${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}`;
+          const isDifferent = convertedProperty.ownerMailingAddress.toLowerCase() !== propertyAddress.toLowerCase();
+          contactInfo += `\nMailing Address: ${convertedProperty.ownerMailingAddress}${isDifferent ? ' 🏃 (Absentee)' : ' 🏠 (Owner Occupied)'}`;
         }
         
-        const aiResponse = `Found ${convertedProperties.length} quality properties in ${location}:\n\n${propertiesText}${qualityNote}\n\nThese are REAL properties from BatchData API with complete market data, verified equity calculations, and owner information perfect for your wholesaling business!`;
+        if (convertedProperty.ownerPhone) contactInfo += `\nPhone: ${convertedProperty.ownerPhone}`;
+        if (convertedProperty.ownerEmail) contactInfo += `\nEmail: ${convertedProperty.ownerEmail}`;
+        
+        const propertyText = `**${convertedProperty.address}**\n${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}\nARV: $${parseInt(convertedProperty.arv).toLocaleString()}\nMax Offer: $${parseInt(convertedProperty.maxOffer).toLocaleString()}\nEquity: ${convertedProperty.equityPercentage}%\nMotivation Score: ${convertedProperty.motivationScore}/100\n${contactInfo}\nLead Type: ${convertedProperty.leadType.replace('_', ' ')}`;
+        
+        let qualityNote = "";
+        if (result.filtered > 0) {
+          qualityNote = `\n\n✅ Data Quality: Filtered out ${result.filtered} properties with incomplete data to show you only actionable leads.`;
+        }
+        
+        const aiResponse = `Here's a quality property in ${location}:\n\n${propertyText}${qualityNote}\n\nThis is a REAL property from BatchData API with complete market data! ${result.hasMore ? "Say 'next' to see another property." : "This was the only quality property found."}`;
         
         res.json({
           response: aiResponse,
-          properties: convertedProperties
+          property: convertedProperty,
+          sessionState: { ...result.sessionState, searchCriteria },
+          hasMore: result.hasMore
         });
       } else {
         // Regular AI response
