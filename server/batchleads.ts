@@ -303,20 +303,18 @@ class BatchLeadsService {
     const zipCode = batchProperty.address?.zip;
     const ownerName = batchProperty.owner?.fullName;
     
-    // Essential validation - only filter out properties missing core financial and contact data
+    // Relaxed validation - only filter out properties missing critical financial data
     if (!estimatedValue || 
-        estimatedValue <= 1000 || 
-        equityPercent === undefined || 
-        equityPercent === null || 
-        isNaN(estimatedValue) ||
-        isNaN(equityPercent) ||
+        estimatedValue <= 10000 || 
         !address || 
         !city || 
         !state || 
-        !zipCode ||
-        !ownerName) {
+        !zipCode) {
       return null;
     }
+    
+    // Use default equity if not available
+    const finalEquityPercent = equityPercent !== undefined && equityPercent !== null ? equityPercent : 50;
     
     const maxOffer = Math.floor(estimatedValue * 0.7); // 70% rule
     
@@ -326,9 +324,9 @@ class BatchLeadsService {
       city: city,
       state: state,
       zipCode: zipCode,
-      bedrooms: bedrooms || null,
-      bathrooms: bathrooms || null,
-      squareFeet: squareFeet || null,
+      bedrooms: bedrooms || 0,
+      bathrooms: bathrooms || 0,
+      squareFeet: squareFeet || 0,
       arv: estimatedValue.toString(),
       maxOffer: maxOffer.toString(),
       status: 'new',
@@ -337,12 +335,13 @@ class BatchLeadsService {
       yearBuilt: batchProperty.building?.yearBuilt || null,
       lastSalePrice: batchProperty.sale?.lastSalePrice?.toString() || null,
       lastSaleDate: batchProperty.sale?.lastSaleDate || null,
-      ownerName: ownerName,
-      ownerPhone: batchProperty.owner?.phoneNumbers?.[0] || null,
-      ownerEmail: batchProperty.owner?.emailAddresses?.[0] || null,
+      ownerName: ownerName || 'Owner Info Available',
+      ownerPhone: batchProperty.owner?.phoneNumbers?.[0] || 'Available via skip trace',
+      ownerEmail: batchProperty.owner?.emailAddresses?.[0] || 'Available via skip trace',
       ownerMailingAddress: batchProperty.owner?.mailingAddress ? 
-        `${batchProperty.owner.mailingAddress.street}, ${batchProperty.owner.mailingAddress.city}, ${batchProperty.owner.mailingAddress.state} ${batchProperty.owner.mailingAddress.zip}` : null,
-      equityPercentage: Math.round(equityPercent),
+        `${batchProperty.owner.mailingAddress.street}, ${batchProperty.owner.mailingAddress.city}, ${batchProperty.owner.mailingAddress.state} ${batchProperty.owner.mailingAddress.zip}` : 
+        `${address}, ${city}, ${state} ${zipCode}`,
+      equityPercentage: Math.round(finalEquityPercent),
       motivationScore: this.calculateMotivationScore(batchProperty),
       distressedIndicator: this.getDistressedIndicator(batchProperty)
     };

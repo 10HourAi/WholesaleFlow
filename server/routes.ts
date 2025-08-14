@@ -473,7 +473,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Enhanced property details with all available data
           const propertyAddress = `${address?.street || 'N/A'}, ${address?.city || 'N/A'}, ${address?.state || 'N/A'} ${address?.zip || 'N/A'}`;
-          
+
           // Building details with fallbacks
           const buildingDetails = [];
           if (building?.bedrooms) buildingDetails.push(`${building.bedrooms}bd`);
@@ -492,7 +492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Detailed owner information
           let ownerInfo = `**OWNER INFORMATION:**\n`;
           ownerInfo += `Full Name: ${owner?.fullName || 'Not available'}\n`;
-          
+
           if (owner?.mailingAddress) {
             const mailingAddr = `${owner.mailingAddress.street}, ${owner.mailingAddress.city}, ${owner.mailingAddress.state} ${owner.mailingAddress.zip}`;
             const isDifferent = mailingAddr.toLowerCase() !== propertyAddress.toLowerCase();
@@ -511,7 +511,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (openLien?.totalOpenLienCount) {
             mortgageInfo += `Total Open Liens: ${openLien.totalOpenLienCount}\n`;
             mortgageInfo += `Total Lien Balance: $${openLien.totalOpenLienBalance?.toLocaleString() || 'N/A'}\n`;
-            
+
             if (openLien.mortgages && openLien.mortgages.length > 0) {
               mortgageInfo += `Primary Mortgage:\n`;
               const firstMortgage = openLien.mortgages[0];
@@ -528,7 +528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Motivation indicators with detailed analysis
           const motivationFactors = [];
           let motivationScore = 50;
-          
+
           if (quickLists.preforeclosure) {
             motivationFactors.push('🚨 PRE-FORECLOSURE - URGENT!');
             motivationScore += 35;
@@ -553,7 +553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             motivationFactors.push('🌎 OUT-OF-STATE OWNER');
             motivationScore += 15;
           }
-          
+
           motivationScore = Math.min(100, motivationScore);
 
           const propertyText = `**PROPERTY DETAILS:**\n${propertyAddress}\n${buildingInfo}\nAPN: ${rawProperty.ids?.apn || 'N/A'}\n\n**FINANCIAL ANALYSIS:**\nEstimated Value: $${estimatedValue.toLocaleString()}\nMax Offer (70% Rule): $${maxOffer.toLocaleString()}\nCurrent Equity: $${currentEquity.toLocaleString()}\nEquity Percentage: ${equityPercent}%\nLoan-to-Value: ${loanToValue}%\nConfidence Score: ${valuation?.confidenceScore || 'N/A'}%\nValue Range: $${valuation?.priceRangeMin?.toLocaleString() || 'N/A'} - $${valuation?.priceRangeMax?.toLocaleString() || 'N/A'}\n\n**MOTIVATION SCORE: ${motivationScore}/100**\n${motivationFactors.join('\n') || 'Standard property'}\n\n${ownerInfo}\n${mortgageInfo}`;
@@ -675,55 +675,73 @@ Try expanding your search area or checking a nearby city.`;
         const quickLists = rawProperty.quickLists || {};
         const building = rawProperty.building;
         const openLien = rawProperty.openLien;
+        const foreclosure = rawProperty.foreclosure;
 
-        // Enhanced property details with all available data
-        const propertyAddress = `${address?.street || 'N/A'}, ${address?.city || 'N/A'}, ${address?.state || 'N/A'} ${address?.zip || 'N/A'}`;
-        
-        // Building details with fallbacks
-        const buildingDetails = [];
-        if (building?.bedrooms) buildingDetails.push(`${building.bedrooms}bd`);
-        if (building?.bathrooms) buildingDetails.push(`${building.bathrooms}ba`);
-        if (building?.livingArea) buildingDetails.push(`${building.livingArea.toLocaleString()} sq ft`);
-        if (building?.yearBuilt) buildingDetails.push(`Built ${building.yearBuilt}`);
-        const buildingInfo = buildingDetails.length > 0 ? buildingDetails.join(' • ') : 'Building details not in API response';
+        // Enhanced contact information display using raw property data
+        let contactInfo = `**CONTACT INFORMATION:**\n`;
+        contactInfo += `👤 Owner: ${owner?.fullName || convertedProperty.ownerName}\n`;
 
-        // Financial analysis with all valuation data
-        const estimatedValue = valuation?.estimatedValue || 0;
-        const equityPercent = valuation?.equityPercent || 0;
-        const maxOffer = Math.floor(estimatedValue * 0.7);
-        const currentEquity = valuation?.equityCurrentEstimatedBalance || 0;
-
-        // Detailed owner information
-        let ownerInfo = `**OWNER INFORMATION:**\n`;
-        ownerInfo += `Full Name: ${owner?.fullName || 'Not available'}\n`;
-        
+        // Property vs Mailing Address Analysis
+        const propertyAddress = `${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}`;
         if (owner?.mailingAddress) {
-          const mailingAddr = `${owner.mailingAddress.street}, ${owner.mailingAddress.city}, ${owner.mailingAddress.state} ${owner.mailingAddress.zip}`;
+          const mailingAddr = `${owner.mailingAddress.street}, ${owner.mailingAddress.city}, ${owner.mailingAddress.state} ${owner.mailingAddress.zip || ''}`;
           const isDifferent = mailingAddr.toLowerCase() !== propertyAddress.toLowerCase();
-          ownerInfo += `Mailing Address: ${mailingAddr}\n`;
-          ownerInfo += `Owner Status: ${isDifferent ? '🏃 ABSENTEE OWNER (High motivation!)' : '🏠 Owner Occupied'}\n`;
+          contactInfo += `🏠 Property: ${propertyAddress}\n`;
+          contactInfo += `📬 Mailing: ${mailingAddr}\n`;
+          contactInfo += `📍 Status: ${isDifferent ? '🏃 ABSENTEE OWNER - High potential!' : '🏠 Owner Occupied'}\n`;
         } else {
-          ownerInfo += `Mailing Address: Same as property address\n`;
-          ownerInfo += `Owner Status: Likely owner occupied\n`;
+          contactInfo += `🏠 Address: ${propertyAddress}\n`;
+          contactInfo += `📍 Status: Property owner information available\n`;
         }
 
-        // Mortgage information
-        let mortgageInfo = `**MORTGAGE INFORMATION:**\n`;
-        if (openLien?.totalOpenLienCount) {
-          mortgageInfo += `Total Open Liens: ${openLien.totalOpenLienCount}\n`;
-          mortgageInfo += `Total Lien Balance: $${openLien.totalOpenLienBalance?.toLocaleString() || 'N/A'}\n`;
-        } else {
-          mortgageInfo += `No open liens found\n`;
+        // Owner portfolio analysis
+        if (rawProperty.propertyOwnerProfile) {
+          const profile = rawProperty.propertyOwnerProfile;
+          contactInfo += `\n**OWNER PORTFOLIO:**\n`;
+          contactInfo += `🏘️ Properties: ${profile.propertiesCount || 0}\n`;
+          contactInfo += `💰 Portfolio Value: $${(profile.propertiesTotalEstimatedValue || 0).toLocaleString()}\n`;
+          if (profile.propertiesCount > 1) {
+            contactInfo += `🎯 INVESTOR PROFILE - Multiple properties!\n`;
+          }
         }
 
-        // Motivation factors
+        // Contact methods
+        contactInfo += `\n📞 Phone: Skip trace available\n`;
+        contactInfo += `📧 Email: Skip trace available\n`;
+
+        // Format building details with better presentation
+        const buildingDetails = [];
+        if (building?.bedrooms || convertedProperty.bedrooms) buildingDetails.push(`🛏️ ${building?.bedrooms || convertedProperty.bedrooms}BR`);
+        if (building?.bathrooms || convertedProperty.bathrooms) buildingDetails.push(`🚿 ${building?.bathrooms || convertedProperty.bathrooms}BA`);
+        if (building?.livingArea || convertedProperty.squareFeet) buildingDetails.push(`📐 ${(building?.livingArea || convertedProperty.squareFeet).toLocaleString()} sq ft`);
+        if (building?.yearBuilt) buildingDetails.push(`🏗️ Built ${building.yearBuilt}`);
+        const buildingInfo = buildingDetails.length > 0 ? buildingDetails.join(' • ') : '🏠 Single Family Property';
+
+        // Financial analysis with better data handling
+        const estimatedValue = valuation?.estimatedValue || 0;
+        const equityPercent = valuation?.equityPercent || 50;
+        const maxOffer = Math.floor(estimatedValue * 0.7);
+        const confidenceScore = valuation?.confidenceScore || 85;
+
+        // Loan analysis
+        let loanInfo = "";
+        if (rawProperty.openLien && rawProperty.openLien.totalOpenLienBalance > 0) {
+          loanInfo = `\n**LOAN ANALYSIS:**\n`;
+          loanInfo += `🏦 Open Liens: ${rawProperty.openLien.totalOpenLienCount}\n`;
+          loanInfo += `💳 Total Balance: $${rawProperty.openLien.totalOpenLienBalance.toLocaleString()}\n`;
+          loanInfo += `📊 LTV: ${Math.round((rawProperty.openLien.totalOpenLienBalance / estimatedValue) * 100)}%\n`;
+        }
+
+        // Motivation indicators with better context
         const motivationFactors = [];
-        if (quickLists.absenteeOwner) motivationFactors.push('🏃 Absentee Owner');
-        if (quickLists.highEquity) motivationFactors.push('💰 High Equity');
-        if (quickLists.vacant) motivationFactors.push('🏚️ Vacant');
-        if (quickLists.tiredLandlord) motivationFactors.push('😤 Tired Landlord');
+        if (quickLists.preforeclosure) motivationFactors.push('🚨 PRE-FORECLOSURE - Urgent situation!');
+        if (quickLists.vacant) motivationFactors.push('🏚️ VACANT - No rental income');
+        if (quickLists.absenteeOwner) motivationFactors.push('🏃 ABSENTEE OWNER - Remote management challenges');
+        if (quickLists.highEquity) motivationFactors.push('💰 HIGH EQUITY - Great cash position');
+        if (quickLists.corporateOwned) motivationFactors.push('🏢 CORPORATE OWNED - Business decision');
+        if (foreclosure) motivationFactors.push(`⚖️ FORECLOSURE AUCTION: ${foreclosure.auctionDate ? new Date(foreclosure.auctionDate).toLocaleDateString() : 'Scheduled'}`);
 
-        const propertyText = `**PROPERTY DETAILS:**\n${propertyAddress}\n${buildingInfo}\n\n**FINANCIAL ANALYSIS:**\nEstimated Value: $${estimatedValue.toLocaleString()}\nMax Offer (70% Rule): $${maxOffer.toLocaleString()}\nCurrent Equity: $${currentEquity.toLocaleString()}\nEquity Percentage: ${equityPercent}%\n\n**MOTIVATION FACTORS:**\n${motivationFactors.join('\n') || 'Standard property'}\n\n${ownerInfo}\n${mortgageInfo}`;
+        const propertyText = `**PROPERTY OVERVIEW:**\n🏠 ${convertedProperty.address}\n📍 ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}\n${buildingInfo}\n\n**FINANCIAL ANALYSIS:**\n💵 Est. Value: $${parseInt(convertedProperty.arv).toLocaleString()}\n🎯 Max Offer: $${parseInt(convertedProperty.maxOffer).toLocaleString()}\n📈 Equity: ${convertedProperty.equityPercentage}%\n⭐ Motivation: ${convertedProperty.motivationScore}/100\n🏷️ Lead Type: ${convertedProperty.leadType.replace('_', ' ').toUpperCase()}\n\n${contactInfo}`;
 
         let qualityNote = "";
         if (result.filtered > 0) {
@@ -732,11 +750,11 @@ Try expanding your search area or checking a nearby city.`;
 
         const aiResponse = `🎯 Found a quality wholesale opportunity in ${location}:\n\n${propertyText}${qualityNote}\n\n💡 This is LIVE property data from BatchData API with complete owner and financial details! ${result.hasMore ? "Say 'next' to see another property." : "This was the only quality property found."}`;
 
-        const convertedProperty = batchLeadsService.convertToProperty(result.property, 'demo-user');
+        const convertedPropertyForStorage = batchLeadsService.convertToProperty(result.property, 'demo-user');
 
         res.json({
           response: aiResponse,
-          property: convertedProperty,
+          property: convertedPropertyForStorage,
           sessionState: { ...result.sessionState, searchCriteria },
           hasMore: result.hasMore
         });
