@@ -477,20 +477,17 @@ export default function ChatInterface() {
   };
 
   const renderPropertyCard = (content: string) => {
-    // Check if this is a property response with structured data - match actual API response
-    if (content.includes("**PROPERTY DETAILS:**") || 
-        content.includes("**FINANCIAL ANALYSIS:**") || 
-        content.includes("**OWNER INFORMATION:**") ||
-        content.includes("**PROPERTY OVERVIEW:**") ||
-        content.includes("**CONTACT INFORMATION:**") ||
-        content.includes("**MOTIVATION SCORE:**") ||
-        content.includes("🚨 FORECLOSURE DETAILS") ||
-        content.includes("BatchData API integration") ||
+    // Check if this is a property response with structured data - improved detection
+    if (content.includes("PROPERTY DETAILS") || 
+        content.includes("FINANCIAL ANALYSIS") || 
+        content.includes("OWNER INFORMATION") ||
+        content.includes("PROPERTY OVERVIEW") ||
+        content.includes("CONTACT INFORMATION") ||
+        content.includes("MORTGAGE") ||
+        content.includes("BatchData API") ||
         content.includes("Est. Value:") ||
         content.includes("Max Offer:") ||
         content.includes("Motivation:") ||
-        content.includes("Estimated Value:") ||
-        content.includes("Current Equity:") ||
         (content.includes("Address:") && content.includes("ARV:")) ||
         content.includes("🏠") || content.includes("💰") || content.includes("👤")) {
       
@@ -509,26 +506,26 @@ export default function ChatInterface() {
       lines.forEach(line => {
         const trimmedLine = line.trim();
         
-        // Section headers - match actual API response format with double asterisks
-        if (trimmedLine.includes('**PROPERTY OVERVIEW:**') || trimmedLine.includes('**PROPERTY DETAILS:**')) {
+        // Section headers
+        if (trimmedLine.includes('PROPERTY OVERVIEW:') || trimmedLine.includes('PROPERTY DETAILS:')) {
           currentSection = 'property';
           return;
-        } else if (trimmedLine.includes('**FINANCIAL ANALYSIS:**')) {
+        } else if (trimmedLine.includes('FINANCIAL ANALYSIS:')) {
           currentSection = 'financial';
           return;
-        } else if (trimmedLine.includes('**OWNER INFORMATION:**') || trimmedLine.includes('**CONTACT INFORMATION:**')) {
+        } else if (trimmedLine.includes('OWNER INFORMATION:') || trimmedLine.includes('CONTACT INFORMATION:')) {
           currentSection = 'owner';
           return;
-        } else if (trimmedLine.includes('**MOTIVATION SCORE:**') || trimmedLine.includes('Motivation:')) {
+        } else if (trimmedLine.includes('MOTIVATION SCORE:') || trimmedLine.includes('Motivation:')) {
           currentSection = 'motivation';
           return;
-        } else if (trimmedLine.includes('🚨 FORECLOSURE DETAILS') || trimmedLine.includes('**FORECLOSURE')) {
+        } else if (trimmedLine.includes('FORECLOSURE') || trimmedLine.includes('🚨')) {
           currentSection = 'foreclosure';
           return;
         }
         
-        // Add content to current section, skip empty lines and section headers
-        if (currentSection && trimmedLine && !trimmedLine.startsWith('**')) {
+        // Add content to current section
+        if (currentSection && trimmedLine) {
           if (parsedSections[currentSection]) {
             parsedSections[currentSection] += '\n' + trimmedLine;
           } else {
@@ -537,11 +534,6 @@ export default function ChatInterface() {
         }
       });
 
-      // Debug logging
-      console.log('Property card detection - parsed sections:', parsedSections);
-      console.log('Content includes PROPERTY DETAILS:', content.includes("**PROPERTY DETAILS:**"));
-      console.log('Content includes FINANCIAL ANALYSIS:', content.includes("**FINANCIAL ANALYSIS:**"));
-      
       // If no sections were found, try to extract key property info directly
       if (!parsedSections.property && !parsedSections.financial && !parsedSections.owner) {
         // Extract basic property info from content
