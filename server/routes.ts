@@ -419,19 +419,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (result.property) {
           const convertedProperty = batchLeadsService.convertToProperty(result.property, 'demo-user');
           
-          let contactInfo = `Owner: ${convertedProperty.ownerName || 'Not available'}`;
+          // Enhanced contact information display
+          let contactInfo = `**CONTACT INFORMATION:**\n`;
+          contactInfo += `Owner Name: ${convertedProperty.ownerName || 'Not available'}\n`;
+          
+          // Property vs Mailing Address Analysis
           if (convertedProperty.ownerMailingAddress) {
             const propertyAddress = `${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}`;
             const isDifferent = convertedProperty.ownerMailingAddress.toLowerCase() !== propertyAddress.toLowerCase();
-            contactInfo += `\nMailing Address: ${convertedProperty.ownerMailingAddress}${isDifferent ? ' 🏃 (Absentee)' : ' 🏠 (Owner Occupied)'}`;
+            contactInfo += `Property Address: ${propertyAddress}\n`;
+            contactInfo += `Mailing Address: ${convertedProperty.ownerMailingAddress}\n`;
+            contactInfo += `Owner Status: ${isDifferent ? '🏃 Absentee Owner (Lives elsewhere)' : '🏠 Owner Occupied'}\n`;
+          } else {
+            contactInfo += `Property Address: ${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}\n`;
+            contactInfo += `Mailing Address: Not available\n`;
           }
-          if (convertedProperty.ownerPhone) contactInfo += `\nPhone: ${convertedProperty.ownerPhone}`;
-          if (convertedProperty.ownerEmail) contactInfo += `\nEmail: ${convertedProperty.ownerEmail}`;
           
-          const propertyText = `**${convertedProperty.address}**\n${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}\nARV: $${parseInt(convertedProperty.arv).toLocaleString()}\nMax Offer: $${parseInt(convertedProperty.maxOffer).toLocaleString()}\nEquity: ${convertedProperty.equityPercentage}%\nMotivation Score: ${convertedProperty.motivationScore}/100\n${contactInfo}\nLead Type: ${convertedProperty.leadType.replace('_', ' ')}`;
+          // Contact methods
+          if (convertedProperty.ownerPhone) {
+            contactInfo += `📞 Phone: ${convertedProperty.ownerPhone}\n`;
+          } else {
+            contactInfo += `📞 Phone: Not available\n`;
+          }
+          
+          if (convertedProperty.ownerEmail) {
+            contactInfo += `📧 Email: ${convertedProperty.ownerEmail}\n`;
+          } else {
+            contactInfo += `📧 Email: Not available\n`;
+          }
+          
+          const propertyText = `**PROPERTY DETAILS:**\n${convertedProperty.address}\n${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}\n${convertedProperty.bedrooms}bd • ${convertedProperty.bathrooms}ba • ${convertedProperty.squareFeet?.toLocaleString()} sq ft\n\n**FINANCIAL ANALYSIS:**\nARV: $${parseInt(convertedProperty.arv).toLocaleString()}\nMax Offer (70% Rule): $${parseInt(convertedProperty.maxOffer).toLocaleString()}\nEquity: ${convertedProperty.equityPercentage}%\nMotivation Score: ${convertedProperty.motivationScore}/100\nLead Type: ${convertedProperty.leadType.replace('_', ' ')}\n\n${contactInfo}`;
           
           res.json({
-            response: `Here's your next property:\n\n${propertyText}\n\n${result.hasMore ? "Say 'next' to see another property!" : "That's all the quality properties I found in this search."}`,
+            response: `Found a quality lead with complete contact information:\n\n${propertyText}\n${result.hasMore ? "💡 Say 'next' to see another property!" : "That's all the quality properties I found in this search."}`,
             property: convertedProperty,
             sessionState: { ...result.sessionState, searchCriteria: sessionState.searchCriteria },
             hasMore: result.hasMore
@@ -473,26 +493,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const convertedProperty = batchLeadsService.convertToProperty(result.property, 'demo-user');
         
-        let contactInfo = `Owner: ${convertedProperty.ownerName || 'Not available'}`;
+        // Enhanced contact information display
+        let contactInfo = `**CONTACT INFORMATION:**\n`;
+        contactInfo += `Owner Name: ${convertedProperty.ownerName || 'Not available'}\n`;
         
-        // Add mailing address (mark if different from property address)
+        // Property vs Mailing Address Analysis
         if (convertedProperty.ownerMailingAddress) {
           const propertyAddress = `${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}`;
           const isDifferent = convertedProperty.ownerMailingAddress.toLowerCase() !== propertyAddress.toLowerCase();
-          contactInfo += `\nMailing Address: ${convertedProperty.ownerMailingAddress}${isDifferent ? ' 🏃 (Absentee)' : ' 🏠 (Owner Occupied)'}`;
+          contactInfo += `Property Address: ${propertyAddress}\n`;
+          contactInfo += `Mailing Address: ${convertedProperty.ownerMailingAddress}\n`;
+          contactInfo += `Owner Status: ${isDifferent ? '🏃 Absentee Owner (Lives elsewhere)' : '🏠 Owner Occupied'}\n`;
+        } else {
+          contactInfo += `Property Address: ${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}\n`;
+          contactInfo += `Mailing Address: Not available\n`;
         }
         
-        if (convertedProperty.ownerPhone) contactInfo += `\nPhone: ${convertedProperty.ownerPhone}`;
-        if (convertedProperty.ownerEmail) contactInfo += `\nEmail: ${convertedProperty.ownerEmail}`;
+        // Contact methods
+        if (convertedProperty.ownerPhone) {
+          contactInfo += `📞 Phone: ${convertedProperty.ownerPhone}\n`;
+        } else {
+          contactInfo += `📞 Phone: Not available\n`;
+        }
         
-        const propertyText = `**${convertedProperty.address}**\n${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}\nARV: $${parseInt(convertedProperty.arv).toLocaleString()}\nMax Offer: $${parseInt(convertedProperty.maxOffer).toLocaleString()}\nEquity: ${convertedProperty.equityPercentage}%\nMotivation Score: ${convertedProperty.motivationScore}/100\n${contactInfo}\nLead Type: ${convertedProperty.leadType.replace('_', ' ')}`;
+        if (convertedProperty.ownerEmail) {
+          contactInfo += `📧 Email: ${convertedProperty.ownerEmail}\n`;
+        } else {
+          contactInfo += `📧 Email: Not available\n`;
+        }
+        
+        const propertyText = `**PROPERTY DETAILS:**\n${convertedProperty.address}\n${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}\n${convertedProperty.bedrooms}bd • ${convertedProperty.bathrooms}ba • ${convertedProperty.squareFeet?.toLocaleString()} sq ft\n\n**FINANCIAL ANALYSIS:**\nARV: $${parseInt(convertedProperty.arv).toLocaleString()}\nMax Offer (70% Rule): $${parseInt(convertedProperty.maxOffer).toLocaleString()}\nEquity: ${convertedProperty.equityPercentage}%\nMotivation Score: ${convertedProperty.motivationScore}/100\nLead Type: ${convertedProperty.leadType.replace('_', ' ')}\n\n${contactInfo}`;
         
         let qualityNote = "";
         if (result.filtered > 0) {
-          qualityNote = `\n\n✅ Data Quality: Filtered out ${result.filtered} properties with incomplete data to show you only actionable leads.`;
+          qualityNote = `\n✅ Data Quality: Filtered out ${result.filtered} properties with incomplete data to show you only actionable leads.`;
         }
         
-        const aiResponse = `Here's a quality property in ${location}:\n\n${propertyText}${qualityNote}\n\nThis is a REAL property from BatchData API with complete market data! ${result.hasMore ? "Say 'next' to see another property." : "This was the only quality property found."}`;
+        const aiResponse = `🎯 Found a quality property lead with complete contact information in ${location}:\n\n${propertyText}${qualityNote}\n\n💡 This is a REAL property from BatchData API with complete market data and owner contact details! ${result.hasMore ? "Say 'next' to see another property." : "This was the only quality property found."}`;
         
         res.json({
           response: aiResponse,
