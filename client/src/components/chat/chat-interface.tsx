@@ -478,7 +478,13 @@ export default function ChatInterface() {
 
   const renderPropertyCard = (content: string) => {
     // Check if this is a property response with structured data
-    if (content.includes("PROPERTY DETAILS") || content.includes("FINANCIAL ANALYSIS") || content.includes("OWNER INFORMATION")) {
+    if (content.includes("PROPERTY DETAILS") || 
+        content.includes("FINANCIAL ANALYSIS") || 
+        content.includes("OWNER INFORMATION") ||
+        content.includes("PROPERTY OVERVIEW") ||
+        content.includes("CONTACT INFORMATION") ||
+        (content.includes("Address:") && content.includes("ARV:")) ||
+        (content.includes("**") && (content.includes("Property") || content.includes("Owner")))) {
       return (
         <Card className="mt-3 border-green-200 bg-green-50">
           <CardContent className="p-4">
@@ -639,8 +645,15 @@ export default function ChatInterface() {
             <div className={`flex-1 ${message.role === "user" ? "max-w-xs sm:max-w-md" : ""}`}>
               <Card className={message.role === "user" ? "bg-primary text-primary-foreground" : ""}>
                 <CardContent className="p-4">
-                  <p className="text-sm">{message.content}</p>
-                  {message.role === "assistant" && (renderMultipleProperties(message.content) || renderPropertyCard(message.content))}
+                  {message.role === "assistant" ? (
+                    <>
+                      {renderMultipleProperties(message.content) || renderPropertyCard(message.content) || (
+                        <p className="text-sm">{message.content}</p>
+                      )}
+                    </>
+                  ) : (
+                    <p className="text-sm">{message.content}</p>
+                  )}
                 </CardContent>
               </Card>
             </div>
