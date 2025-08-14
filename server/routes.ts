@@ -358,6 +358,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.sendFile(path.join(process.cwd(), 'demo.html'));
   });
 
+  // Debug endpoint to test location formats
+  app.get('/api/debug/locations/:location?', async (req, res) => {
+    try {
+      const location = req.params.location || '17112';
+      const { batchLeadsService } = await import("./batchleads");
+      
+      // Try multiple formats
+      const formats = [
+        location,
+        location.replace(/\s+/g, ''),  // Remove spaces
+        location.replace(',', ''),      // Remove commas
+        '17033',                       // Hershey ZIP
+        '17112'                        // Default ZIP
+      ];
+      
+      const results = {};
+      
+      for (const format of formats) {
+        try {
+          console.log(`Testing format: "${format}"`);
+          const response = await batchLeadsService.searchProperties({ location: format }, 1, 5);
+          results[format] = {
+            totalResults: response.total_results,
+            propertiesFound: response.data.length,
+            success: true
+          };
+        } catch (error) {
+          results[format] = {
+            error: error.message,
+            success: false
+          };
+        }
+      }
+      
+      res.json({
+        originalLocation: location,
+        results
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Public demo endpoints (no auth required for testing)
   app.get('/api/demo/batchleads/:location?', async (req, res) => {
     try {
@@ -504,13 +547,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`📋 Search criteria:`, searchCriteria);
         
         // Get first property only
-        const result = await batchLeadsService.getNextValidProperty(searchCriteria);
+        let result = await batchLeadsService.getNextValidProperty(searchCriteria);
         
         console.log(`📊 Search result stats:`, {
           totalChecked: result.totalChecked,
           filtered: result.filtered,
           hasProperty: !!result.property
         });
+
+        // If no results found with city name, try with ZIP code fallback
+        if (!result.property && result.totalChecked === 0 && location.toLowerCase().includes('hershey')) {
+          console.log(`🔄 No results for "${location}", trying ZIP code 17033 (Hershey area)`);
+          const zipSearchCriteria = { ...searchCriteria, location: '17033' };
+          result = await batchLeadsService.getNextValidProperty(zipSearchCriteria);
+          
+          console.log(`📊 ZIP search result stats:`, {
+            totalChecked: result.totalChecked,
+            filtered: result.filtered,
+            hasProperty: !!result.property
+          });
+        }
 
         if (!result.property) {
           const noResultsMessage = result.totalChecked === 0 

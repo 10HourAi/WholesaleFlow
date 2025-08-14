@@ -152,12 +152,15 @@ class BatchLeadsService {
       };
     }
 
+    console.log(`📋 Full request body:`, JSON.stringify(requestBody, null, 2));
+    
     const response = await this.makeRequest('/api/v1/property/search', requestBody);
     
     console.log(`📊 BatchLeads API response:`, {
       propertiesFound: response.results?.properties?.length || 0,
       totalResults: response.meta?.totalResults || 0,
-      page: page
+      page: page,
+      rawResponse: JSON.stringify(response, null, 2)
     });
     
     // Transform response to match expected format
