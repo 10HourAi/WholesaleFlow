@@ -319,8 +319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         minEquity,
         propertyType,
         distressedOnly,
-        motivationScore,
-        minBedrooms
+        motivationScore
       }, sessionState);
 
       if (result.property) {
@@ -406,7 +405,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const location = req.params.location || '17112';
       const { batchLeadsService } = await import("./batchleads");
-      const response = await batchLeadsService.searchProperties({ location }, 1, 5);
+      const response = await batchLeadsService.searchProperties({ location }, 1, 3);
 
       const convertedProperties = response.data.map(prop =>
         batchLeadsService.convertToProperty(prop, 'demo-user')
@@ -450,7 +449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if this is a property search request
       const isPropertySearch = message.toLowerCase().match(/(find|search|show|get)\s+(properties|distressed|leads)/i) ||
                                message.toLowerCase().includes('properties in') ||
-                               message.toLowerCase().match(/\d+\s+properties/i) ||
+                               message.match(/\d+\s+properties/i) ||
                                message.toLowerCase().match(/properties.*philadelphia|philadelphia.*properties/i);
 
       if (isNextPropertyRequest && sessionState) {
@@ -669,7 +668,11 @@ Try expanding your search area or checking a nearby city.`;
           qualityNote = `\n✅ Data Quality: Filtered out ${result.filtered} properties with incomplete data to show you only actionable leads.`;
         }
 
-        const aiResponse = `🎯 Found a quality property lead with complete contact information in ${location}:\n\n${propertyText}${qualityNote}\n\n💡 This is a REAL property from BatchData API with complete market data and owner contact details! ${result.hasMore ? "Say 'next' to see another property." : "This was the only quality property found."}`;
+        const aiResponse = `🎯 Found a quality property lead with complete contact information in ${location}:
+
+${propertyText}${qualityNote}
+
+💡 This is REAL property data from BatchData API with complete market analysis and owner contact details! ${result.hasMore ? "Say 'next' to see another property." : "This was the only quality property found."}`;
 
         res.json({
           response: aiResponse,

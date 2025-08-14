@@ -47,8 +47,44 @@ export default function ChatInterface() {
   const sendMessageMutation = useMutation({
     mutationFn: async (data: { content: string; role: string }) => {
       if (!currentConversation) throw new Error("No conversation selected");
-      const response = await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, data);
-      return response.json();
+      
+      // For lead-finder agent, use demo chat endpoint for real property data
+      if (selectedAgent === "lead-finder") {
+        const demoResponse = await fetch('/api/demo/chat', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            message: data.content,
+            agentType: 'lead_finder'
+          })
+        });
+        
+        if (!demoResponse.ok) {
+          throw new Error('Failed to get response from demo chat');
+        }
+        
+        const demoResult = await demoResponse.json();
+        
+        // Create both user and AI messages in the conversation
+        await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
+          content: data.content,
+          role: "user"
+        });
+        
+        await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
+          content: demoResult.response,
+          role: "assistant",
+          isAiGenerated: true
+        });
+        
+        return demoResult;
+      } else {
+        // Regular conversation flow for other agents
+        const response = await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, data);
+        return response.json();
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations", currentConversation, "messages"] });
@@ -94,17 +130,39 @@ export default function ChatInterface() {
   const currentAgent = agentTypes.find(agent => agent.id === selectedAgent);
 
   const renderPropertyCard = (content: string) => {
-    // Simple property card rendering for lead finder responses
-    if (content.includes("property") || content.includes("address")) {
+    // Enhanced property card rendering for lead finder responses
+    if (content.includes("PROPERTY DETAILS") || content.includes("FINANCIAL ANALYSIS") || content.includes("Found a") && content.includes("property")) {
       return (
-        <Card className="mt-3">
+        <Card className="mt-3 border-green-200 bg-green-50">
           <CardContent className="p-4">
-            <div className="space-y-2">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <h4 className="font-medium">Property Lead</h4>
+                <div className="flex items-center space-x-2">
+                  <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                  <h4 className="font-medium text-green-800">Live Property Data</h4>
+                </div>
+                <Badge variant="secondary" className="bg-green-100 text-green-700">BatchLeads API</Badge>
+              </div>
+              <div className="text-sm space-y-2">
+                {content.split('\n').map((line, index) => {
+                  if (line.includes('**') && line.includes('**')) {
+                    // Bold headers
+                    const text = line.replace(/\*\*/g, '');
+                    return <div key={index} className="font-semibold text-slate-800">{text}</div>;
+                  } else if (line.trim().startsWith('-') || line.trim().startsWith('•')) {
+                    // Bullet points
+                    return <div key={index} className="text-slate-600 ml-2">{line}</div>;
+                  } else if (line.trim()) {
+                    // Regular text
+                    return <div key={index} className="text-slate-700">{line}</div>;
+                  }
+                  return null;
+                })}
+              </div>
+              <div className="pt-2 border-t border-green-200">
+                <Button size="sm" variant="outline" className="mr-2">Save Lead</Button>
                 <Button size="sm" variant="outline">Analyze Deal</Button>
               </div>
-              <p className="text-sm text-slate-600">{content}</p>
             </div>
           </CardContent>
         </Card>
@@ -160,9 +218,27 @@ export default function ChatInterface() {
                   <div className="mt-3 flex flex-wrap gap-2">
                     {selectedAgent === "lead-finder" && (
                       <>
-                        <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Find distressed properties</Badge>
-                        <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Search by location</Badge>
-                        <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">High equity properties</Badge>
+                        <Badge 
+                          variant="secondary" 
+                          className="cursor-pointer hover:bg-slate-200"
+                          onClick={() => setInputMessage("Find distressed properties in Philadelphia, PA")}
+                        >
+                          Find distressed properties
+                        </Badge>
+                        <Badge 
+                          variant="secondary" 
+                          className="cursor-pointer hover:bg-slate-200"
+                          onClick={() => setInputMessage("Search properties in Dallas, TX")}
+                        >
+                          Search by location
+                        </Badge>
+                        <Badge 
+                          variant="secondary" 
+                          className="cursor-pointer hover:bg-slate-200"
+                          onClick={() => setInputMessage("Find high equity properties in 90210")}
+                        >
+                          High equity properties
+                        </Badge>
                       </>
                     )}
                     {selectedAgent === "deal-analyzer" && (
