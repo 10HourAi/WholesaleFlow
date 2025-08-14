@@ -79,7 +79,7 @@ Try searching in a different location or expanding your criteria.`;
           bedrooms: property.bedrooms
         });
 
-        response += `${index + 1}. **${property.address}, ${property.city}, ${property.state}**\n`;
+        response += `${index + 1}. ${property.address}, ${property.city}, ${property.state}\n`;
         response += `   - Price: $${property.arv ? parseInt(property.arv).toLocaleString() : 'N/A'}\n`;
         response += `   - ${property.bedrooms || 0}BR/${property.bathrooms || 0}BA, ${property.squareFeet?.toLocaleString() || 0} sq ft\n`;
         response += `   - Owner: ${property.ownerName || 'N/A'}\n`;
