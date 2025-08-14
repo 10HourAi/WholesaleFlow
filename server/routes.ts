@@ -463,15 +463,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       } else if (isPropertySearch) {
-        // Extract location from message - improved regex
-        const locationMatch = message.match(/in\s+([\w\s,]+?)(?:\s|$)/i) || message.match(/(\d{5})/);
-        const location = locationMatch ? locationMatch[1].trim() : '17112';
+        // Improved location extraction - handle multiple formats
+        let location = '17112'; // Default fallback
+        
+        // Try different location patterns
+        const cityStateMatch = message.match(/in\s+([\w\s]+),?\s*([A-Z]{2})/i);
+        const cityOnlyMatch = message.match(/in\s+([\w\s]+?)(?:\s|$)/i);
+        const zipMatch = message.match(/(\d{5})/);
+        
+        if (cityStateMatch) {
+          location = `${cityStateMatch[1].trim()}, ${cityStateMatch[2].trim()}`;
+        } else if (cityOnlyMatch && cityOnlyMatch[1].length > 2) {
+          const cityName = cityOnlyMatch[1].trim();
+          // Add PA as default state for common PA cities
+          if (['hershey', 'philadelphia', 'pittsburgh', 'allentown', 'erie'].includes(cityName.toLowerCase())) {
+            location = `${cityName}, PA`;
+          } else {
+            location = cityName;
+          }
+        } else if (zipMatch) {
+          location = zipMatch[1];
+        }
+        
+        console.log(`🔍 Searching for properties in: "${location}"`);
         
         const { batchLeadsService } = await import("./batchleads");
         
         // Determine if this is a distressed property search
         const searchCriteria: any = { location };
-        if (message.toLowerCase().includes('distressed')) {
+        if (message.toLowerCase().includes('distressed') || message.toLowerCase().includes('motivated')) {
           searchCriteria.distressedOnly = true;
         }
         
@@ -481,12 +501,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
           searchCriteria.minBedrooms = parseInt(bedroomMatch[1]);
         }
         
+        console.log(`📋 Search criteria:`, searchCriteria);
+        
         // Get first property only
         const result = await batchLeadsService.getNextValidProperty(searchCriteria);
         
+        console.log(`📊 Search result stats:`, {
+          totalChecked: result.totalChecked,
+          filtered: result.filtered,
+          hasProperty: !!result.property
+        });
+
         if (!result.property) {
+          const noResultsMessage = result.totalChecked === 0 
+            ? `I couldn't find any properties in "${location}". This might be due to:
+• Location not recognized by the API (try "Hershey, PA" or a ZIP code like "17033")
+• Network connection issues
+• API rate limits
+
+Try a different location format or a nearby ZIP code.`
+            : `Searched ${result.totalChecked} properties in "${location}", but ${result.filtered} were filtered out due to missing critical data (price, equity, contact info). This ensures you only get actionable wholesale leads with complete information.
+
+Try expanding your search area or checking a nearby city.`;
+          
           res.json({
-            response: `Searched ${result.filtered} properties in ${location}, but all were filtered out due to missing price or equity data. This ensures you only get actionable wholesale leads with complete valuation information.`
+            response: noResultsMessage
           });
           return;
         }

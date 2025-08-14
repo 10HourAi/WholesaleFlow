@@ -94,6 +94,8 @@ class BatchLeadsService {
   }
 
   async searchProperties(criteria: SearchCriteria, page = 1, perPage = 50): Promise<BatchLeadsResponse> {
+    console.log(`🔍 BatchLeads API search for: "${criteria.location}"`);
+    
     const requestBody: any = {
       searchCriteria: {
         query: criteria.location
@@ -151,6 +153,12 @@ class BatchLeadsService {
     }
 
     const response = await this.makeRequest('/api/v1/property/search', requestBody);
+    
+    console.log(`📊 BatchLeads API response:`, {
+      propertiesFound: response.results?.properties?.length || 0,
+      totalResults: response.meta?.totalResults || 0,
+      page: page
+    });
     
     // Transform response to match expected format
     return {
