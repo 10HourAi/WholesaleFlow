@@ -477,32 +477,57 @@ export default function ChatInterface() {
   };
 
   const renderPropertyCard = (content: string) => {
-    // Check if this is a property response with structured data
-    if (content.includes("PROPERTY DETAILS") || 
-        content.includes("FINANCIAL ANALYSIS") || 
-        content.includes("OWNER INFORMATION") ||
-        content.includes("PROPERTY OVERVIEW") ||
-        content.includes("CONTACT INFORMATION") ||
+    // Check if this is a property response with structured data from BatchData API
+    if (content.includes("**PROPERTY DETAILS:**") || 
+        content.includes("**FINANCIAL ANALYSIS:**") || 
+        content.includes("**OWNER INFORMATION:**") ||
+        content.includes("**PROPERTY OVERVIEW:**") ||
+        content.includes("**CONTACT INFORMATION:**") ||
+        content.includes("**MOTIVATION SCORE:**") ||
+        content.includes("BatchData API integration") ||
+        content.includes("🚨 FORECLOSURE DETAILS") ||
         (content.includes("Address:") && content.includes("ARV:")) ||
         (content.includes("**") && (content.includes("Property") || content.includes("Owner")))) {
       
-      // Parse sections for better display
-      const sections = content.split('**').filter(section => section.trim());
-      const parsedSections: any = {};
+      console.log('Property card detected. Content:', content);
       
-      sections.forEach(section => {
-        if (section.includes('PROPERTY DETAILS:') || section.includes('PROPERTY OVERVIEW:')) {
-          parsedSections.property = section.replace('PROPERTY DETAILS:', '').replace('PROPERTY OVERVIEW:', '').trim();
-        } else if (section.includes('FINANCIAL ANALYSIS:')) {
-          parsedSections.financial = section.replace('FINANCIAL ANALYSIS:', '').trim();
-        } else if (section.includes('OWNER INFORMATION:') || section.includes('CONTACT INFORMATION:')) {
-          parsedSections.owner = section.replace('OWNER INFORMATION:', '').replace('CONTACT INFORMATION:', '').trim();
-        } else if (section.includes('FORECLOSURE DETAILS')) {
-          parsedSections.foreclosure = section.replace('FORECLOSURE DETAILS - TIME SENSITIVE! 🚨', '').trim();
-        } else if (section.includes('MOTIVATION SCORE:')) {
-          parsedSections.motivation = section.trim();
+      // Parse sections using line-by-line approach for better accuracy
+      const lines = content.split('\n');
+      const parsedSections: any = {};
+      let currentSection = '';
+      
+      lines.forEach(line => {
+        const trimmedLine = line.trim();
+        
+        // Detect section headers
+        if (trimmedLine.includes('**PROPERTY DETAILS:**') || trimmedLine.includes('**PROPERTY OVERVIEW:**')) {
+          currentSection = 'property';
+          return;
+        } else if (trimmedLine.includes('**FINANCIAL ANALYSIS:**')) {
+          currentSection = 'financial';
+          return;
+        } else if (trimmedLine.includes('**OWNER INFORMATION:**') || trimmedLine.includes('**CONTACT INFORMATION:**')) {
+          currentSection = 'owner';
+          return;
+        } else if (trimmedLine.includes('**MOTIVATION SCORE:**')) {
+          currentSection = 'motivation';
+          return;
+        } else if (trimmedLine.includes('🚨 FORECLOSURE DETAILS')) {
+          currentSection = 'foreclosure';
+          return;
+        }
+        
+        // Add content to current section, skip empty lines and section headers
+        if (currentSection && trimmedLine && !trimmedLine.startsWith('**') && !trimmedLine.startsWith('🚨')) {
+          if (parsedSections[currentSection]) {
+            parsedSections[currentSection] += '\n' + trimmedLine;
+          } else {
+            parsedSections[currentSection] = trimmedLine;
+          }
         }
       });
+      
+      console.log('Parsed sections:', parsedSections);
 
       return (
         <Card className="mt-3 border-green-200 bg-green-50">
@@ -557,9 +582,12 @@ export default function ChatInterface() {
               )}
 
               {/* Fallback for unsectioned content */}
-              {!parsedSections.property && !parsedSections.financial && !parsedSections.owner && (
-                <div className="text-sm space-y-1 max-h-64 overflow-y-auto whitespace-pre-wrap">
-                  {content}
+              {!parsedSections.property && !parsedSections.financial && !parsedSections.owner && !parsedSections.motivation && (
+                <div className="bg-white p-3 rounded border">
+                  <h5 className="font-semibold text-gray-800 mb-2">📋 Property Information</h5>
+                  <div className="text-sm text-gray-700 max-h-64 overflow-y-auto whitespace-pre-wrap">
+                    {content}
+                  </div>
                 </div>
               )}
               
