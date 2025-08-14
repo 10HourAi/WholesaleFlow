@@ -441,37 +441,83 @@ export default function ChatInterface() {
   };
 
   const renderMultipleProperties = (content: string) => {
-    // Check if this is a multiple properties response
-    if (content.includes("Here are") && content.includes("properties") && content.includes("PROPERTY OVERVIEW")) {
-      return (
-        <div className="mt-3 space-y-3">
-          {content.split("PROPERTY OVERVIEW").slice(1).map((propertyText, index) => (
-            <Card key={index} className="border-green-200 bg-green-50">
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                      <h4 className="font-medium text-green-800">Property {index + 1}</h4>
+    // Check if this is a multiple properties response from the lead finder
+    if (content.includes("Great! I found") && content.includes("distressed properties") && content.includes("wholesale opportunities")) {
+      // Parse individual properties from the numbered list
+      const propertyMatches = content.match(/(\d+)\.\s+([^\n]+)\n((?:\s+- [^\n]+\n?)+)/g);
+      
+      if (propertyMatches && propertyMatches.length > 0) {
+        return (
+          <div className="mt-3 space-y-3">
+            {propertyMatches.map((propertyMatch, index) => {
+              // Extract property details from each match
+              const lines = propertyMatch.split('\n').filter(line => line.trim());
+              const addressLine = lines[0]?.replace(/^\d+\.\s*/, '').trim() || '';
+              
+              // Extract individual fields
+              const fields: { [key: string]: string } = {};
+              lines.slice(1).forEach(line => {
+                const cleanLine = line.replace(/^\s*-\s*/, '').trim();
+                if (cleanLine.includes(':')) {
+                  const [key, value] = cleanLine.split(':').map(s => s.trim());
+                  fields[key] = value;
+                }
+              });
+
+              return (
+                <Card key={index} className="border-green-200 bg-green-50">
+                  <CardContent className="p-4">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                          <h4 className="font-medium text-green-800">Property {index + 1}</h4>
+                        </div>
+                        <Badge variant="secondary" className="bg-green-100 text-green-700">BatchData API</Badge>
+                      </div>
+                      
+                      {/* Property Address */}
+                      <div className="bg-white p-3 rounded border">
+                        <h5 className="font-semibold text-gray-800 mb-2">🏠 Property Address</h5>
+                        <p className="text-sm text-gray-700 font-medium">{addressLine}</p>
+                      </div>
+
+                      {/* Property Details */}
+                      <div className="bg-white p-3 rounded border">
+                        <h5 className="font-semibold text-gray-800 mb-2">📋 Property Details</h5>
+                        <div className="space-y-1 text-sm text-gray-700">
+                          {fields['Price'] && <div><span className="font-medium">💵 Price:</span> {fields['Price']}</div>}
+                          {(fields['0BR/0BA, 0 sq ft'] || Object.keys(fields).find(k => k.includes('BR/'))) && (
+                            <div><span className="font-medium">🏠 Size:</span> {fields['0BR/0BA, 0 sq ft'] || Object.keys(fields).find(k => k.includes('BR/'))}</div>
+                          )}
+                          {fields['Lead Type'] && <div><span className="font-medium">🏷️ Lead Type:</span> {fields['Lead Type']}</div>}
+                          {fields['Motivation Score'] && <div><span className="font-medium">⭐ Motivation Score:</span> {fields['Motivation Score']}</div>}
+                          {fields['Equity'] && <div><span className="font-medium">📈 Equity:</span> {fields['Equity']}</div>}
+                        </div>
+                      </div>
+
+                      {/* Owner Information */}
+                      <div className="bg-white p-3 rounded border">
+                        <h5 className="font-semibold text-gray-800 mb-2">👤 Owner Information</h5>
+                        <div className="space-y-1 text-sm text-gray-700">
+                          {fields['Owner'] && <div><span className="font-medium">📝 Owner Name:</span> {fields['Owner']}</div>}
+                          {fields["Why it's good"] && <div><span className="font-medium">💡 Opportunity:</span> {fields["Why it's good"]}</div>}
+                        </div>
+                      </div>
+                      
+                      <div className="pt-2 border-t border-green-200 flex gap-2">
+                        <Button size="sm" variant="outline" className="flex-1">Save Lead</Button>
+                        <Button size="sm" variant="outline" className="flex-1">Analyze Deal</Button>
+                        <Button size="sm" variant="outline">Contact Owner</Button>
+                      </div>
                     </div>
-                    <Badge variant="secondary" className="bg-green-100 text-green-700">BatchData API</Badge>
-                  </div>
-                  
-                  <div className="text-sm space-y-1 max-h-64 overflow-y-auto whitespace-pre-wrap">
-                    **PROPERTY OVERVIEW:**{propertyText}
-                  </div>
-                  
-                  <div className="pt-2 border-t border-green-200 flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1">Save Lead</Button>
-                    <Button size="sm" variant="outline" className="flex-1">Analyze Deal</Button>
-                    <Button size="sm" variant="outline">Contact Owner</Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      );
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        );
+      }
     }
     return null;
   };
