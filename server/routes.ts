@@ -618,12 +618,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const searchCriteria: any = { location };
         
         // Check for seller type indicators
-        if (message.toLowerCase().includes('distressed') || message.toLowerCase().includes('pre-foreclosure') || message.toLowerCase().includes('vacant')) {
+        if (message.toLowerCase().includes('distressed') || 
+            message.toLowerCase().includes('pre-foreclosure') || 
+            message.toLowerCase().includes('vacant') ||
+            message.toLowerCase().includes('absentee') || 
+            message.toLowerCase().includes('out-of-state') || 
+            message.toLowerCase().includes('non-resident')) {
           searchCriteria.distressedOnly = true;
-        }
-        
-        if (message.toLowerCase().includes('absentee') || message.toLowerCase().includes('out-of-state') || message.toLowerCase().includes('non-resident')) {
-          searchCriteria.distressedOnly = true; // Absentee owners are part of distressed search
         }
         
         if (message.toLowerCase().includes('high equity') || message.toLowerCase().includes('70%')) {
@@ -708,12 +709,15 @@ Try expanding your search area or checking a nearby city.`;
         const openLien = rawProperty.openLien;
         const foreclosure = rawProperty.foreclosure;
 
+        // Convert property first to get structured data
+        const convertedPropertyForStorage = batchLeadsService.convertToProperty(result.property, 'demo-user');
+
         // Enhanced contact information display using raw property data
         let contactInfo = `**CONTACT INFORMATION:**\n`;
-        contactInfo += `👤 Owner: ${owner?.fullName || convertedProperty.ownerName}\n`;
+        contactInfo += `👤 Owner: ${owner?.fullName || convertedPropertyForStorage.ownerName}\n`;
 
         // Property vs Mailing Address Analysis
-        const propertyAddress = `${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}`;
+        const propertyAddress = `${convertedPropertyForStorage.address}, ${convertedPropertyForStorage.city}, ${convertedPropertyForStorage.state} ${convertedPropertyForStorage.zipCode}`;
         if (owner?.mailingAddress) {
           const mailingAddr = `${owner.mailingAddress.street}, ${owner.mailingAddress.city}, ${owner.mailingAddress.state} ${owner.mailingAddress.zip || ''}`;
           const isDifferent = mailingAddr.toLowerCase() !== propertyAddress.toLowerCase();
@@ -742,9 +746,9 @@ Try expanding your search area or checking a nearby city.`;
 
         // Format building details with better presentation
         const buildingDetails = [];
-        if (building?.bedrooms || convertedProperty.bedrooms) buildingDetails.push(`🛏️ ${building?.bedrooms || convertedProperty.bedrooms}BR`);
-        if (building?.bathrooms || convertedProperty.bathrooms) buildingDetails.push(`🚿 ${building?.bathrooms || convertedProperty.bathrooms}BA`);
-        if (building?.livingArea || convertedProperty.squareFeet) buildingDetails.push(`📐 ${(building?.livingArea || convertedProperty.squareFeet).toLocaleString()} sq ft`);
+        if (building?.bedrooms || convertedPropertyForStorage.bedrooms) buildingDetails.push(`🛏️ ${building?.bedrooms || convertedPropertyForStorage.bedrooms}BR`);
+        if (building?.bathrooms || convertedPropertyForStorage.bathrooms) buildingDetails.push(`🚿 ${building?.bathrooms || convertedPropertyForStorage.bathrooms}BA`);
+        if (building?.livingArea || convertedPropertyForStorage.squareFeet) buildingDetails.push(`📐 ${(building?.livingArea || convertedPropertyForStorage.squareFeet).toLocaleString()} sq ft`);
         if (building?.yearBuilt) buildingDetails.push(`🏗️ Built ${building.yearBuilt}`);
         const buildingInfo = buildingDetails.length > 0 ? buildingDetails.join(' • ') : '🏠 Single Family Property';
 
@@ -772,7 +776,7 @@ Try expanding your search area or checking a nearby city.`;
         if (quickLists.corporateOwned) motivationFactors.push('🏢 CORPORATE OWNED - Business decision');
         if (foreclosure) motivationFactors.push(`⚖️ FORECLOSURE AUCTION: ${foreclosure.auctionDate ? new Date(foreclosure.auctionDate).toLocaleDateString() : 'Scheduled'}`);
 
-        const propertyText = `**PROPERTY OVERVIEW:**\n🏠 ${convertedProperty.address}\n📍 ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}\n${buildingInfo}\n\n**FINANCIAL ANALYSIS:**\n💵 Est. Value: $${parseInt(convertedProperty.arv).toLocaleString()}\n🎯 Max Offer: $${parseInt(convertedProperty.maxOffer).toLocaleString()}\n📈 Equity: ${convertedProperty.equityPercentage}%\n⭐ Motivation: ${convertedProperty.motivationScore}/100\n🏷️ Lead Type: ${convertedProperty.leadType.replace('_', ' ').toUpperCase()}\n\n${contactInfo}`;
+        const propertyText = `**PROPERTY OVERVIEW:**\n🏠 ${convertedPropertyForStorage.address}\n📍 ${convertedPropertyForStorage.city}, ${convertedPropertyForStorage.state} ${convertedPropertyForStorage.zipCode}\n${buildingInfo}\n\n**FINANCIAL ANALYSIS:**\n💵 Est. Value: $${parseInt(convertedPropertyForStorage.arv).toLocaleString()}\n🎯 Max Offer: $${parseInt(convertedPropertyForStorage.maxOffer).toLocaleString()}\n📈 Equity: ${convertedPropertyForStorage.equityPercentage}%\n⭐ Motivation: ${convertedPropertyForStorage.motivationScore}/100\n🏷️ Lead Type: ${convertedPropertyForStorage.leadType.replace('_', ' ').toUpperCase()}\n\n${contactInfo}`;
 
         let qualityNote = "";
         if (result.filtered > 0) {
@@ -780,8 +784,6 @@ Try expanding your search area or checking a nearby city.`;
         }
 
         const aiResponse = `🎯 Found a quality wholesale opportunity in ${location}:\n\n${propertyText}${qualityNote}\n\n💡 This is LIVE property data from BatchData API with complete owner and financial details! ${result.hasMore ? "Say 'next' to see another property." : "This was the only quality property found."}`;
-
-        const convertedPropertyForStorage = batchLeadsService.convertToProperty(result.property, 'demo-user');
 
         res.json({
           response: aiResponse,
