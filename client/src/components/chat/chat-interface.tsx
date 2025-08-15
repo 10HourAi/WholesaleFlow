@@ -858,7 +858,7 @@ export default function ChatInterface() {
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {renderWizard()}
         
-        {messages.length === 0 && !currentConversation && (
+        {messages.length === 0 && !currentConversation && !showWizard && (
           <div className="flex items-start space-x-3">
             <Avatar>
               <AvatarImage />
