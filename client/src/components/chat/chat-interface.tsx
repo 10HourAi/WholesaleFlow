@@ -541,26 +541,60 @@ export default function ChatInterface() {
                       <div className="bg-white p-3 rounded border">
                         <h5 className="font-semibold text-gray-800 mb-2">👤 Owner Information</h5>
                         <div className="space-y-1 text-sm text-gray-700">
-                          {fields['Owner'] && <div><span className="font-medium">📝 Owner Name:</span> {fields['Owner']}</div>}
-                          {fields['Owner Phone'] && <div><span className="font-medium">📞 Phone:</span> {fields['Owner Phone']}</div>}
-                          {fields['Owner Email'] && <div><span className="font-medium">📧 Email:</span> {fields['Owner Email']}</div>}
-                          {fields['Mailing Address'] && <div><span className="font-medium">📬 Mailing Address:</span> {fields['Mailing Address']}</div>}
-                          {fields['Owner Status'] && <div><span className="font-medium">🏠 Status:</span> {fields['Owner Status']}</div>}
-                          {fields['Distance Factor'] && <div><span className="font-medium">📍 Distance:</span> {fields['Distance Factor']}</div>}
+                          {/* Owner Information - try multiple field variations */}
+                          {(fields['Owner'] || fields['Owner Name']) && <div><span className="font-medium">👤 Owner:</span> {fields['Owner'] || fields['Owner Name']}</div>}
                           
-                          {/* Contact Information */}
-                          {fields['Contact Phone'] && <div><span className="font-medium">☎️ Contact Phone:</span> {fields['Contact Phone']}</div>}
+                          {/* Contact Information - check for multiple field formats */}
+                          {(fields['Owner Phone'] || fields['Phone'] || fields['Contact Phone']) && (
+                            <div><span className="font-medium">📞 Phone:</span> {fields['Owner Phone'] || fields['Phone'] || fields['Contact Phone']}</div>
+                          )}
+                          {(fields['Owner Email'] || fields['Email'] || fields['Skip Trace Email']) && (
+                            <div><span className="font-medium">📧 Email:</span> {fields['Owner Email'] || fields['Email'] || fields['Skip Trace Email']}</div>
+                          )}
+                          
+                          {/* Mailing Address - check for multiple field formats */}
+                          {(fields['Mailing Address'] || fields['Owner Mailing Address'] || fields['Mailing']) && (
+                            <div><span className="font-medium">📬 Mailing Address:</span> {fields['Mailing Address'] || fields['Owner Mailing Address'] || fields['Mailing']}</div>
+                          )}
+                          
+                          {/* Owner Status and Location */}
+                          {(fields['Owner Status'] || fields['Status']) && <div><span className="font-medium">🏠 Status:</span> {fields['Owner Status'] || fields['Status']}</div>}
+                          {(fields['Distance Factor'] || fields['Distance']) && <div><span className="font-medium">📍 Distance:</span> {fields['Distance Factor'] || fields['Distance']}</div>}
+                          
+                          {/* Additional Contact Methods */}
                           {fields['Skip Trace Phone'] && <div><span className="font-medium">📱 Skip Trace Phone:</span> {fields['Skip Trace Phone']}</div>}
-                          {fields['Skip Trace Email'] && <div><span className="font-medium">✉️ Skip Trace Email:</span> {fields['Skip Trace Email']}</div>}
                           
                           {/* Portfolio Information */}
-                          {fields['Properties Count'] && <div><span className="font-medium">🏘️ Properties Owned:</span> {fields['Properties Count']}</div>}
-                          {fields['Portfolio Value'] && <div><span className="font-medium">💰 Portfolio Value:</span> {fields['Portfolio Value']}</div>}
-                          {fields['Average Purchase Price'] && <div><span className="font-medium">📊 Avg Purchase Price:</span> {fields['Average Purchase Price']}</div>}
-                          {fields['Total Equity'] && <div><span className="font-medium">📈 Total Equity:</span> {fields['Total Equity']}</div>}
-                          {fields['Investor Profile'] && <div><span className="font-medium">🎯 Investor Profile:</span> {fields['Investor Profile']}</div>}
+                          {(fields['Properties Count'] || fields['Properties Owned']) && (
+                            <div><span className="font-medium">🏘️ Properties Owned:</span> {fields['Properties Count'] || fields['Properties Owned']}</div>
+                          )}
+                          {(fields['Portfolio Value'] || fields['Total Portfolio Value']) && (
+                            <div><span className="font-medium">💰 Portfolio Value:</span> {fields['Portfolio Value'] || fields['Total Portfolio Value']}</div>
+                          )}
+                          {(fields['Average Purchase Price'] || fields['Avg Purchase Price']) && (
+                            <div><span className="font-medium">📊 Avg Purchase Price:</span> {fields['Average Purchase Price'] || fields['Avg Purchase Price']}</div>
+                          )}
+                          {(fields['Total Equity'] || fields['Portfolio Equity']) && (
+                            <div><span className="font-medium">📈 Total Equity:</span> {fields['Total Equity'] || fields['Portfolio Equity']}</div>
+                          )}
+                          {(fields['Investor Profile'] || fields['Profile']) && (
+                            <div><span className="font-medium">🎯 Investor Profile:</span> {fields['Investor Profile'] || fields['Profile']}</div>
+                          )}
                           
-                          {fields["Why it's good"] && <div><span className="font-medium">💡 Opportunity:</span> {fields["Why it's good"]}</div>}
+                          {/* Opportunity Description */}
+                          {(fields["Why it's good"] || fields['Opportunity'] || fields['Description']) && (
+                            <div><span className="font-medium">💡 Opportunity:</span> {fields["Why it's good"] || fields['Opportunity'] || fields['Description']}</div>
+                          )}
+                          
+                          {/* Debug: Show all available fields if none match */}
+                          {Object.keys(fields).length > 0 && !fields['Owner'] && !fields['Owner Name'] && (
+                            <div className="mt-2 p-2 bg-gray-100 rounded text-xs">
+                              <div className="font-medium">Available fields:</div>
+                              {Object.entries(fields).map(([key, value]) => (
+                                <div key={key}>{key}: {value}</div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                       
@@ -749,24 +783,32 @@ export default function ChatInterface() {
                   onClick={() => {
                     // Extract property data from parsed sections
                     const extractValue = (text: string, label: string) => {
-                      const match = text?.match(new RegExp(`${label}:?\\s*([^\\n]+)`, 'i'));
+                      if (!text) return '';
+                      const match = text.match(new RegExp(`${label}:?\\s*([^\\n]+)`, 'i'));
                       return match ? match[1].trim() : '';
                     };
 
+                    const extractMultipleValues = (text: string, labels: string[]) => {
+                      for (const label of labels) {
+                        const value = extractValue(text, label);
+                        if (value) return value;
+                      }
+                      return '';
+                    };
+
                     const propertyData = {
-                      address: extractValue(parsedSections.property, 'Address') || extractValue(content, 'Address'),
-                      city: extractValue(parsedSections.property, 'City') || extractValue(content, 'City'),
-                      state: extractValue(parsedSections.property, 'State') || extractValue(content, 'State'),
-                      zipCode: extractValue(parsedSections.property, 'ZIP') || extractValue(content, 'ZIP'),
-                      arv: extractValue(parsedSections.financial, 'Est\\. Value|Estimated Value')?.replace(/[$,]/g, '') || 
-                           extractValue(parsedSections.financial, 'ARV')?.replace(/[$,]/g, '') || '0',
-                      maxOffer: extractValue(parsedSections.financial, 'Max Offer')?.replace(/[$,]/g, '') || '0',
-                      ownerName: extractValue(parsedSections.owner || parsedSections.contact, 'Owner|Name') || '',
-                      ownerPhone: extractValue(parsedSections.contact, 'Phone') || '',
-                      ownerEmail: extractValue(parsedSections.contact, 'Email') || '',
-                      ownerMailingAddress: extractValue(parsedSections.contact, 'Mailing') || '',
-                      motivationScore: extractValue(parsedSections.motivation, 'Score|Motivation')?.replace(/\/100/, '') || '50',
-                      equityPercentage: extractValue(parsedSections.financial, 'Equity')?.replace(/%/, '') || '0',
+                      address: extractMultipleValues(parsedSections.property || content, ['Address', '🏠', 'Property Address']),
+                      city: extractMultipleValues(parsedSections.property || content, ['City']),
+                      state: extractMultipleValues(parsedSections.property || content, ['State']),
+                      zipCode: extractMultipleValues(parsedSections.property || content, ['ZIP', 'Zip Code']),
+                      arv: (extractMultipleValues(parsedSections.financial || content, ['Est\\. Value', 'Estimated Value', 'ARV', 'Value']) || '0').replace(/[$,]/g, ''),
+                      maxOffer: (extractMultipleValues(parsedSections.financial || content, ['Max Offer', 'Offer']) || '0').replace(/[$,]/g, ''),
+                      ownerName: extractMultipleValues(parsedSections.owner || parsedSections.contact || content, ['Owner', 'Full Name', 'Name', '👤']),
+                      ownerPhone: extractMultipleValues(parsedSections.contact || content, ['Phone', 'Contact Phone', 'Owner Phone', '📞', '☎️']),
+                      ownerEmail: extractMultipleValues(parsedSections.contact || content, ['Email', 'Owner Email', 'Contact Email', '📧', '✉️']),
+                      ownerMailingAddress: extractMultipleValues(parsedSections.contact || parsedSections.owner || content, ['Mailing Address', 'Mailing', 'Owner Address', '📬']),
+                      motivationScore: (extractMultipleValues(parsedSections.motivation || content, ['Score', 'Motivation', '⭐']) || '50').replace(/\/100/, ''),
+                      equityPercentage: (extractMultipleValues(parsedSections.financial || content, ['Equity', 'Equity Percentage', '📈']) || '0').replace(/%/, ''),
                       leadType: content.toLowerCase().includes('foreclosure') ? 'preforeclosure' : 'standard'
                     };
 
