@@ -120,6 +120,17 @@ export default function ChatInterface() {
     },
   });
 
+  const savePropertyMutation = useMutation({
+    mutationFn: async (propertyData: any) => {
+      const response = await apiRequest("POST", "/api/properties", propertyData);
+      return response.json();
+    },
+    onSuccess: (savedProperty) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      console.log("Property saved successfully:", savedProperty);
+    },
+  });
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -253,6 +264,36 @@ export default function ChatInterface() {
         role: "user",
       });
     }
+  };
+
+  const handleSaveLead = (propertyData: any) => {
+    // Convert property data to the format expected by the backend
+    const formattedProperty = {
+      address: propertyData.address || propertyData.Address || '',
+      city: propertyData.city || propertyData.City || '',
+      state: propertyData.state || propertyData.State || '',
+      zipCode: propertyData.zipCode || propertyData.ZipCode || '',
+      bedrooms: propertyData.bedrooms || 0,
+      bathrooms: propertyData.bathrooms || 0,
+      squareFeet: propertyData.squareFeet || 0,
+      arv: propertyData.arv || propertyData.ARV || '0',
+      maxOffer: propertyData.maxOffer || '0',
+      status: 'new',
+      leadType: propertyData.leadType || 'standard',
+      propertyType: propertyData.propertyType || 'single_family',
+      yearBuilt: propertyData.yearBuilt || null,
+      lastSalePrice: propertyData.lastSalePrice || null,
+      lastSaleDate: propertyData.lastSaleDate || null,
+      ownerName: propertyData.ownerName || '',
+      ownerPhone: propertyData.ownerPhone || '',
+      ownerEmail: propertyData.ownerEmail || '',
+      ownerMailingAddress: propertyData.ownerMailingAddress || '',
+      equityPercentage: propertyData.equityPercentage || 0,
+      motivationScore: propertyData.motivationScore || 0,
+      distressedIndicator: propertyData.distressedIndicator || null
+    };
+
+    savePropertyMutation.mutate(formattedProperty);
   };
 
   const renderWizard = () => {
@@ -524,7 +565,30 @@ export default function ChatInterface() {
                       </div>
                       
                       <div className="pt-2 border-t border-green-200 flex gap-2">
-                        <Button size="sm" variant="outline" className="flex-1">Save Lead</Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          className="flex-1"
+                          onClick={() => handleSaveLead({
+                            address: addressLine,
+                            city: 'Orlando', // Extract from addressLine if needed
+                            state: 'FL',
+                            zipCode: '',
+                            arv: fields['Price']?.replace(/[$,]/g, '') || '0',
+                            maxOffer: fields['Price'] ? Math.floor(parseInt(fields['Price'].replace(/[$,]/g, '')) * 0.7).toString() : '0',
+                            ownerName: fields['Owner'] || '',
+                            ownerPhone: fields['Owner Phone'] || fields['Contact Phone'] || fields['Skip Trace Phone'] || '',
+                            ownerEmail: fields['Owner Email'] || fields['Skip Trace Email'] || '',
+                            ownerMailingAddress: fields['Mailing Address'] || '',
+                            leadType: fields['Lead Type']?.toLowerCase().replace(' ', '_') || 'standard',
+                            motivationScore: fields['Motivation Score']?.replace('/100', '') || '0',
+                            equityPercentage: fields['Equity']?.replace('%', '') || '0',
+                            distressedIndicator: fields['Lead Type']?.toLowerCase()
+                          })}
+                          disabled={savePropertyMutation.isPending}
+                        >
+                          {savePropertyMutation.isPending ? 'Saving...' : 'Save Lead'}
+                        </Button>
                         <Button size="sm" variant="outline" className="flex-1">Analyze Deal</Button>
                         <Button size="sm" variant="outline">Contact Owner</Button>
                       </div>
@@ -678,7 +742,40 @@ export default function ChatInterface() {
               )}
               
               <div className="pt-2 border-t border-green-200 flex gap-2">
-                <Button size="sm" variant="outline" className="flex-1">Save Lead</Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    // Extract property data from parsed sections
+                    const extractValue = (text: string, label: string) => {
+                      const match = text?.match(new RegExp(`${label}:?\\s*([^\\n]+)`, 'i'));
+                      return match ? match[1].trim() : '';
+                    };
+
+                    const propertyData = {
+                      address: extractValue(parsedSections.property, 'Address') || extractValue(content, 'Address'),
+                      city: extractValue(parsedSections.property, 'City') || extractValue(content, 'City'),
+                      state: extractValue(parsedSections.property, 'State') || extractValue(content, 'State'),
+                      zipCode: extractValue(parsedSections.property, 'ZIP') || extractValue(content, 'ZIP'),
+                      arv: extractValue(parsedSections.financial, 'Est\\. Value|Estimated Value')?.replace(/[$,]/g, '') || 
+                           extractValue(parsedSections.financial, 'ARV')?.replace(/[$,]/g, '') || '0',
+                      maxOffer: extractValue(parsedSections.financial, 'Max Offer')?.replace(/[$,]/g, '') || '0',
+                      ownerName: extractValue(parsedSections.owner || parsedSections.contact, 'Owner|Name') || '',
+                      ownerPhone: extractValue(parsedSections.contact, 'Phone') || '',
+                      ownerEmail: extractValue(parsedSections.contact, 'Email') || '',
+                      ownerMailingAddress: extractValue(parsedSections.contact, 'Mailing') || '',
+                      motivationScore: extractValue(parsedSections.motivation, 'Score|Motivation')?.replace(/\/100/, '') || '50',
+                      equityPercentage: extractValue(parsedSections.financial, 'Equity')?.replace(/%/, '') || '0',
+                      leadType: content.toLowerCase().includes('foreclosure') ? 'preforeclosure' : 'standard'
+                    };
+
+                    handleSaveLead(propertyData);
+                  }}
+                  disabled={savePropertyMutation.isPending}
+                >
+                  {savePropertyMutation.isPending ? 'Saving...' : 'Save Lead'}
+                </Button>
                 <Button size="sm" variant="outline" className="flex-1">Analyze Deal</Button>
                 <Button size="sm" variant="outline">Contact Owner</Button>
               </div>
