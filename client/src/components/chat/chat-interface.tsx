@@ -40,6 +40,7 @@ export default function ChatInterface() {
     sellerType: "",
     propertyType: ""
   });
+  const [wizardProcessing, setWizardProcessing] = useState(false);
   const [sessionState, setSessionState] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
@@ -114,9 +115,15 @@ export default function ChatInterface() {
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations", currentConversation, "messages"] });
+      // Clear processing state
+      setWizardProcessing(false);
       // Don't clear input here - it's handled in handleSendMessage
       // Reset conversation creation state
       createConversationMutation.reset();
+    },
+    onError: () => {
+      // Clear processing state on error too
+      setWizardProcessing(false);
     },
   });
 
@@ -247,6 +254,9 @@ export default function ChatInterface() {
       searchQuery += ` under $${wizardData.maxPrice.toLocaleString()}`;
     }
 
+    // Show processing state
+    setWizardProcessing(true);
+    
     // Set the message and close wizard
     setInputMessage(searchQuery);
     setShowWizard(false);
@@ -858,7 +868,28 @@ export default function ChatInterface() {
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {renderWizard()}
         
-        {messages.length === 0 && !currentConversation && !showWizard && (
+        {/* Processing indicator */}
+        {wizardProcessing && (
+          <Card className="border-2 border-blue-200 bg-blue-50">
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="flex space-x-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
+                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-blue-800">🔍 Searching Properties...</h3>
+                  <p className="text-sm text-blue-600 mt-1">
+                    Analyzing {wizardData.city}, {wizardData.state} with BatchData API for distressed properties and motivated sellers
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
+        {messages.length === 0 && !currentConversation && !showWizard && !wizardProcessing && (
           <div className="flex items-start space-x-3">
             <Avatar>
               <AvatarImage />
