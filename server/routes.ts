@@ -76,6 +76,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contacts = await storage.getContacts(userId);
       res.json(contacts);
     } catch (error: any) {
+      console.error("Error fetching contacts:", error);
       res.status(500).json({ message: error.message });
     }
   });

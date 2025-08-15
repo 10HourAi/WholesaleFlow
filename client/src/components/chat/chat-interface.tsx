@@ -68,7 +68,7 @@ export default function ChatInterface() {
   const sendMessageMutation = useMutation({
     mutationFn: async (data: { content: string; role: string }) => {
       if (!currentConversation) throw new Error("No conversation selected");
-      
+
       // For lead-finder agent, use demo chat endpoint for real property data
       if (selectedAgent === "lead-finder") {
         const demoResponse = await fetch('/api/demo/chat', {
@@ -82,30 +82,30 @@ export default function ChatInterface() {
             sessionState: sessionState
           })
         });
-        
+
         if (!demoResponse.ok) {
           throw new Error('Failed to get response from demo chat');
         }
-        
+
         const demoResult = await demoResponse.json();
-        
+
         // Update session state if provided
         if (demoResult.sessionState) {
           setSessionState(demoResult.sessionState);
         }
-        
+
         // Create both user and AI messages in the conversation
         await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
           content: data.content,
           role: "user"
         });
-        
+
         await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
           content: demoResult.response,
           role: "assistant",
           isAiGenerated: true
         });
-        
+
         return demoResult;
       } else {
         // Regular conversation flow for other agents
@@ -235,12 +235,12 @@ export default function ChatInterface() {
     // Build search query from wizard data
     const location = `${wizardData.city}, ${wizardData.state}`;
     let searchQuery = `Find properties in ${location}`;
-    
+
     if (wizardData.sellerType !== "any") {
       const sellerTypeLabel = sellerTypes.find(s => s.value === wizardData.sellerType)?.label;
       searchQuery += ` with ${sellerTypeLabel?.toLowerCase()}`;
     }
-    
+
     if (wizardData.propertyType !== "any") {
       const propertyTypeLabel = propertyTypes.find(p => p.value === wizardData.propertyType)?.label;
       searchQuery += ` focusing on ${propertyTypeLabel?.toLowerCase()}`;
@@ -256,7 +256,7 @@ export default function ChatInterface() {
 
     // Show processing state
     setWizardProcessing(true);
-    
+
     // Set the message and close wizard
     setInputMessage(searchQuery);
     setShowWizard(false);
@@ -276,34 +276,44 @@ export default function ChatInterface() {
     }
   };
 
-  const handleSaveLead = (propertyData: any) => {
-    // Convert property data to the format expected by the backend
-    const formattedProperty = {
-      address: propertyData.address || propertyData.Address || '',
-      city: propertyData.city || propertyData.City || '',
-      state: propertyData.state || propertyData.State || '',
-      zipCode: propertyData.zipCode || propertyData.ZipCode || '',
-      bedrooms: propertyData.bedrooms || 0,
-      bathrooms: propertyData.bathrooms || 0,
-      squareFeet: propertyData.squareFeet || 0,
-      arv: propertyData.arv || propertyData.ARV || '0',
-      maxOffer: propertyData.maxOffer || '0',
-      status: 'new',
-      leadType: propertyData.leadType || 'standard',
-      propertyType: propertyData.propertyType || 'single_family',
-      yearBuilt: propertyData.yearBuilt || null,
-      lastSalePrice: propertyData.lastSalePrice || null,
-      lastSaleDate: propertyData.lastSaleDate || null,
-      ownerName: propertyData.ownerName || '',
-      ownerPhone: propertyData.ownerPhone || '',
-      ownerEmail: propertyData.ownerEmail || '',
-      ownerMailingAddress: propertyData.ownerMailingAddress || '',
-      equityPercentage: propertyData.equityPercentage || 0,
-      motivationScore: propertyData.motivationScore || 0,
-      distressedIndicator: propertyData.distressedIndicator || null
-    };
+  const handleSaveLead = async (propertyData: any) => {
+    try {
+      // Validate required fields
+      if (!propertyData.address || !propertyData.city || !propertyData.state) {
+        throw new Error("Missing required property information");
+      }
 
-    savePropertyMutation.mutate(formattedProperty);
+      // Clean and validate the data
+      const cleanPropertyData = {
+        address: propertyData.address,
+        city: propertyData.city,
+        state: propertyData.state,
+        zipCode: propertyData.zipCode || '',
+        bedrooms: propertyData.bedrooms ? parseInt(propertyData.bedrooms.toString()) : 0,
+        bathrooms: propertyData.bathrooms ? parseInt(propertyData.bathrooms.toString()) : 0,
+        squareFeet: propertyData.squareFeet ? parseInt(propertyData.squareFeet.toString()) : 0,
+        arv: propertyData.arv ? propertyData.arv.toString() : '0',
+        maxOffer: propertyData.maxOffer ? propertyData.maxOffer.toString() : '0',
+        status: 'new',
+        leadType: propertyData.leadType || 'standard',
+        propertyType: 'single_family',
+        ownerName: propertyData.ownerName || '',
+        ownerPhone: propertyData.ownerPhone || '',
+        ownerEmail: propertyData.ownerEmail || '',
+        equityPercentage: propertyData.equityPercentage ? parseInt(propertyData.equityPercentage.toString()) : 0,
+        motivationScore: propertyData.motivationScore ? parseInt(propertyData.motivationScore.toString()) : 0,
+        distressedIndicator: propertyData.distressedIndicator || ''
+      };
+
+      await savePropertyMutation.mutateAsync(cleanPropertyData);
+
+      // Invalidate the properties query to refresh the CRM data
+      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+
+    } catch (error) {
+      console.error('Error saving lead:', error);
+      // You might want to show a toast error message here
+    }
   };
 
   const renderWizard = () => {
@@ -426,7 +436,7 @@ export default function ChatInterface() {
                   </Select>
                 </div>
               </div>
-              
+
               <div className="mt-6 p-4 bg-gray-50 rounded-lg">
                 <h4 className="font-medium mb-2">Search Summary:</h4>
                 <p className="text-sm text-gray-700">
@@ -450,7 +460,7 @@ export default function ChatInterface() {
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
-            
+
             <div className="flex gap-2">
               <Button 
                 variant="ghost" 
@@ -461,7 +471,7 @@ export default function ChatInterface() {
               >
                 Cancel
               </Button>
-              
+
               {wizardStep < 4 ? (
                 <Button 
                   onClick={handleWizardNext}
@@ -496,7 +506,7 @@ export default function ChatInterface() {
     if (content.includes("Great! I found") && content.includes("distressed properties") && content.includes("wholesale opportunities")) {
       // Parse individual properties from the numbered list
       const propertyMatches = content.match(/(\d+)\.\s+([^\n]+)\n((?:\s+- [^\n]+\n?)+)/g);
-      
+
       if (propertyMatches && propertyMatches.length > 0) {
         return (
           <div className="mt-3 space-y-3">
@@ -504,7 +514,7 @@ export default function ChatInterface() {
               // Extract property details from each match
               const lines = propertyMatch.split('\n').filter(line => line.trim());
               const addressLine = lines[0]?.replace(/^\d+\.\s*/, '').trim() || '';
-              
+
               // Extract individual fields
               const fields: { [key: string]: string } = {};
               lines.slice(1).forEach(line => {
@@ -526,7 +536,7 @@ export default function ChatInterface() {
                         </div>
                         <Badge variant="secondary" className="bg-green-100 text-green-700">BatchData API</Badge>
                       </div>
-                      
+
                       {/* Property Address */}
                       <div className="bg-white p-3 rounded border">
                         <h5 className="font-semibold text-gray-800 mb-2">🏠 Property Address</h5>
@@ -553,7 +563,7 @@ export default function ChatInterface() {
                         <div className="space-y-1 text-sm text-gray-700">
                           {/* Owner Information - try multiple field variations */}
                           {(fields['Owner'] || fields['Owner Name']) && <div><span className="font-medium">👤 Owner:</span> {fields['Owner'] || fields['Owner Name']}</div>}
-                          
+
                           {/* Contact Information - check for multiple field formats */}
                           {(fields['Owner Phone'] || fields['Phone'] || fields['Contact Phone']) && (
                             <div><span className="font-medium">📞 Phone:</span> {fields['Owner Phone'] || fields['Phone'] || fields['Contact Phone']}</div>
@@ -561,19 +571,19 @@ export default function ChatInterface() {
                           {(fields['Owner Email'] || fields['Email'] || fields['Skip Trace Email']) && (
                             <div><span className="font-medium">📧 Email:</span> {fields['Owner Email'] || fields['Email'] || fields['Skip Trace Email']}</div>
                           )}
-                          
+
                           {/* Mailing Address - check for multiple field formats */}
                           {(fields['Mailing Address'] || fields['Owner Mailing Address'] || fields['Mailing']) && (
                             <div><span className="font-medium">📬 Mailing Address:</span> {fields['Mailing Address'] || fields['Owner Mailing Address'] || fields['Mailing']}</div>
                           )}
-                          
+
                           {/* Owner Status and Location */}
                           {(fields['Owner Status'] || fields['Status']) && <div><span className="font-medium">🏠 Status:</span> {fields['Owner Status'] || fields['Status']}</div>}
                           {(fields['Distance Factor'] || fields['Distance']) && <div><span className="font-medium">📍 Distance:</span> {fields['Distance Factor'] || fields['Distance']}</div>}
-                          
+
                           {/* Additional Contact Methods */}
                           {fields['Skip Trace Phone'] && <div><span className="font-medium">📱 Skip Trace Phone:</span> {fields['Skip Trace Phone']}</div>}
-                          
+
                           {/* Portfolio Information */}
                           {(fields['Properties Count'] || fields['Properties Owned']) && (
                             <div><span className="font-medium">🏘️ Properties Owned:</span> {fields['Properties Count'] || fields['Properties Owned']}</div>
@@ -590,12 +600,12 @@ export default function ChatInterface() {
                           {(fields['Investor Profile'] || fields['Profile']) && (
                             <div><span className="font-medium">🎯 Investor Profile:</span> {fields['Investor Profile'] || fields['Profile']}</div>
                           )}
-                          
+
                           {/* Opportunity Description */}
                           {(fields["Why it's good"] || fields['Opportunity'] || fields['Description']) && (
                             <div><span className="font-medium">💡 Opportunity:</span> {fields["Why it's good"] || fields['Opportunity'] || fields['Description']}</div>
                           )}
-                          
+
                           {/* Debug: Show all available fields if none match */}
                           {Object.keys(fields).length > 0 && !fields['Owner'] && !fields['Owner Name'] && (
                             <div className="mt-2 p-2 bg-gray-100 rounded text-xs">
@@ -607,7 +617,7 @@ export default function ChatInterface() {
                           )}
                         </div>
                       </div>
-                      
+
                       <div className="pt-2 border-t border-green-200 flex gap-2">
                         <Button 
                           size="sm" 
@@ -660,17 +670,17 @@ export default function ChatInterface() {
         content.includes("🚨 FORECLOSURE DETAILS") ||
         (content.includes("Address:") && content.includes("ARV:")) ||
         (content.includes("**") && (content.includes("Property") || content.includes("Owner")))) {
-      
+
       console.log('Property card detected. Content:', content);
-      
+
       // Parse sections using line-by-line approach for better accuracy
       const lines = content.split('\n');
       const parsedSections: any = {};
       let currentSection = '';
-      
+
       lines.forEach(line => {
         const trimmedLine = line.trim();
-        
+
         // Detect section headers
         if (trimmedLine.includes('**PROPERTY DETAILS:**') || trimmedLine.includes('**PROPERTY OVERVIEW:**')) {
           currentSection = 'property';
@@ -694,7 +704,7 @@ export default function ChatInterface() {
           currentSection = 'foreclosure';
           return;
         }
-        
+
         // Add content to current section, skip empty lines and section headers
         if (currentSection && trimmedLine && !trimmedLine.startsWith('**') && !trimmedLine.startsWith('🚨')) {
           if (parsedSections[currentSection]) {
@@ -704,7 +714,7 @@ export default function ChatInterface() {
           }
         }
       });
-      
+
       console.log('Parsed sections:', parsedSections);
 
       return (
@@ -784,7 +794,7 @@ export default function ChatInterface() {
                   </div>
                 </div>
               )}
-              
+
               <div className="pt-2 border-t border-green-200 flex gap-2">
                 <Button 
                   size="sm" 
@@ -811,7 +821,7 @@ export default function ChatInterface() {
                       city: extractMultipleValues(parsedSections.property || content, ['City']),
                       state: extractMultipleValues(parsedSections.property || content, ['State']),
                       zipCode: extractMultipleValues(parsedSections.property || content, ['ZIP', 'Zip Code']),
-                      arv: (extractMultipleValues(parsedSections.financial || content, ['Est\\. Value', 'Estimated Value', 'ARV', 'Value']) || '0').replace(/[$,]/g, ''),
+                      arv: (extractMultipleValues(parsedSections.financial || content, ['Est. Value', 'Estimated Value', 'ARV', 'Value']) || '0').replace(/[$,]/g, ''),
                       maxOffer: (extractMultipleValues(parsedSections.financial || content, ['Max Offer', 'Offer']) || '0').replace(/[$,]/g, ''),
                       ownerName: extractMultipleValues(parsedSections.owner || parsedSections.contact || content, ['Owner', 'Full Name', 'Name', '👤']),
                       ownerPhone: extractMultipleValues(parsedSections.contact || content, ['Phone', 'Contact Phone', 'Owner Phone', '📞', '☎️']),
@@ -867,7 +877,7 @@ export default function ChatInterface() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {renderWizard()}
-        
+
         {/* Processing indicator */}
         {wizardProcessing && (
           <Card className="border-2 border-blue-200 bg-blue-50">
@@ -888,7 +898,7 @@ export default function ChatInterface() {
             </CardContent>
           </Card>
         )}
-        
+
         {messages.length === 0 && !currentConversation && !showWizard && !wizardProcessing && (
           <div className="flex items-start space-x-3">
             <Avatar>

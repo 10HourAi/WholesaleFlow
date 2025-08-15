@@ -15,10 +15,12 @@ export default function LeadsTable() {
 
   const { data: properties = [] } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
+    refetchInterval: 5000, // Refetch every 5 seconds to keep data fresh
   });
 
   const { data: contacts = [] } = useQuery<Contact[]>({
     queryKey: ["/api/contacts"],
+    enabled: properties.length > 0, // Only fetch contacts if we have properties
   });
 
   const filteredProperties = properties.filter(property => {

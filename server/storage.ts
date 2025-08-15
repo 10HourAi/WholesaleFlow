@@ -130,11 +130,20 @@ export class DatabaseStorage implements IStorage {
 
   // Contacts
   async getContacts(userId: string): Promise<Contact[]> {
-    return await db
-      .select()
+    const results = await db
+      .select({
+        id: contacts.id,
+        propertyId: contacts.propertyId,
+        name: contacts.name,
+        phone: contacts.phone,
+        email: contacts.email,
+        createdAt: contacts.createdAt,
+      })
       .from(contacts)
       .leftJoin(properties, eq(contacts.propertyId, properties.id))
       .where(eq(properties.userId, userId));
+    
+    return results;
   }
 
   async getContact(id: string): Promise<Contact | undefined> {
