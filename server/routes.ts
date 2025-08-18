@@ -448,18 +448,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { message, agentType = 'lead_finder', sessionState } = req.body;
 
-      // Check if this is a "next property" request or "find more" request
-      const isNextPropertyRequest = message.toLowerCase().match(/(next|another|more|show me another)/i) ||
-                                   message.toLowerCase().includes('find 5 more') ||
-                                   message.toLowerCase().includes('find more');
+      // Check if this is a "next property" request
+      const isNextPropertyRequest = message.toLowerCase().match(/(next|another|more|show me another)/i);
 
       // Check if this is a property search request
       const isPropertySearch = message.toLowerCase().match(/(find|search|show|get)\s+(properties|distressed|leads)/i) ||
                                message.toLowerCase().includes('properties in') ||
                                message.match(/\d+\s+properties/i) ||
-                               message.toLowerCase().match(/properties.*philadelphia|philadelphia.*properties/i) ||
-                               message.toLowerCase().includes('find 5 more') ||
-                               message.toLowerCase().includes('find more');
+                               message.toLowerCase().match(/properties.*philadelphia|philadelphia.*properties/i);
 
       if (isNextPropertyRequest && sessionState && sessionState.searchCriteria) {
         // User wants the next property in the current search
@@ -672,15 +668,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const excludePropertyIds = sessionState?.excludePropertyIds || [];
         console.log(`🚫 Excluding ${excludePropertyIds.length} already shown properties`);
 
-        // Get properties, filtering out already shown ones
-        let result;
-        if (message.toLowerCase().includes('find 5 more') || message.toLowerCase().includes('find more')) {
-          // For "find more" requests, get multiple properties
-          result = await batchLeadsService.searchValidProperties(searchCriteria, 5, excludePropertyIds);
-        } else {
-          // For single property searches
-          result = await batchLeadsService.getNextValidProperty(searchCriteria, { excludePropertyIds });
-        }
+        // Get single property for searches
+        const result = await batchLeadsService.getNextValidProperty(searchCriteria, { excludePropertyIds });
 
         console.log(`📊 Search result stats:`, {
           totalChecked: result.totalChecked || 0,
@@ -702,63 +691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        // Handle multiple properties response (for "find more" requests)
-        if (result.data && Array.isArray(result.data)) {
-          console.log(`📊 Search results: ${result.data.length} raw properties, ${result.filtered} filtered`);
-          
-          if (result.data.length === 0) {
-            const noResultsMessage = result.totalChecked === 0
-              ? `I couldn't find any more properties in "${location}". This might be due to:
-• No additional properties matching your criteria
-• All remaining properties already shown
-• API limitations
-
-Try expanding your search area or adjusting your criteria.`
-              : `Searched ${result.totalChecked} additional properties in "${location}", but ${result.filtered} were filtered out due to missing critical data or already being shown. This ensures you only get new, actionable wholesale leads.
-
-${excludePropertyIds.length > 0 ? `Already excluded ${excludePropertyIds.length} previously shown properties.` : ''}`;
-
-            res.json({
-              response: noResultsMessage
-            });
-            return;
-          }
-
-          // Format multiple properties response using the already converted data
-          let propertiesText = `Great! I found ${result.data.length} additional properties matching your criteria:\n\n`;
-
-          result.data.forEach((convertedProperty, index) => {
-            console.log(`🔄 Converting property ${index + 1}:`, {
-              address: convertedProperty.address,
-              city: convertedProperty.city,
-              estimatedValue: convertedProperty.arv,
-              owner: convertedProperty.ownerName
-            });
-
-            propertiesText += `${index + 1}. **${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state}**\n`;
-            propertiesText += `   - Price: $${parseInt(convertedProperty.arv).toLocaleString()}\n`;
-            propertiesText += `   - ${convertedProperty.bedrooms || 0}BR/${convertedProperty.bathrooms || 0}BA, ${(convertedProperty.squareFeet || 0).toLocaleString()} sq ft\n`;
-            propertiesText += `   - Owner: ${convertedProperty.ownerName}\n`;
-            propertiesText += `   - Motivation Score: ${convertedProperty.motivationScore}/100\n`;
-            propertiesText += `   - Equity: ${convertedProperty.equityPercentage}%\n`;
-            propertiesText += `   - Lead Type: ${convertedProperty.leadType.replace('_', ' ').toUpperCase()}\n`;
-            propertiesText += `   - Why it's good: ${convertedProperty.distressedIndicator || 'Good equity opportunity'}\n\n`;
-          });
-
-          console.log(`✅ Final converted properties: ${result.data.length}`);
-
-          const aiResponse = `💡 Found ${result.data.length} additional LIVE properties from BatchData API! These are new leads not previously shown.
-
-${propertiesText}`;
-
-          res.json({
-            response: aiResponse,
-            properties: result.data, // Use the already converted properties
-            sessionState: { ...sessionState, excludePropertyIds: [...excludePropertyIds, ...result.data.map(p => p.id || 'unknown')] },
-            hasMore: result.hasMore
-          });
-          return;
-        }
+        
 
         // Handle single property response
         if (!result.property) {

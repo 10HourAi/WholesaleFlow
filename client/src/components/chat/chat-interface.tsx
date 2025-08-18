@@ -84,7 +84,7 @@ export default function ChatInterface() {
             agentType: 'lead_finder',
             sessionState: sessionState,
             // Pass excluded property IDs to avoid duplicates
-            excludedPropertyIds: Array.from(shownPropertyIds) 
+            excludedPropertyIds: Array.from(shownPropertyIds)
           })
         });
 
@@ -118,7 +118,7 @@ export default function ChatInterface() {
             propertyMatches.forEach(match => {
               const address = match.replace(/^\d+\.\s*/, '').trim().split('\n')[0];
               // A simple way to generate a unique ID for now, could be improved
-              const propertyId = `${address}_${currentConversation}`; 
+              const propertyId = `${address}_${currentConversation}`;
               setShownPropertyIds(prev => new Set([...prev, propertyId]));
             });
           }
@@ -218,8 +218,8 @@ export default function ChatInterface() {
   const currentAgent = agentTypes.find(agent => agent.id === selectedAgent);
 
   const states = [
-    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 
-    'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY', 
+    'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS',
+    'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY',
     'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
   ];
 
@@ -388,8 +388,8 @@ export default function ChatInterface() {
                   <button
                     key={type.value}
                     className={`p-3 text-left rounded-lg border transition-colors ${
-                      wizardData.sellerType === type.value 
-                        ? 'border-blue-500 bg-blue-50 text-blue-900' 
+                      wizardData.sellerType === type.value
+                        ? 'border-blue-500 bg-blue-50 text-blue-900'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                     onClick={() => setWizardData({...wizardData, sellerType: type.value})}
@@ -409,8 +409,8 @@ export default function ChatInterface() {
                   <button
                     key={type.value}
                     className={`p-3 text-left rounded-lg border transition-colors ${
-                      wizardData.propertyType === type.value 
-                        ? 'border-blue-500 bg-blue-50 text-blue-900' 
+                      wizardData.propertyType === type.value
+                        ? 'border-blue-500 bg-blue-50 text-blue-900'
                         : 'border-gray-200 hover:border-gray-300'
                     }`}
                     onClick={() => setWizardData({...wizardData, propertyType: type.value})}
@@ -462,16 +462,16 @@ export default function ChatInterface() {
               <div className="mt-6 p-4 bg-gray-50 rounded-lg">
                 <h4 className="font-medium mb-2">Search Summary:</h4>
                 <p className="text-sm text-gray-700">
-                  Looking for {sellerTypes.find(s => s.value === wizardData.sellerType)?.label.toLowerCase()} 
+                  Looking for {sellerTypes.find(s => s.value === wizardData.sellerType)?.label.toLowerCase()}
                   {" in "}{/^\d{5}$/.test(wizardData.city) ? wizardData.city : `${wizardData.city}, ${wizardData.state}`}</p>
               </div>
             </div>
           )}
 
           <div className="flex justify-between pt-4">
-            <Button 
-              variant="outline" 
-              onClick={handleWizardBack} 
+            <Button
+              variant="outline"
+              onClick={handleWizardBack}
               disabled={wizardStep === 1}
               className="flex items-center gap-2"
             >
@@ -480,8 +480,8 @@ export default function ChatInterface() {
             </Button>
 
             <div className="flex gap-2">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 onClick={() => {
                   setShowWizard(false);
                   setWizardStep(1);
@@ -491,7 +491,7 @@ export default function ChatInterface() {
               </Button>
 
               {wizardStep < 4 ? (
-                <Button 
+                <Button
                   onClick={handleWizardNext}
                   disabled={
                     (wizardStep === 1 && (!wizardData.city || !wizardData.state)) ||
@@ -504,7 +504,7 @@ export default function ChatInterface() {
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               ) : (
-                <Button 
+                <Button
                   onClick={handleWizardSubmit}
                   className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
                 >
@@ -637,9 +637,9 @@ export default function ChatInterface() {
                       </div>
 
                       <div className="pt-2 border-t border-green-200 flex gap-2">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
+                        <Button
+                          size="sm"
+                          variant="outline"
                           className="flex-1"
                           onClick={() => handleSaveLead({
                             address: addressLine,
@@ -671,9 +671,9 @@ export default function ChatInterface() {
             })}
             {/* Add "Find 5 More" button */}
             {lastSearchCriteria && (
-              <Button 
+              <Button
                 onClick={() => handleSendMessage(lastSearchCriteria.query)}
-                className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700 mt-4"
+                className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
               >
                 <Search className="h-4 w-4" />
                 Find 5 More
@@ -688,8 +688,8 @@ export default function ChatInterface() {
 
   const renderPropertyCard = (content: string) => {
     // Check if this is a property response with structured data from BatchData API
-    if (content.includes("**PROPERTY DETAILS:**") || 
-        content.includes("**FINANCIAL ANALYSIS:**") || 
+    if (content.includes("**PROPERTY DETAILS:**") ||
+        content.includes("**FINANCIAL ANALYSIS:**") ||
         content.includes("**OWNER INFORMATION:**") ||
         content.includes("**PROPERTY OVERVIEW:**") ||
         content.includes("**CONTACT INFORMATION:**") ||
@@ -855,9 +855,9 @@ export default function ChatInterface() {
               )}
 
               <div className="pt-2 border-t border-green-200 flex gap-2">
-                <Button 
-                  size="sm" 
-                  variant="outline" 
+                <Button
+                  size="sm"
+                  variant="outline"
                   className="flex-1"
                   onClick={() => {
                     const propertyData = {
@@ -973,29 +973,29 @@ export default function ChatInterface() {
                           Use Lead Finder Wizard
                         </Button>
                         <div className="flex flex-wrap gap-2">
-                          <Badge 
-                            variant="secondary" 
+                          <Badge
+                            variant="secondary"
                             className="cursor-pointer hover:bg-slate-200"
                             onClick={() => setInputMessage("Show me 5 properties in Orlando, FL")}
                           >
                             5 Properties Grid View
                           </Badge>
-                          <Badge 
-                            variant="secondary" 
+                          <Badge
+                            variant="secondary"
                             className="cursor-pointer hover:bg-slate-200"
                             onClick={() => setInputMessage("Find distressed properties in Philadelphia, PA")}
                           >
                             Find distressed properties
                           </Badge>
-                          <Badge 
-                            variant="secondary" 
+                          <Badge
+                            variant="secondary"
                             className="cursor-pointer hover:bg-slate-200"
                             onClick={() => setInputMessage("Show me 3 high equity properties in Dallas, TX")}
                           >
                             Multiple high equity
                           </Badge>
-                          <Badge 
-                            variant="secondary" 
+                          <Badge
+                            variant="secondary"
                             className="cursor-pointer hover:bg-slate-200"
                             onClick={() => setInputMessage("Find high equity properties in 90210")}
                           >
@@ -1085,7 +1085,7 @@ export default function ChatInterface() {
               className="resize-none"
             />
           </div>
-          <Button 
+          <Button
             onClick={() => handleSendMessage()}
             disabled={!inputMessage.trim() || sendMessageMutation.isPending}
             size="lg"
