@@ -520,7 +520,119 @@ export default function ChatInterface() {
   };
 
   const renderMultipleProperties = (content: string) => {
-    // This function is currently disabled since multiple properties handling was removed
+    // Check if this is a multiple properties response
+    if (content.includes("Great! I found") && content.includes("properties") && 
+        (content.match(/\d+\.\s+\d+/g) || content.match(/1\.\s+/))) {
+      
+      console.log('Multiple properties detected. Content:', content);
+      
+      // Split the content into individual property entries
+      const propertyMatches = content.split(/\d+\.\s+/).filter(match => match.trim().length > 10);
+      
+      if (propertyMatches.length === 0) {
+        return null;
+      }
+      
+      console.log(`Found ${propertyMatches.length} property entries`);
+      
+      return (
+        <div className="mt-3 space-y-4">
+          {propertyMatches.map((propertyText, index) => {
+            if (!propertyText.trim()) return null;
+            
+            console.log(`Rendering property card ${index + 1}:`, propertyText.substring(0, 100));
+            
+            // Extract key information from each property
+            const lines = propertyText.trim().split('\n');
+            const address = lines[0]?.replace(/^-\s*/, '').trim() || 'Address not found';
+            
+            // Extract other details
+            const extractValue = (text: string, pattern: RegExp) => {
+              const match = text.match(pattern);
+              return match ? match[1].trim() : 'N/A';
+            };
+            
+            const price = extractValue(propertyText, /Price:\s*\$?([^\n]+)/i);
+            const bedBath = extractValue(propertyText, /(\d+BR\/\d+BA[^\n]*)/i);
+            const owner = extractValue(propertyText, /Owner:\s*([^\n]+)/i);
+            const motivation = extractValue(propertyText, /Motivation Score:\s*([^\n]+)/i);
+            const equity = extractValue(propertyText, /Equity:\s*([^\n]+)/i);
+            const leadType = extractValue(propertyText, /Lead Type:\s*([^\n]+)/i);
+            const whyGood = extractValue(propertyText, /Why it's good:\s*([^\n]+)/i);
+            
+            return (
+              <Card key={index} className="border-green-200 bg-green-50">
+                <CardContent className="p-4">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                        <h4 className="font-medium text-green-800">Live Property Lead #{index + 1}</h4>
+                      </div>
+                      <Badge variant="secondary" className="bg-green-100 text-green-700">BatchData API</Badge>
+                    </div>
+
+                    <div className="bg-white p-3 rounded border">
+                      <h5 className="font-semibold text-gray-800 mb-2">🏠 {address}</h5>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div><strong>💵 Price:</strong> ${price}</div>
+                        <div><strong>🏠 Details:</strong> {bedBath}</div>
+                        <div><strong>👤 Owner:</strong> {owner}</div>
+                        <div><strong>⭐ Motivation:</strong> {motivation}</div>
+                        <div><strong>📈 Equity:</strong> {equity}</div>
+                        <div><strong>🏷️ Type:</strong> {leadType}</div>
+                      </div>
+                      {whyGood !== 'N/A' && (
+                        <div className="mt-2 p-2 bg-yellow-50 rounded text-sm">
+                          <strong>💡 Why it's good:</strong> {whyGood}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-green-200 flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          const propertyData = {
+                            address: address,
+                            city: extractValue(address, /([^,]+),\s*[A-Z]{2}/i) || '',
+                            state: extractValue(address, /,\s*([A-Z]{2})/i) || '',
+                            zipCode: '',
+                            arv: price.replace(/[$,]/g, '') || '0',
+                            maxOffer: (parseInt(price.replace(/[$,]/g, '') || '0') * 0.7).toString(),
+                            ownerName: owner,
+                            ownerPhone: 'Available via skip trace',
+                            ownerEmail: 'Available via skip trace',
+                            motivationScore: motivation.replace(/\/100/, '') || '50',
+                            equityPercentage: equity.replace(/%/, '') || '0',
+                            leadType: leadType.toLowerCase().replace(/\s+/g, '_') || 'standard'
+                          };
+
+                          handleSaveLead(propertyData);
+                        }}
+                        disabled={savePropertyMutation.isPending}
+                      >
+                        {savePropertyMutation.isPending ? 'Saving...' : 'Save Lead'}
+                      </Button>
+                      <Button size="sm" variant="outline">Analyze Deal</Button>
+                      <Button size="sm" variant="outline">Contact Owner</Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+          
+          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-700 text-center">
+              💡 These are LIVE properties from BatchData API with verified owner information and equity calculations!
+            </p>
+          </div>
+        </div>
+      );
+    }
+    
     return null;
   };
 
