@@ -586,7 +586,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           res.json({
             response: aiResponse,
             property: convertedProperty,
-            sessionState: { ...result.sessionState, searchCriteria: searchCriteria },
+            sessionState: { ...result.sessionState, searchCriteria: sessionState.searchCriteria },
             hasMore: result.hasMore
           });
         } else {
@@ -704,7 +704,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Handle multiple properties response (for "find more" requests)
         if (result.data && Array.isArray(result.data)) {
-          if (result.data.length === 0) {
+          const validProperties = result.data.filter(prop => batchLeadsService.convertToProperty(prop, 'demo-user') !== null);
+          
+          if (validProperties.length === 0) {
             const noResultsMessage = result.totalChecked === 0
               ? `I couldn't find any more properties in "${location}". This might be due to:
 • No additional properties matching your criteria
@@ -723,29 +725,27 @@ ${excludePropertyIds.length > 0 ? `Already excluded ${excludePropertyIds.length}
           }
 
           // Format multiple properties response
-          let propertiesText = `Great! I found ${result.data.length} additional properties matching your criteria:\n\n`;
-          
-          result.data.forEach((property, index) => {
-            propertiesText += `${index + 1}. **${property.address}, ${property.city}, ${property.state}**\n`;
-            propertiesText += `   - Price: $${parseInt(property.arv).toLocaleString()}\n`;
-            propertiesText += `   - ${property.bedrooms || 0}BR/${property.bathrooms || 0}BA, ${(property.squareFeet || 0).toLocaleString()} sq ft\n`;
-            propertiesText += `   - Owner: ${property.ownerName}\n`;
-            propertiesText += `   - Motivation Score: ${property.motivationScore}/100\n`;
-            propertiesText += `   - Equity: ${property.equityPercentage}%\n`;
-            propertiesText += `   - Lead Type: ${property.leadType.replace('_', ' ').toUpperCase()}\n`;
-            propertiesText += `   - Why it's good: ${property.distressedIndicator || 'Good equity opportunity'}\n\n`;
+          let propertiesText = `Great! I found ${validProperties.length} additional properties matching your criteria:\n\n`;
+
+          validProperties.forEach((property, index) => {
+            const convertedProperty = batchLeadsService.convertToProperty(property, 'demo-user');
+            propertiesText += `${index + 1}. **${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state}**\n`;
+            propertiesText += `   - Price: $${parseInt(convertedProperty.arv).toLocaleString()}\n`;
+            propertiesText += `   - ${convertedProperty.bedrooms || 0}BR/${convertedProperty.bathrooms || 0}BA, ${(convertedProperty.squareFeet || 0).toLocaleString()} sq ft\n`;
+            propertiesText += `   - Owner: ${convertedProperty.ownerName}\n`;
+            propertiesText += `   - Motivation Score: ${convertedProperty.motivationScore}/100\n`;
+            propertiesText += `   - Equity: ${convertedProperty.equityPercentage}%\n`;
+            propertiesText += `   - Lead Type: ${convertedProperty.leadType.replace('_', ' ').toUpperCase()}\n`;
+            propertiesText += `   - Why it's good: ${convertedProperty.distressedIndicator || 'Good equity opportunity'}\n\n`;
           });
 
-          const aiResponse = `💡 Found ${result.data.length} additional LIVE properties from BatchData API! These are new leads not previously shown.`;
+          const aiResponse = `💡 Found ${validProperties.length} additional LIVE properties from BatchData API! These are new leads not previously shown.`;
 
           res.json({
             response: aiResponse,
-            properties: result.data,
-            sessionState: { 
-              searchCriteria: searchCriteria,
-              excludePropertyIds: [...excludePropertyIds, ...result.data.map(p => p.id || `${p.address}_${p.ownerName}`)]
-            },
-            hasMore: result.hasMore || false
+            properties: validProperties, // Already converted properties
+            sessionState: { ...sessionState, excludePropertyIds: validProperties.map(p => p.id || 'unknown') },
+            hasMore: result.hasMore
           });
           return;
         }
@@ -858,7 +858,7 @@ Try expanding your search area or checking a nearby city.`;
         res.json({
           response: aiResponse,
           property: convertedPropertyForStorage,
-          sessionState: { ...result.sessionState, searchCriteria: searchCriteria },
+          sessionState: { ...sessionState, searchCriteria: searchCriteria },
           hasMore: result.hasMore
         });
       } else {
