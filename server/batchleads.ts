@@ -236,7 +236,7 @@ class BatchLeadsService {
             continue;
           }
 
-          const convertedProperty = this.convertToProperty(rawProperty, 'demo-user');
+          const convertedProperty = this.convertToProperty(rawProperty, 'demo-user', criteria);
 
           if (convertedProperty !== null) {
             // Add the property ID for future exclusion
@@ -307,7 +307,7 @@ class BatchLeadsService {
             continue;
           }
 
-          const convertedProperty = this.convertToProperty(rawProperty, 'demo-user');
+          const convertedProperty = this.convertToProperty(rawProperty, 'demo-user', criteria);
 
           if (convertedProperty !== null) {
             return {
@@ -351,7 +351,7 @@ class BatchLeadsService {
 
 
   // Convert BatchData property to our schema format
-  convertToProperty(batchProperty: any, userId: string): any {
+  convertToProperty(batchProperty: any, userId: string, criteria?: SearchCriteria): any {
     console.log(`🔍 Converting property with ID: ${batchProperty._id}`);
     console.log(`📊 Raw property data:`, JSON.stringify(batchProperty, null, 2));
 
@@ -378,18 +378,24 @@ class BatchLeadsService {
       zipCode,
       ownerName,
       bedrooms: bedrooms !== null ? bedrooms : 'Not provided by API',
-      bathrooms: bathrooms !== null ? bathrooms : 'Not provided by API', 
+      bathrooms: bathrooms !== null ? bathrooms : 'Not provided by API',
       squareFeet: squareFeet !== null ? squareFeet : 'Not provided by API',
       hasBuildingData: !!(bedrooms !== null || bathrooms !== null || squareFeet !== null),
       passesSquareFootageFilter: squareFeet === null || squareFeet > 0
     });
 
+    // Apply bedroom filter if provided in criteria and bedrooms are available
+    if (criteria?.minBedrooms && bedrooms !== null && bedrooms < criteria.minBedrooms) {
+      console.log(`❌ Property filtered out - does not meet minimum bedroom requirement (${bedrooms} bedrooms found, ${criteria.minBedrooms} required)`);
+      return null;
+    }
+
     // Balanced validation - require core data but allow properties when building data is not provided by API
-    if (!estimatedValue || 
-        estimatedValue <= 10000 || 
-        !address || 
-        !city || 
-        !state || 
+    if (!estimatedValue ||
+        estimatedValue <= 10000 ||
+        !address ||
+        !city ||
+        !state ||
         !zipCode) {
       console.log(`❌ Property filtered out - missing critical financial or address data`);
       return null;
@@ -413,7 +419,7 @@ class BatchLeadsService {
       state: state,
       zipCode: zipCode,
       bedrooms: bedrooms !== null ? bedrooms : null, // Preserve null for missing data
-      bathrooms: bathrooms !== null ? bathrooms : null, // Preserve null for missing data  
+      bathrooms: bathrooms !== null ? bathrooms : null, // Preserve null for missing data
       squareFeet: squareFeet !== null ? squareFeet : null, // Preserve null for missing data
       arv: estimatedValue.toString(),
       maxOffer: maxOffer.toString(),
@@ -426,8 +432,8 @@ class BatchLeadsService {
       ownerName: ownerName || 'Owner Info Available',
       ownerPhone: batchProperty.owner?.phoneNumbers?.[0] || 'Available via skip trace',
       ownerEmail: batchProperty.owner?.emailAddresses?.[0] || 'Available via skip trace',
-      ownerMailingAddress: batchProperty.owner?.mailingAddress ? 
-        `${batchProperty.owner.mailingAddress.street}, ${batchProperty.owner.mailingAddress.city}, ${batchProperty.owner.mailingAddress.state} ${batchProperty.owner.mailingAddress.zip}` : 
+      ownerMailingAddress: batchProperty.owner?.mailingAddress ?
+        `${batchProperty.owner.mailingAddress.street}, ${batchProperty.owner.mailingAddress.city}, ${batchProperty.owner.mailingAddress.state} ${batchProperty.owner.mailingAddress.zip}` :
         `${address}, ${city}, ${state} ${zipCode}`,
       equityPercentage: Math.round(finalEquityPercent),
       motivationScore: this.calculateMotivationScore(batchProperty),
