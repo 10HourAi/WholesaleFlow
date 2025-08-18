@@ -356,9 +356,12 @@ class BatchLeadsService {
 
     const estimatedValue = batchProperty.valuation?.estimatedValue || 0;
     const equityPercent = batchProperty.valuation?.equityPercent;
-    const bedrooms = batchProperty.building?.bedrooms || 0;
-    const bathrooms = batchProperty.building?.bathrooms || 0;
-    const squareFeet = batchProperty.building?.livingArea || 0;
+    
+    // Extract building details with better fallbacks
+    const building = batchProperty.building || {};
+    const bedrooms = building.bedrooms || null; // Use null instead of 0 to indicate unknown
+    const bathrooms = building.bathrooms || null;
+    const squareFeet = building.livingArea || building.totalLivingArea || null;
     const address = batchProperty.address?.street;
     const city = batchProperty.address?.city;
     const state = batchProperty.address?.state;
@@ -373,9 +376,10 @@ class BatchLeadsService {
       state,
       zipCode,
       ownerName,
-      bedrooms,
-      bathrooms,
-      squareFeet
+      bedrooms: bedrooms || 'Not provided by API',
+      bathrooms: bathrooms || 'Not provided by API', 
+      squareFeet: squareFeet || 'Not provided by API',
+      hasBuildingData: !!(bedrooms || bathrooms || squareFeet)
     });
 
     // Relaxed validation - only filter out properties missing critical financial data

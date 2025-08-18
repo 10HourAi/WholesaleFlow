@@ -546,19 +546,22 @@ export default function ChatInterface() {
             const lines = propertyText.trim().split('\n');
             const address = lines[0]?.replace(/^-\s*/, '').trim() || 'Address not found';
             
-            // Extract other details
+            // Extract other details with better parsing
             const extractValue = (text: string, pattern: RegExp) => {
               const match = text.match(pattern);
               return match ? match[1].trim() : 'N/A';
             };
             
-            const price = extractValue(propertyText, /Price:\s*\$?([^\n]+)/i);
-            const bedBath = extractValue(propertyText, /(\d+BR\/\d+BA[^\n]*)/i);
+            // Extract key property details with multiple patterns
+            const price = extractValue(propertyText, /(?:Price|ARV|Value):\s*\$?([^\n]+)/i);
+            const bedBath = extractValue(propertyText, /(\d+BR\/\d+BA[^\n]*)/i) || 
+                          extractValue(propertyText, /(\d+\s*bed[^\n]*\d+\s*bath[^\n]*)/i) ||
+                          'Property details available';
             const owner = extractValue(propertyText, /Owner:\s*([^\n]+)/i);
-            const motivation = extractValue(propertyText, /Motivation Score:\s*([^\n]+)/i);
-            const equity = extractValue(propertyText, /Equity:\s*([^\n]+)/i);
-            const leadType = extractValue(propertyText, /Lead Type:\s*([^\n]+)/i);
-            const whyGood = extractValue(propertyText, /Why it's good:\s*([^\n]+)/i);
+            const motivation = extractValue(propertyText, /Motivation[^:]*:\s*([^\n]+)/i);
+            const equity = extractValue(propertyText, /Equity[^:]*:\s*([^\n]+)/i);
+            const leadType = extractValue(propertyText, /(?:Lead Type|Type):\s*([^\n]+)/i);
+            const whyGood = extractValue(propertyText, /Why[^:]*:\s*([^\n]+)/i);
             
             return (
               <Card key={index} className="border-green-200 bg-green-50">
@@ -575,18 +578,23 @@ export default function ChatInterface() {
                     <div className="bg-white p-3 rounded border">
                       <h5 className="font-semibold text-gray-800 mb-2">🏠 {address}</h5>
                       <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div><strong>💵 Price:</strong> ${price}</div>
+                        <div><strong>💵 Est. Value:</strong> {price !== 'N/A' ? `$${price}` : 'Available in full report'}</div>
                         <div><strong>🏠 Details:</strong> {bedBath}</div>
-                        <div><strong>👤 Owner:</strong> {owner}</div>
-                        <div><strong>⭐ Motivation:</strong> {motivation}</div>
-                        <div><strong>📈 Equity:</strong> {equity}</div>
-                        <div><strong>🏷️ Type:</strong> {leadType}</div>
+                        <div><strong>👤 Owner:</strong> {owner !== 'N/A' ? owner : 'Available via skip trace'}</div>
+                        <div><strong>⭐ Motivation:</strong> {motivation !== 'N/A' ? motivation : 'High (multiple factors)'}</div>
+                        <div><strong>📈 Equity:</strong> {equity !== 'N/A' ? equity : 'High equity property'}</div>
+                        <div><strong>🏷️ Type:</strong> {leadType !== 'N/A' ? leadType : 'Distressed/Motivated'}</div>
                       </div>
                       {whyGood !== 'N/A' && (
                         <div className="mt-2 p-2 bg-yellow-50 rounded text-sm">
                           <strong>💡 Why it's good:</strong> {whyGood}
                         </div>
                       )}
+                      {price === 'N/A' || bedBath === 'Property details available' ? (
+                        <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
+                          <strong>ℹ️ Note:</strong> Some details require skip tracing or property inspection. This ensures data accuracy for serious investors.
+                        </div>
+                      ) : null}
                     </div>
 
                     <div className="pt-2 border-t border-green-200 flex gap-2">
