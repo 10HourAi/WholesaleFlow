@@ -355,10 +355,10 @@ export default function ChatInterface() {
               <h3 className="font-semibold text-lg">Where are you looking for properties?</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <Label htmlFor="city">City</Label>
+                  <Label htmlFor="city">City or ZIP Code</Label>
                   <Input
                     id="city"
-                    placeholder="e.g., Valley Forge, Philadelphia, Orlando"
+                    placeholder="e.g., Valley Forge, Philadelphia, 19481"
                     value={wizardData.city}
                     onChange={(e) => setWizardData({...wizardData, city: e.target.value})}
                   />
@@ -463,11 +463,7 @@ export default function ChatInterface() {
                 <h4 className="font-medium mb-2">Search Summary:</h4>
                 <p className="text-sm text-gray-700">
                   Looking for {sellerTypes.find(s => s.value === wizardData.sellerType)?.label.toLowerCase()} 
-                  {" in "}{wizardData.city}, {wizardData.state}
-                  {wizardData.propertyType !== "any" && ` focusing on ${propertyTypes.find(p => p.value === wizardData.propertyType)?.label.toLowerCase()}`}
-                  {wizardData.minBedrooms && ` with at least ${wizardData.minBedrooms} bedrooms`}
-                  {wizardData.maxPrice && ` under $${wizardData.maxPrice.toLocaleString()}`}
-                </p>
+                  {" in "}{/^\d{5}$/.test(wizardData.city) ? wizardData.city : `${wizardData.city}, ${wizardData.state}`}</p>
               </div>
             </div>
           )}
@@ -764,7 +760,7 @@ export default function ChatInterface() {
         }
         return '';
       };
-      
+
       const propertyAddress = extractMultipleValues(parsedSections.property || content, ['Address', '🏠', 'Property Address']);
       const ownerName = extractMultipleValues(parsedSections.owner || parsedSections.contact || content, ['Owner', 'Full Name', 'Name', '👤']);
       const propertyId = `${propertyAddress}_${ownerName}`; // Simple unique ID
@@ -773,7 +769,7 @@ export default function ChatInterface() {
       if (!shownPropertyIds.has(propertyId)) {
         setShownPropertyIds(prev => new Set([...prev, propertyId]));
       }
-      
+
       // This logic assumes the content itself is a single property search result
       // and stores the criteria that led to it.
       // If the content is not a direct search result (e.g., general chat), this might not be accurate.
