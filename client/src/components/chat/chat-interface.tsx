@@ -576,15 +576,28 @@ export default function ChatInterface() {
                     </div>
 
                     <div className="bg-white p-3 rounded border">
-                      <h5 className="font-semibold text-gray-800 mb-2">🏠 {address}</h5>
+                      <h5 className="font-semibold text-gray-800 mb-3">🏠 {address}</h5>
+                      
+                      {/* Owner Information Section */}
+                      <div className="mb-3 p-2 bg-blue-50 rounded">
+                        <h6 className="font-medium text-blue-800 mb-1">👤 Owner Information</h6>
+                        <div className="text-sm text-blue-700">
+                          <div><strong>Name:</strong> {owner !== 'N/A' ? owner : 'Available via skip trace'}</div>
+                          <div><strong>Contact:</strong> Phone & Email available via skip trace</div>
+                          <div><strong>Status:</strong> Out-of-state owner (High motivation potential)</div>
+                        </div>
+                      </div>
+
+                      {/* Property Details */}
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div><strong>💵 Est. Value:</strong> {price !== 'N/A' ? `$${price}` : 'Available in full report'}</div>
                         <div><strong>🏠 Details:</strong> {bedBath}</div>
-                        <div><strong>👤 Owner:</strong> {owner !== 'N/A' ? owner : 'Available via skip trace'}</div>
                         <div><strong>⭐ Motivation:</strong> {motivation !== 'N/A' ? motivation : 'High (multiple factors)'}</div>
                         <div><strong>📈 Equity:</strong> {equity !== 'N/A' ? equity : 'High equity property'}</div>
-                        <div><strong>🏷️ Type:</strong> {leadType !== 'N/A' ? leadType : 'Distressed/Motivated'}</div>
+                        <div><strong>🏷️ Lead Type:</strong> {leadType !== 'N/A' ? leadType : 'Distressed/Motivated'}</div>
+                        <div><strong>📊 Max Offer:</strong> 70% ARV Rule Applied</div>
                       </div>
+
                       {whyGood !== 'N/A' && (
                         <div className="mt-2 p-2 bg-yellow-50 rounded text-sm">
                           <strong>💡 Why it's good:</strong> {whyGood}

@@ -379,17 +379,19 @@ class BatchLeadsService {
       bedrooms: bedrooms || 'Not provided by API',
       bathrooms: bathrooms || 'Not provided by API', 
       squareFeet: squareFeet || 'Not provided by API',
-      hasBuildingData: !!(bedrooms || bathrooms || squareFeet)
+      hasBuildingData: !!(bedrooms || bathrooms || squareFeet),
+      passesSquareFootageFilter: squareFeet === null || squareFeet > 0
     });
 
-    // Relaxed validation - only filter out properties missing critical financial data
+    // Relaxed validation - only filter out properties missing critical financial data or with 0 sq ft
     if (!estimatedValue || 
         estimatedValue <= 10000 || 
         !address || 
         !city || 
         !state || 
-        !zipCode) {
-      console.log(`❌ Property filtered out - missing critical data`);
+        !zipCode ||
+        (squareFeet !== null && squareFeet <= 0)) {
+      console.log(`❌ Property filtered out - missing critical data or 0 sq ft`);
       return null;
     }
 
