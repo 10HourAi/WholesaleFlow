@@ -73,7 +73,7 @@ class BatchLeadsService {
 
   private async makeRequest(endpoint: string, requestBody: any): Promise<any> {
     const url = `${this.baseUrl}${endpoint}`;
-    
+
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -95,7 +95,7 @@ class BatchLeadsService {
 
   async searchProperties(criteria: SearchCriteria, page = 1, perPage = 50): Promise<BatchLeadsResponse> {
     console.log(`🔍 BatchLeads API search for: "${criteria.location}"`);
-    
+
     const requestBody: any = {
       searchCriteria: {
         query: criteria.location
@@ -153,16 +153,16 @@ class BatchLeadsService {
     }
 
     console.log(`📋 Full request body:`, JSON.stringify(requestBody, null, 2));
-    
+
     const response = await this.makeRequest('/api/v1/property/search', requestBody);
-    
+
     console.log(`📊 BatchLeads API response:`, {
       propertiesFound: response.results?.properties?.length || 0,
       totalResults: response.meta?.totalResults || 0,
       page: page,
       rawResponse: JSON.stringify(response, null, 2)
     });
-    
+
     // Transform response to match expected format
     return {
       success: true,
@@ -188,107 +188,159 @@ class BatchLeadsService {
     return response.data;
   }
 
-  // Search for valid properties with target count
-  async searchValidProperties(criteria: SearchCriteria, targetCount = 5): Promise<{ success: boolean; data: any[]; total_results: number; validCount: number; filteredCount: number }> {
-    let validProperties: any[] = [];
-    let totalFiltered = 0;
-    let currentPage = 1;
-    const maxPages = 5; // Limit to prevent infinite loops
-    
-    while (validProperties.length < targetCount && currentPage <= maxPages) {
-      const response = await this.searchProperties(criteria, currentPage, 25);
-      
-      if (!response.success || !response.data.length) {
+  // Search for multiple valid properties with exclusion support
+  async searchValidProperties(criteria: any, count: number = 5, excludePropertyIds: string[] = []): Promise<{
+    data: any[];
+    totalChecked: number;
+    filtered: number;
+    hasMore: boolean;
+  }> {
+    let totalChecked = 0;
+    let filtered = 0;
+    const validProperties = [];
+    let page = 1;
+    const maxPages = 10; // Prevent infinite loops
+
+    console.log(`🔍 Searching for ${count} properties with criteria:`, criteria);
+    console.log(`🚫 Excluding ${excludePropertyIds.length} property IDs:`, excludePropertyIds);
+
+    while (validProperties.length < count && page <= maxPages) {
+      try {
+        const response = await this.searchProperties(criteria, page, 50);
+
+        if (!response.data || response.data.length === 0) {
+          console.log(`📄 Page ${page}: No more properties available`);
+          break;
+        }
+
+        console.log(`📄 Page ${page}: Found ${response.data.length} raw properties`);
+
+        for (const rawProperty of response.data) {
+          totalChecked++;
+
+          // Generate property ID for deduplication
+          const propertyId = rawProperty._id || `${rawProperty.address?.street}_${rawProperty.owner?.fullName}`;
+
+          // Skip if already shown
+          if (excludePropertyIds.includes(propertyId)) {
+            console.log(`⏭️ Skipping already shown property: ${propertyId}`);
+            filtered++;
+            continue;
+          }
+
+          const convertedProperty = this.convertToProperty(rawProperty, 'demo-user');
+
+          if (convertedProperty !== null) {
+            // Add the property ID for future exclusion
+            convertedProperty.id = propertyId;
+            validProperties.push(convertedProperty);
+            console.log(`✅ Added valid property ${validProperties.length}/${count}: ${convertedProperty.address}`);
+
+            if (validProperties.length >= count) {
+              break;
+            }
+          } else {
+            filtered++;
+          }
+        }
+
+        page++;
+      } catch (error) {
+        console.error(`❌ Error on page ${page}:`, error);
         break;
       }
-      
-      // Convert and filter properties
-      for (const prop of response.data) {
-        const converted = this.convertToProperty(prop, 'temp-user');
-        if (converted !== null) {
-          validProperties.push(prop); // Store original property for return
-          if (validProperties.length >= targetCount) break;
-        } else {
-          totalFiltered++;
-        }
-      }
-      
-      currentPage++;
     }
-    
+
+    console.log(`📊 Search complete: ${validProperties.length} valid properties, ${totalChecked} checked, ${filtered} filtered`);
+
     return {
-      success: true,
       data: validProperties,
-      total_results: validProperties.length + totalFiltered,
-      validCount: validProperties.length,
-      filteredCount: totalFiltered
+      totalChecked,
+      filtered,
+      hasMore: page <= maxPages && totalChecked > 0
     };
   }
 
-  // Get next valid property one at a time with session state
-  async getNextValidProperty(criteria: SearchCriteria, sessionState?: { page: number; index: number; currentBatch?: any[] }): Promise<{ property: any | null; hasMore: boolean; sessionState: { page: number; index: number; currentBatch?: any[] }; totalChecked: number; filtered: number }> {
-    let currentPage = sessionState?.page || 1;
-    let currentIndex = sessionState?.index || 0;
-    let currentBatch = sessionState?.currentBatch || [];
+  // Get next valid property with error handling and filtering
+  async getNextValidProperty(criteria: any, sessionState?: any): Promise<{
+    property: any | null;
+    sessionState: any;
+    hasMore: boolean;
+    totalChecked: number;
+    filtered: number;
+  }> {
+    let page = sessionState?.currentPage || 1;
     let totalChecked = 0;
     let filtered = 0;
-    const maxPages = 10; // Allow more pages for one-at-a-time searching
-    
-    while (currentPage <= maxPages) {
-      // If we need a new batch of data
-      if (currentBatch.length === 0 || currentIndex >= currentBatch.length) {
-        const response = await this.searchProperties(criteria, currentPage, 25);
-        
-        if (!response.success || !response.data.length) {
-          return {
-            property: null,
-            hasMore: false,
-            sessionState: { page: currentPage, index: 0, currentBatch: [] },
-            totalChecked,
-            filtered
-          };
+    const maxPages = 10; // Prevent infinite loops
+    const excludePropertyIds = sessionState?.excludePropertyIds || [];
+
+    while (page <= maxPages) {
+      try {
+        const response = await this.searchProperties(criteria, page, 50);
+
+        if (!response.data || response.data.length === 0) {
+          console.log(`📄 Page ${page}: No more properties available`);
+          break;
         }
-        
-        currentBatch = response.data;
-        currentIndex = 0;
-      }
-      
-      // Check properties one by one
-      while (currentIndex < currentBatch.length) {
-        const prop = currentBatch[currentIndex];
-        totalChecked++;
-        
-        const converted = this.convertToProperty(prop, 'temp-user');
-        if (converted !== null) {
-          // Found a valid property - return it and update session state
-          return {
-            property: prop,
-            hasMore: true,
-            sessionState: { page: currentPage, index: currentIndex + 1, currentBatch },
-            totalChecked,
-            filtered
-          };
-        } else {
-          filtered++;
+
+        console.log(`📄 Page ${page}: Found ${response.data.length} raw properties`);
+
+        for (const rawProperty of response.data) {
+          totalChecked++;
+
+          // Generate property ID for deduplication
+          const propertyId = rawProperty._id || `${rawProperty.address?.street}_${rawProperty.owner?.fullName}`;
+
+          // Skip if already shown
+          if (excludePropertyIds.includes(propertyId)) {
+            console.log(`⏭️ Skipping already shown property: ${propertyId}`);
+            filtered++;
+            continue;
+          }
+
+          const convertedProperty = this.convertToProperty(rawProperty, 'demo-user');
+
+          if (convertedProperty !== null) {
+            return {
+              property: rawProperty,
+              sessionState: {
+                ...sessionState,
+                currentPage: page,
+                searchCriteria: criteria,
+                excludePropertyIds: [...excludePropertyIds, propertyId]
+              },
+              hasMore: true,
+              totalChecked,
+              filtered
+            };
+          } else {
+            filtered++;
+          }
         }
-        
-        currentIndex++;
+
+        page++;
+      } catch (error) {
+        console.error(`❌ Error on page ${page}:`, error);
+        break;
       }
-      
-      // Move to next page
-      currentPage++;
-      currentBatch = [];
-      currentIndex = 0;
     }
-    
+
+    console.log(`📊 No more valid properties found.`);
     return {
       property: null,
+      sessionState: {
+        ...sessionState,
+        currentPage: page,
+        searchCriteria: criteria,
+        excludePropertyIds
+      },
       hasMore: false,
-      sessionState: { page: currentPage, index: 0, currentBatch: [] },
       totalChecked,
       filtered
     };
   }
+
 
   // Convert BatchData property to our schema format
   convertToProperty(batchProperty: any, userId: string): any {
@@ -305,7 +357,7 @@ class BatchLeadsService {
     const state = batchProperty.address?.state;
     const zipCode = batchProperty.address?.zip;
     const ownerName = batchProperty.owner?.fullName;
-    
+
     console.log(`📋 Extracted values:`, {
       estimatedValue,
       equityPercent,
@@ -318,7 +370,7 @@ class BatchLeadsService {
       bathrooms,
       squareFeet
     });
-    
+
     // Relaxed validation - only filter out properties missing critical financial data
     if (!estimatedValue || 
         estimatedValue <= 10000 || 
@@ -329,12 +381,12 @@ class BatchLeadsService {
       console.log(`❌ Property filtered out - missing critical data`);
       return null;
     }
-    
+
     // Use default equity if not available
     const finalEquityPercent = equityPercent !== undefined && equityPercent !== null ? equityPercent : 50;
-    
+
     const maxOffer = Math.floor(estimatedValue * 0.7); // 70% rule
-    
+
     const convertedProperty = {
       userId,
       address: address,
@@ -372,7 +424,7 @@ class BatchLeadsService {
     const isAbsenteeOwner = property.quickLists?.absenteeOwner || false;
     const isVacant = property.quickLists?.vacant || false;
     const isPreforeclosure = property.quickLists?.preforeclosure || false;
-    
+
     if (isPreforeclosure) {
       return 'preforeclosure';
     }
@@ -393,33 +445,33 @@ class BatchLeadsService {
 
   private calculateMotivationScore(property: any): number {
     let score = 50; // Base score
-    
+
     const equityPercent = property.valuation?.equityPercent || 0;
     const quickLists = property.quickLists || {};
-    
+
     // High equity adds points
     if (equityPercent >= 70) score += 30;
     else if (equityPercent >= 50) score += 20;
-    
+
     // Various distress indicators add points
     if (quickLists.absenteeOwner) score += 20;
     if (quickLists.vacant) score += 25;
     if (quickLists.preforeclosure) score += 35;
     if (quickLists.freeAndClear) score += 15;
     if (quickLists.highEquity) score += 25;
-    
+
     // Old property adds points
     const yearBuilt = property.building?.yearBuilt || new Date().getFullYear();
     const age = new Date().getFullYear() - yearBuilt;
     if (age >= 40) score += 15;
     else if (age >= 20) score += 10;
-    
+
     return Math.min(100, Math.max(0, score));
   }
 
   private getDistressedIndicator(property: any): string {
     const quickLists = property.quickLists || {};
-    
+
     if (quickLists.preforeclosure) return 'preforeclosure';
     if (quickLists.vacant) return 'vacant';
     if (quickLists.highEquity && quickLists.absenteeOwner) return 'high_equity_absentee';

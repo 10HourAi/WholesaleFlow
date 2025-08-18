@@ -11,6 +11,7 @@ import { Send, Search, TrendingUp, MessageSquare, FileText, Lightbulb, ArrowRigh
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { Conversation, Message, Property } from "@shared/schema";
+import * as batchLeadsService from "@/lib/batchLeadsService"; // Assuming this is where convertToProperty is
 
 const agentTypes = [
   { id: "lead-finder", name: "🔍 Lead Finder Agent", icon: Search },
@@ -44,6 +45,8 @@ export default function ChatInterface() {
   const [sessionState, setSessionState] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+  const [shownPropertyIds, setShownPropertyIds] = useState<Set<string>>(new Set());
+  const [lastSearchCriteria, setLastSearchCriteria] = useState<any>(null); // To store criteria for "Find 5 More"
 
   const { data: conversations = [] } = useQuery<Conversation[]>({
     queryKey: ["/api/conversations"],
@@ -79,7 +82,9 @@ export default function ChatInterface() {
           body: JSON.stringify({
             message: data.content,
             agentType: 'lead_finder',
-            sessionState: sessionState
+            sessionState: sessionState,
+            // Pass excluded property IDs to avoid duplicates
+            excludedPropertyIds: Array.from(shownPropertyIds) 
           })
         });
 
@@ -105,6 +110,23 @@ export default function ChatInterface() {
           role: "assistant",
           isAiGenerated: true
         });
+
+        // Extract property IDs from the response to update shownPropertyIds
+        if (demoResult.response && demoResult.response.includes("Great! I found")) {
+          const propertyMatches = demoResult.response.match(/(\d+)\.\s+([^\n]+)\n/g);
+          if (propertyMatches) {
+            propertyMatches.forEach(match => {
+              const address = match.replace(/^\d+\.\s*/, '').trim().split('\n')[0];
+              // A simple way to generate a unique ID for now, could be improved
+              const propertyId = `${address}_${currentConversation}`; 
+              setShownPropertyIds(prev => new Set([...prev, propertyId]));
+            });
+          }
+        }
+        // Store search criteria if it's a property search
+        if (data.content.toLowerCase().includes("find") || data.content.toLowerCase().includes("properties")) {
+          setLastSearchCriteria({ query: data.content, sessionState: demoResult.sessionState });
+        }
 
         return demoResult;
       } else {
@@ -651,6 +673,16 @@ export default function ChatInterface() {
                 </Card>
               );
             })}
+            {/* Add "Find 5 More" button */}
+            {lastSearchCriteria && (
+              <Button 
+                onClick={() => handleSendMessage(lastSearchCriteria.query)}
+                className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700 mt-4"
+              >
+                <Search className="h-4 w-4" />
+                Find 5 More
+              </Button>
+            )}
           </div>
         );
       }
@@ -716,6 +748,37 @@ export default function ChatInterface() {
       });
 
       console.log('Parsed sections:', parsedSections);
+
+      // Extract property details for tracking
+      const extractValue = (text: string | undefined, label: string) => {
+        if (!text) return '';
+        const match = text.match(new RegExp(`${label}:?\\s*([^\\n]+)`, 'i'));
+        return match ? match[1].trim() : '';
+      };
+
+      const extractMultipleValues = (text: string | undefined, labels: string[]) => {
+        if (!text) return '';
+        for (const label of labels) {
+          const value = extractValue(text, label);
+          if (value) return value;
+        }
+        return '';
+      };
+      
+      const propertyAddress = extractMultipleValues(parsedSections.property || content, ['Address', '🏠', 'Property Address']);
+      const ownerName = extractMultipleValues(parsedSections.owner || parsedSections.contact || content, ['Owner', 'Full Name', 'Name', '👤']);
+      const propertyId = `${propertyAddress}_${ownerName}`; // Simple unique ID
+
+      // Track this property as shown and store search criteria
+      if (!shownPropertyIds.has(propertyId)) {
+        setShownPropertyIds(prev => new Set([...prev, propertyId]));
+      }
+      
+      // This logic assumes the content itself is a single property search result
+      // and stores the criteria that led to it.
+      // If the content is not a direct search result (e.g., general chat), this might not be accurate.
+      // For now, we'll assume any direct property card render implies a search.
+      setLastSearchCriteria({ query: content }); // Storing the content as criteria for now
 
       return (
         <Card className="mt-3 border-green-200 bg-green-50">
@@ -801,21 +864,6 @@ export default function ChatInterface() {
                   variant="outline" 
                   className="flex-1"
                   onClick={() => {
-                    // Extract property data from parsed sections
-                    const extractValue = (text: string, label: string) => {
-                      if (!text) return '';
-                      const match = text.match(new RegExp(`${label}:?\\s*([^\\n]+)`, 'i'));
-                      return match ? match[1].trim() : '';
-                    };
-
-                    const extractMultipleValues = (text: string, labels: string[]) => {
-                      for (const label of labels) {
-                        const value = extractValue(text, label);
-                        if (value) return value;
-                      }
-                      return '';
-                    };
-
                     const propertyData = {
                       address: extractMultipleValues(parsedSections.property || content, ['Address', '🏠', 'Property Address']),
                       city: extractMultipleValues(parsedSections.property || content, ['City']),
