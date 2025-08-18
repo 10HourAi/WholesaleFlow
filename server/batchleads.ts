@@ -383,15 +383,18 @@ class BatchLeadsService {
       passesSquareFootageFilter: squareFeet === null || squareFeet > 0
     });
 
-    // Relaxed validation - only filter out properties missing critical financial data or with 0 sq ft
+    // Strict validation - require bedrooms > 0 and square feet > 0 in addition to other criteria
     if (!estimatedValue || 
         estimatedValue <= 10000 || 
         !address || 
         !city || 
         !state || 
         !zipCode ||
-        (squareFeet !== null && squareFeet <= 0)) {
-      console.log(`❌ Property filtered out - missing critical data or 0 sq ft`);
+        !bedrooms || 
+        bedrooms <= 0 ||
+        !squareFeet || 
+        squareFeet <= 0) {
+      console.log(`❌ Property filtered out - missing critical data, no bedrooms, or no square footage`);
       return null;
     }
 
