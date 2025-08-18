@@ -112,14 +112,21 @@ class BatchLeadsService {
       requestBody.searchCriteria.quickLists = ['not-owner-occupied'];
     }
 
-    // Add distressed property filters
+    // Add distressed property filters - use OR logic instead of AND
     if (criteria.distressedOnly) {
+      // Use individual filters that are more likely to have results
+      // This searches for properties that have ANY of these indicators, not ALL
       requestBody.searchCriteria.quickLists = [
-        'preforeclosure',
-        'high-equity', 
-        'absentee-owner',
-        'vacant'
+        'absentee-owner'  // Start with the most common distressed indicator
       ];
+      
+      // Add equity filter separately for better results
+      if (!requestBody.searchCriteria.valuation) {
+        requestBody.searchCriteria.valuation = {};
+      }
+      requestBody.searchCriteria.valuation.equityPercent = {
+        min: 30  // Lower threshold for better results
+      };
     }
 
     // Add bedroom filter
