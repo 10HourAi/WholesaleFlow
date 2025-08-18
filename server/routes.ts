@@ -311,45 +311,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/properties/batch", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { location, maxPrice, minEquity, propertyType, distressedOnly, motivationScore, count = 5 } = req.body; // Default to 5 properties
+      const { location, maxPrice, minEquity, propertyType, distressedOnly, motivationScore, count = 5 } = req.body;
 
       const { batchLeadsService } = await import("./batchleads");
-      const results = await batchLeadsService.searchProperties({
+      const results = await batchLeadsService.searchValidProperties({
         location,
         maxPrice,
         minEquity,
         propertyType,
         distressedOnly,
         motivationScore
-      });
+      }, count);
 
-      const propertiesToReturn = [];
-      let propertiesChecked = 0;
-      let propertiesFiltered = 0;
-
-      for (const batchProperty of results.data) {
-        if (propertiesToReturn.length >= count) break; // Stop once we have enough properties
-
-        propertiesChecked++;
-        const propertyData = batchLeadsService.convertToProperty(batchProperty, userId);
-
-        if (propertyData !== null) { // Only save valid properties
-          await storage.createProperty(propertyData); // Save to storage
-          propertiesToReturn.push(propertyData);
-        } else {
-          propertiesFiltered++;
-        }
+      // Save properties to storage
+      for (const propertyData of results.data) {
+        await storage.createProperty(propertyData);
       }
 
       res.json({
-        properties: propertiesToReturn,
-        total: results.total_results,
-        page: results.page,
-        hasMore: results.data.length > propertiesToReturn.length, // Indicates if there were more results in the API call
-        stats: {
-          totalChecked: propertiesChecked,
-          filtered: propertiesFiltered
-        }
+        properties: results.data,
+        total: results.totalChecked,
+        filtered: results.filtered,
+        hasMore: results.hasMore
       });
     } catch (error: any) {
       console.error("Batch properties error:", error);

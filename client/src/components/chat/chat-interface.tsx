@@ -220,7 +220,7 @@ export default function ChatInterface() {
   const states = [
     'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS',
     'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY',
-    'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+    'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WV', 'WI', 'WY'
   ];
 
   const sellerTypes = [
@@ -638,7 +638,6 @@ export default function ChatInterface() {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="flex-1"
                   onClick={() => {
                     const propertyData = {
                       address: extractMultipleValues(parsedSections.property || content, ['Address', '🏠', 'Property Address']),
@@ -715,7 +714,7 @@ export default function ChatInterface() {
                 <div>
                   <h3 className="font-semibold text-blue-800">🔍 Searching Properties...</h3>
                   <p className="text-sm text-blue-600 mt-1">
-                    {wizardData.city && wizardData.state ? 
+                    {wizardData.city && wizardData.state ?
                       `Analyzing ${wizardData.city}, ${wizardData.state} with BatchData API for distressed properties and motivated sellers` :
                       'Analyzing property data with BatchData API for distressed properties and motivated sellers'
                     }

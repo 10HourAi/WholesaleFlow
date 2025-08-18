@@ -50,22 +50,13 @@ export async function generateLeadFinderResponse(userMessage: string, userId?: s
 Try searching in a different location or expanding your criteria.`;
       }
 
-      // Convert properties to our format and log the conversion
-      const properties = results.data.map((prop, index) => {
-        console.log(`🔄 Converting property ${index + 1}:`, {
-          address: prop.address?.street,
-          city: prop.address?.city,
-          estimatedValue: prop.valuation?.estimatedValue,
-          owner: prop.owner?.fullName
-        });
-
-        return batchLeadsService.convertToProperty(prop, userId);
-      }).filter(prop => prop !== null);
+      // Properties are already converted from searchValidProperties
+      const properties = results.data;
 
       console.log(`✅ Final converted properties: ${properties.length}`);
 
       if (properties.length === 0) {
-        return `Found ${results.data.length} properties in ${location}, but they were filtered out due to missing critical data. Try a different location.`;
+        return `Found ${results.totalChecked} properties in ${location}, but ${results.filtered} were filtered out due to missing critical data. Try a different location.`;
       }
 
       // Format response with actual property data
