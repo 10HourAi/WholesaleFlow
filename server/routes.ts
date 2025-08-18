@@ -691,7 +691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        
+
 
         // Handle single property response
         if (!result.property) {
