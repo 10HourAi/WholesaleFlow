@@ -520,169 +520,7 @@ export default function ChatInterface() {
   };
 
   const renderMultipleProperties = (content: string) => {
-    // Check if this is a multiple properties response from the lead finder
-    if (content.includes("Great! I found") && content.includes("distressed properties") && content.includes("wholesale opportunities")) {
-      // Parse individual properties from the numbered list
-      const propertyMatches = content.match(/(\d+)\.\s+([^\n]+)\n((?:\s+- [^\n]+\n?)+)/g);
-
-      if (propertyMatches && propertyMatches.length > 0) {
-        return (
-          <div className="mt-3 space-y-3">
-            {propertyMatches.map((propertyMatch, index) => {
-              // Extract property details from each match
-              const lines = propertyMatch.split('\n').filter(line => line.trim());
-              const addressLine = lines[0]?.replace(/^\d+\.\s*/, '').trim() || '';
-
-              // Extract individual fields
-              const fields: { [key: string]: string } = {};
-              lines.slice(1).forEach(line => {
-                const cleanLine = line.replace(/^\s*-\s*/, '').trim();
-                if (cleanLine.includes(':')) {
-                  const [key, value] = cleanLine.split(':').map(s => s.trim());
-                  fields[key] = value;
-                }
-              });
-
-              return (
-                <Card key={index} className="border-green-200 bg-green-50">
-                  <CardContent className="p-4">
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                          <h4 className="font-medium text-green-800">Property {index + 1}</h4>
-                        </div>
-                        <Badge variant="secondary" className="bg-green-100 text-green-700">BatchData API</Badge>
-                      </div>
-
-                      {/* Property Address */}
-                      <div className="bg-white p-3 rounded border">
-                        <h5 className="font-semibold text-gray-800 mb-2">🏠 Property Address</h5>
-                        <p className="text-sm text-gray-700 font-medium">{addressLine}</p>
-                      </div>
-
-                      {/* Property Details */}
-                      <div className="bg-white p-3 rounded border">
-                        <h5 className="font-semibold text-gray-800 mb-2">📋 Property Details</h5>
-                        <div className="space-y-1 text-sm text-gray-700">
-                          {fields['Price'] && <div><span className="font-medium">💵 Price:</span> {fields['Price']}</div>}
-                          {(fields['0BR/0BA, 0 sq ft'] || Object.keys(fields).find(k => k.includes('BR/'))) && (
-                            <div><span className="font-medium">🏠 Size:</span> {fields['0BR/0BA, 0 sq ft'] || Object.keys(fields).find(k => k.includes('BR/'))}</div>
-                          )}
-                          {fields['Lead Type'] && <div><span className="font-medium">🏷️ Lead Type:</span> {fields['Lead Type']}</div>}
-                          {fields['Motivation Score'] && <div><span className="font-medium">⭐ Motivation Score:</span> {fields['Motivation Score']}</div>}
-                          {fields['Equity'] && <div><span className="font-medium">📈 Equity:</span> {fields['Equity']}</div>}
-                        </div>
-                      </div>
-
-                      {/* Owner Information */}
-                      <div className="bg-white p-3 rounded border">
-                        <h5 className="font-semibold text-gray-800 mb-2">👤 Owner Information</h5>
-                        <div className="space-y-1 text-sm text-gray-700">
-                          {/* Owner Information - try multiple field variations */}
-                          {(fields['Owner'] || fields['Owner Name']) && <div><span className="font-medium">👤 Owner:</span> {fields['Owner'] || fields['Owner Name']}</div>}
-
-                          {/* Contact Information - check for multiple field formats */}
-                          {(fields['Owner Phone'] || fields['Phone'] || fields['Contact Phone']) && (
-                            <div><span className="font-medium">📞 Phone:</span> {fields['Owner Phone'] || fields['Phone'] || fields['Contact Phone']}</div>
-                          )}
-                          {(fields['Owner Email'] || fields['Email'] || fields['Skip Trace Email']) && (
-                            <div><span className="font-medium">📧 Email:</span> {fields['Owner Email'] || fields['Email'] || fields['Skip Trace Email']}</div>
-                          )}
-
-                          {/* Mailing Address - check for multiple field formats */}
-                          {(fields['Mailing Address'] || fields['Owner Mailing Address'] || fields['Mailing']) && (
-                            <div><span className="font-medium">📬 Mailing Address:</span> {fields['Mailing Address'] || fields['Owner Mailing Address'] || fields['Mailing']}</div>
-                          )}
-
-                          {/* Owner Status and Location */}
-                          {(fields['Owner Status'] || fields['Status']) && <div><span className="font-medium">🏠 Status:</span> {fields['Owner Status'] || fields['Status']}</div>}
-                          {(fields['Distance Factor'] || fields['Distance']) && <div><span className="font-medium">📍 Distance:</span> {fields['Distance Factor'] || fields['Distance']}</div>}
-
-                          {/* Additional Contact Methods */}
-                          {fields['Skip Trace Phone'] && <div><span className="font-medium">📱 Skip Trace Phone:</span> {fields['Skip Trace Phone']}</div>}
-
-                          {/* Portfolio Information */}
-                          {(fields['Properties Count'] || fields['Properties Owned']) && (
-                            <div><span className="font-medium">🏘️ Properties Owned:</span> {fields['Properties Count'] || fields['Properties Owned']}</div>
-                          )}
-                          {(fields['Portfolio Value'] || fields['Total Portfolio Value']) && (
-                            <div><span className="font-medium">💰 Portfolio Value:</span> {fields['Portfolio Value'] || fields['Total Portfolio Value']}</div>
-                          )}
-                          {(fields['Average Purchase Price'] || fields['Avg Purchase Price']) && (
-                            <div><span className="font-medium">📊 Avg Purchase Price:</span> {fields['Average Purchase Price'] || fields['Avg Purchase Price']}</div>
-                          )}
-                          {(fields['Total Equity'] || fields['Portfolio Equity']) && (
-                            <div><span className="font-medium">📈 Total Equity:</span> {fields['Total Equity'] || fields['Portfolio Equity']}</div>
-                          )}
-                          {(fields['Investor Profile'] || fields['Profile']) && (
-                            <div><span className="font-medium">🎯 Investor Profile:</span> {fields['Investor Profile'] || fields['Profile']}</div>
-                          )}
-
-                          {/* Opportunity Description */}
-                          {(fields["Why it's good"] || fields['Opportunity'] || fields['Description']) && (
-                            <div><span className="font-medium">💡 Opportunity:</span> {fields["Why it's good"] || fields['Opportunity'] || fields['Description']}</div>
-                          )}
-
-                          {/* Debug: Show all available fields if none match */}
-                          {Object.keys(fields).length > 0 && !fields['Owner'] && !fields['Owner Name'] && (
-                            <div className="mt-2 p-2 bg-gray-100 rounded text-xs">
-                              <div className="font-medium">Available fields:</div>
-                              {Object.entries(fields).map(([key, value]) => (
-                                <div key={key}>{key}: {value}</div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="pt-2 border-t border-green-200 flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="flex-1"
-                          onClick={() => handleSaveLead({
-                            address: addressLine,
-                            city: 'Orlando', // Extract from addressLine if needed
-                            state: 'FL',
-                            zipCode: '',
-                            arv: fields['Price']?.replace(/[$,]/g, '') || '0',
-                            maxOffer: fields['Price'] ? Math.floor(parseInt(fields['Price'].replace(/[$,]/g, '')) * 0.7).toString() : '0',
-                            ownerName: fields['Owner'] || '',
-                            ownerPhone: fields['Owner Phone'] || fields['Contact Phone'] || fields['Skip Trace Phone'] || '',
-                            ownerEmail: fields['Owner Email'] || fields['Skip Trace Email'] || '',
-                            ownerMailingAddress: fields['Mailing Address'] || '',
-                            leadType: fields['Lead Type']?.toLowerCase().replace(' ', '_') || 'standard',
-                            motivationScore: fields['Motivation Score']?.replace('/100', '') || '0',
-                            equityPercentage: fields['Equity']?.replace('%', '') || '0',
-                            distressedIndicator: fields['Lead Type']?.toLowerCase()
-                          })}
-                          disabled={savePropertyMutation.isPending}
-                        >
-                          {savePropertyMutation.isPending ? 'Saving...' : 'Save Lead'}
-                        </Button>
-                        <Button size="sm" variant="outline" className="flex-1">Analyze Deal</Button>
-                        <Button size="sm" variant="outline">Contact Owner</Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-            {/* Add "Find 5 More" button */}
-            {lastSearchCriteria && (
-              <Button
-                onClick={() => handleSendMessage(lastSearchCriteria.query)}
-                className="w-full flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-              >
-                <Search className="h-4 w-4" />
-                Find 5 More
-              </Button>
-            )}
-          </div>
-        );
-      }
-    }
+    // This function is currently disabled since multiple properties handling was removed
     return null;
   };
 
@@ -923,7 +761,7 @@ export default function ChatInterface() {
         {renderWizard()}
 
         {/* Processing indicator */}
-        {wizardProcessing && (
+        {(wizardProcessing || sendMessageMutation.isPending) && (
           <Card className="border-2 border-blue-200 bg-blue-50">
             <CardContent className="p-6">
               <div className="flex items-center space-x-4">
@@ -935,7 +773,10 @@ export default function ChatInterface() {
                 <div>
                   <h3 className="font-semibold text-blue-800">🔍 Searching Properties...</h3>
                   <p className="text-sm text-blue-600 mt-1">
-                    Analyzing {wizardData.city}, {wizardData.state} with BatchData API for distressed properties and motivated sellers
+                    {wizardData.city && wizardData.state ? 
+                      `Analyzing ${wizardData.city}, ${wizardData.state} with BatchData API for distressed properties and motivated sellers` :
+                      'Analyzing property data with BatchData API for distressed properties and motivated sellers'
+                    }
                   </p>
                 </div>
               </div>
