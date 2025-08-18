@@ -704,9 +704,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         // Handle multiple properties response (for "find more" requests)
         if (result.data && Array.isArray(result.data)) {
-          const validProperties = result.data.filter(prop => batchLeadsService.convertToProperty(prop, 'demo-user') !== null);
+          console.log(`📊 Search results: ${result.data.length} raw properties, ${result.filtered} filtered`);
           
-          if (validProperties.length === 0) {
+          if (result.data.length === 0) {
             const noResultsMessage = result.totalChecked === 0
               ? `I couldn't find any more properties in "${location}". This might be due to:
 • No additional properties matching your criteria
@@ -724,11 +724,17 @@ ${excludePropertyIds.length > 0 ? `Already excluded ${excludePropertyIds.length}
             return;
           }
 
-          // Format multiple properties response
-          let propertiesText = `Great! I found ${validProperties.length} additional properties matching your criteria:\n\n`;
+          // Format multiple properties response using the already converted data
+          let propertiesText = `Great! I found ${result.data.length} additional properties matching your criteria:\n\n`;
 
-          validProperties.forEach((property, index) => {
-            const convertedProperty = batchLeadsService.convertToProperty(property, 'demo-user');
+          result.data.forEach((convertedProperty, index) => {
+            console.log(`🔄 Converting property ${index + 1}:`, {
+              address: convertedProperty.address,
+              city: convertedProperty.city,
+              estimatedValue: convertedProperty.arv,
+              owner: convertedProperty.ownerName
+            });
+
             propertiesText += `${index + 1}. **${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state}**\n`;
             propertiesText += `   - Price: $${parseInt(convertedProperty.arv).toLocaleString()}\n`;
             propertiesText += `   - ${convertedProperty.bedrooms || 0}BR/${convertedProperty.bathrooms || 0}BA, ${(convertedProperty.squareFeet || 0).toLocaleString()} sq ft\n`;
@@ -739,12 +745,16 @@ ${excludePropertyIds.length > 0 ? `Already excluded ${excludePropertyIds.length}
             propertiesText += `   - Why it's good: ${convertedProperty.distressedIndicator || 'Good equity opportunity'}\n\n`;
           });
 
-          const aiResponse = `💡 Found ${validProperties.length} additional LIVE properties from BatchData API! These are new leads not previously shown.`;
+          console.log(`✅ Final converted properties: ${result.data.length}`);
+
+          const aiResponse = `💡 Found ${result.data.length} additional LIVE properties from BatchData API! These are new leads not previously shown.
+
+${propertiesText}`;
 
           res.json({
             response: aiResponse,
-            properties: validProperties, // Already converted properties
-            sessionState: { ...sessionState, excludePropertyIds: validProperties.map(p => p.id || 'unknown') },
+            properties: result.data, // Use the already converted properties
+            sessionState: { ...sessionState, excludePropertyIds: [...excludePropertyIds, ...result.data.map(p => p.id || 'unknown')] },
             hasMore: result.hasMore
           });
           return;
