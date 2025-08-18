@@ -626,71 +626,13 @@ export default function ChatInterface() {
                 <Badge variant="secondary" className="bg-green-100 text-green-700">BatchData API</Badge>
               </div>
 
-              {/* Property Details */}
-              {parsedSections.property && (
-                <div className="bg-white p-3 rounded border">
-                  <h5 className="font-semibold text-gray-800 mb-2">🏠 Property Details</h5>
-                  <div className="text-sm text-gray-700 whitespace-pre-line">{parsedSections.property}</div>
+              {/* Always show the content in a fallback format since sections aren't being parsed correctly */}
+              <div className="bg-white p-3 rounded border">
+                <h5 className="font-semibold text-gray-800 mb-2">📋 Property Information</h5>
+                <div className="text-sm text-gray-700 max-h-64 overflow-y-auto whitespace-pre-wrap">
+                  {content}
                 </div>
-              )}
-
-              {/* Financial Analysis */}
-              {parsedSections.financial && (
-                <div className="bg-white p-3 rounded border">
-                  <h5 className="font-semibold text-gray-800 mb-2">💰 Financial Analysis</h5>
-                  <div className="text-sm text-gray-700 whitespace-pre-line">{parsedSections.financial}</div>
-                </div>
-              )}
-
-              {/* Motivation Score */}
-              {parsedSections.motivation && (
-                <div className="bg-orange-50 p-3 rounded border border-orange-200">
-                  <h5 className="font-semibold text-orange-800 mb-2">🎯 Motivation</h5>
-                  <div className="text-sm text-orange-700 whitespace-pre-line">{parsedSections.motivation}</div>
-                </div>
-              )}
-
-              {/* Foreclosure Warning */}
-              {parsedSections.foreclosure && (
-                <div className="bg-red-50 p-3 rounded border border-red-200">
-                  <h5 className="font-semibold text-red-800 mb-2">🚨 Foreclosure Alert</h5>
-                  <div className="text-sm text-red-700 whitespace-pre-line">{parsedSections.foreclosure}</div>
-                </div>
-              )}
-
-              {/* Owner Information */}
-              {parsedSections.owner && (
-                <div className="bg-white p-3 rounded border">
-                  <h5 className="font-semibold text-gray-800 mb-2">👤 Owner Information</h5>
-                  <div className="text-sm text-gray-700 whitespace-pre-line">{parsedSections.owner}</div>
-                </div>
-              )}
-
-              {/* Contact Information */}
-              {parsedSections.contact && (
-                <div className="bg-blue-50 p-3 rounded border border-blue-200">
-                  <h5 className="font-semibold text-blue-800 mb-2">📞 Contact Details</h5>
-                  <div className="text-sm text-blue-700 whitespace-pre-line">{parsedSections.contact}</div>
-                </div>
-              )}
-
-              {/* Portfolio Information */}
-              {parsedSections.portfolio && (
-                <div className="bg-purple-50 p-3 rounded border border-purple-200">
-                  <h5 className="font-semibold text-purple-800 mb-2">🏘️ Owner Portfolio</h5>
-                  <div className="text-sm text-purple-700 whitespace-pre-line">{parsedSections.portfolio}</div>
-                </div>
-              )}
-
-              {/* Fallback for unsectioned content */}
-              {!parsedSections.property && !parsedSections.financial && !parsedSections.owner && !parsedSections.motivation && (
-                <div className="bg-white p-3 rounded border">
-                  <h5 className="font-semibold text-gray-800 mb-2">📋 Property Information</h5>
-                  <div className="text-sm text-gray-700 max-h-64 overflow-y-auto whitespace-pre-wrap">
-                    {content}
-                  </div>
-                </div>
-              )}
+              </div>
 
               <div className="pt-2 border-t border-green-200 flex gap-2">
                 <Button
