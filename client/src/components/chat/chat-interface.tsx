@@ -523,35 +523,35 @@ export default function ChatInterface() {
     // Check if this is a multiple properties response
     if (content.includes("Great! I found") && content.includes("properties") && 
         (content.match(/\d+\.\s+\d+/g) || content.match(/1\.\s+/))) {
-      
+
       console.log('Multiple properties detected. Content:', content);
-      
+
       // Split the content into individual property entries
       const propertyMatches = content.split(/\d+\.\s+/).filter(match => match.trim().length > 10);
-      
+
       if (propertyMatches.length === 0) {
         return null;
       }
-      
+
       console.log(`Found ${propertyMatches.length} property entries`);
-      
+
       return (
         <div className="mt-3 space-y-4">
           {propertyMatches.map((propertyText, index) => {
             if (!propertyText.trim()) return null;
-            
+
             console.log(`Rendering property card ${index + 1}:`, propertyText.substring(0, 100));
-            
+
             // Extract key information from each property
             const lines = propertyText.trim().split('\n');
             const address = lines[0]?.replace(/^-\s*/, '').trim() || 'Address not found';
-            
+
             // Extract other details with better parsing
             const extractValue = (text: string, pattern: RegExp) => {
               const match = text.match(pattern);
               return match ? match[1].trim() : 'N/A';
             };
-            
+
             // Extract key property details with multiple patterns
             const price = extractValue(propertyText, /(?:Price|ARV|Value):\s*\$?([^\n]+)/i);
             const bedBath = extractValue(propertyText, /(\d+BR\/\d+BA[^\n]*)/i) || 
@@ -562,7 +562,7 @@ export default function ChatInterface() {
             const equity = extractValue(propertyText, /Equity[^:]*:\s*([^\n]+)/i);
             const leadType = extractValue(propertyText, /(?:Lead Type|Type):\s*([^\n]+)/i);
             const whyGood = extractValue(propertyText, /Why[^:]*:\s*([^\n]+)/i);
-            
+
             return (
               <Card key={index} className="border-green-200 bg-green-50">
                 <CardContent className="p-4">
@@ -577,7 +577,7 @@ export default function ChatInterface() {
 
                     <div className="bg-white p-3 rounded border">
                       <h5 className="font-semibold text-gray-800 mb-3">🏠 {address}</h5>
-                      
+
                       {/* Owner Information Section */}
                       <div className="mb-3 p-2 bg-blue-50 rounded">
                         <h6 className="font-medium text-blue-800 mb-1">👤 Owner Information</h6>
@@ -644,7 +644,7 @@ export default function ChatInterface() {
               </Card>
             );
           })}
-          
+
           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-700 text-center">
               💡 These are LIVE properties from BatchData API with verified owner information and equity calculations!
@@ -653,7 +653,7 @@ export default function ChatInterface() {
         </div>
       );
     }
-    
+
     return null;
   };
 
@@ -743,7 +743,6 @@ export default function ChatInterface() {
 
       // This logic assumes the content itself is a single property search result
       // and stores the criteria that led to it.
-      // If the content is not a direct search result (e.g., general chat), this might not be accurate.
       // For now, we'll assume any direct property card render implies a search.
       setLastSearchCriteria({ query: content }); // Storing the content as criteria for now
 

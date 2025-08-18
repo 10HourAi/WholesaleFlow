@@ -129,7 +129,7 @@ class BatchLeadsService {
       };
     }
 
-    // Add bedroom filter
+    // Add bedroom filter - this should filter at API level
     if (criteria.minBedrooms) {
       if (!requestBody.searchCriteria.building) {
         requestBody.searchCriteria.building = {};
@@ -137,6 +137,7 @@ class BatchLeadsService {
       requestBody.searchCriteria.building.bedrooms = {
         min: criteria.minBedrooms
       };
+      console.log(`🛏️ Added bedroom filter: min ${criteria.minBedrooms} bedrooms`);
     }
 
     // Add equity filter
@@ -411,9 +412,9 @@ class BatchLeadsService {
       city: city,
       state: state,
       zipCode: zipCode,
-      bedrooms: bedrooms || 0,
-      bathrooms: bathrooms || 0,
-      squareFeet: squareFeet || 0,
+      bedrooms: bedrooms !== null ? bedrooms : null, // Preserve null for missing data
+      bathrooms: bathrooms !== null ? bathrooms : null, // Preserve null for missing data  
+      squareFeet: squareFeet !== null ? squareFeet : null, // Preserve null for missing data
       arv: estimatedValue.toString(),
       maxOffer: maxOffer.toString(),
       status: 'new',
