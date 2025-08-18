@@ -119,7 +119,7 @@ class BatchLeadsService {
       requestBody.searchCriteria.quickLists = [
         'absentee-owner'  // Start with the most common distressed indicator
       ];
-      
+
       // Add equity filter separately for better results
       if (!requestBody.searchCriteria.valuation) {
         requestBody.searchCriteria.valuation = {};
@@ -356,11 +356,11 @@ class BatchLeadsService {
 
     const estimatedValue = batchProperty.valuation?.estimatedValue || 0;
     const equityPercent = batchProperty.valuation?.equityPercent;
-    
+
     // Extract building details with better fallbacks
     const building = batchProperty.building || {};
-    const bedrooms = building.bedrooms || null; // Use null instead of 0 to indicate unknown
-    const bathrooms = building.bathrooms || null;
+    const bedrooms = building.bedrooms !== undefined && building.bedrooms !== null ? building.bedrooms : null; // Use null instead of 0 to indicate unknown
+    const bathrooms = building.bathrooms !== undefined && building.bathrooms !== null ? building.bathrooms : null;
     const squareFeet = building.livingArea || building.totalLivingArea || null;
     const address = batchProperty.address?.street;
     const city = batchProperty.address?.city;
@@ -376,22 +376,27 @@ class BatchLeadsService {
       state,
       zipCode,
       ownerName,
-      bedrooms: bedrooms || 'Not provided by API',
-      bathrooms: bathrooms || 'Not provided by API', 
-      squareFeet: squareFeet || 'Not provided by API',
-      hasBuildingData: !!(bedrooms || bathrooms || squareFeet),
+      bedrooms: bedrooms !== null ? bedrooms : 'Not provided by API',
+      bathrooms: bathrooms !== null ? bathrooms : 'Not provided by API', 
+      squareFeet: squareFeet !== null ? squareFeet : 'Not provided by API',
+      hasBuildingData: !!(bedrooms !== null || bathrooms !== null || squareFeet !== null),
       passesSquareFootageFilter: squareFeet === null || squareFeet > 0
     });
 
-    // Relaxed validation - only filter out properties missing critical financial data or with 0 sq ft
+    // Balanced validation - require core data but allow properties when building data is not provided by API
     if (!estimatedValue || 
         estimatedValue <= 10000 || 
         !address || 
         !city || 
         !state || 
-        !zipCode ||
-        (squareFeet !== null && squareFeet <= 0)) {
-      console.log(`❌ Property filtered out - missing critical data or 0 sq ft`);
+        !zipCode) {
+      console.log(`❌ Property filtered out - missing critical financial or address data`);
+      return null;
+    }
+
+    // Only filter out if we have building data AND it's invalid (0 or negative)
+    if ((bedrooms !== null && bedrooms <= 0) || (squareFeet !== null && squareFeet <= 0)) {
+      console.log(`❌ Property filtered out - invalid building data (0 bedrooms or 0 sq ft)`);
       return null;
     }
 
