@@ -528,8 +528,8 @@ export default function ChatInterface() {
 
       console.log('Multiple properties detected. Content:', content);
 
-      // Extract numbered property entries more precisely
-      const propertyRegex = /(\d+)\.\s+([^\n]+(?:\n(?!\d+\.)[^\n]*)*)/g;
+      // Extract numbered property entries more precisely - only match lines that start with number + period + address
+      const propertyRegex = /(\d+)\.\s+(\d+[^,\n]+,\s*[^,\n]+,\s*FL[^\n]*(?:\n(?!\d+\.)[^\n]*)*)/g;
       const propertyMatches = [];
       let match;
       
