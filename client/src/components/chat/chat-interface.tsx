@@ -331,9 +331,7 @@ export default function ChatInterface() {
         motivationScore: propertyData.motivationScore ? parseInt(propertyData.motivationScore.toString()) : 0,
         distressedIndicator: propertyData.distressedIndicator || '',
         ownerMailingAddress: propertyData.ownerMailingAddress || '',
-        ownerStatus: propertyData.ownerStatus || '',
-        lastSaleDate: propertyData.lastSaleDate || null,
-        lastSalePrice: propertyData.lastSalePrice || null
+        ownerStatus: propertyData.ownerStatus || ''
       };
 
       await savePropertyMutation.mutateAsync(cleanPropertyData);
@@ -562,16 +560,16 @@ export default function ChatInterface() {
             console.log(`Rendering property card ${propertyMatch.number}:`, propertyText.substring(0, 100));
 
             // Extract key information from each property
-            const lines = propertyText.split('\n');
+            const lines = propertyText.trim().split('\n');
             const address = lines[0]?.replace(/^-\s*/, '').trim() || 'Address not found';
 
-            // Extract other details with better parsing
-            const extractValue = (text: string, pattern: RegExp) => {
+            // Extract key details with multiple patterns
+            const extractValue = (text: string | undefined, pattern: RegExp) => {
+              if (!text) return 'N/A';
               const match = text.match(pattern);
               return match ? match[1].trim() : 'N/A';
             };
 
-            // Extract key property details with multiple patterns
             const price = extractValue(propertyText, /(?:Price|ARV|Value):\s*\$?([^\n]+)/i) || 'N/A';
             const bedBath = extractValue(propertyText, /(\d+BR\/\d+BA[^\n]*)/i) ||
                           extractValue(propertyText, /(\d+\s*bed[^\n]*\d+\s*bath[^\n]*)/i) || 'N/A';
@@ -580,6 +578,21 @@ export default function ChatInterface() {
             const equity = extractValue(propertyText, /Equity[^:]*:\s*([^\n]+)/i) || 'N/A';
             const leadType = extractValue(propertyText, /(?:Lead Type|Type):\s*([^\n]+)/i) || 'N/A';
             const whyGood = extractValue(propertyText, /Why[^:]*:\s*([^\n]+)/i);
+            const lastSaleDate = extractValue(propertyText, /Last Sale Date:\s*([^\n]+)/i) || null;
+            const lastSalePrice = extractValue(propertyText, /Last Sale Price:\s*\$?([^\n]+)/i) || null;
+
+            const propertyMatch = {
+                number: propertyIndex + 1,
+                address,
+                price,
+                bedBath,
+                owner,
+                motivation,
+                equity,
+                leadType,
+                lastSaleDate,
+                lastSalePrice
+              };
 
             return (
               <Card key={`property-${propertyMatch.number}`} className="border-green-200 bg-green-50">
@@ -616,17 +629,15 @@ export default function ChatInterface() {
                         <div><strong>🏷️ Lead Type:</strong> {leadType !== 'N/A' ? leadType : 'Distressed/Motivated'}</div>
                         <div><strong>📊 Max Offer:</strong> 70% ARV Rule Applied</div>
                       </div>
+                    </div>
 
-                      {whyGood && (
-                        <div className="mt-2 p-2 bg-yellow-50 rounded text-sm">
-                          <strong>💡 Why it's good:</strong> {whyGood}
-                        </div>
-                      )}
-                      {(price === 'N/A' || bedBath === 'N/A' || bedBath.includes('0BR/0BA')) && (
-                        <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
-                          <strong>ℹ️ Note:</strong> Building details (bedrooms/bathrooms/sq ft) require property inspection or county records research. Financial data (value, equity, owner info) is verified through multiple data sources.
-                        </div>
-                      )}
+                    {/* Sale History Section */}
+                    <div className="bg-blue-50 p-3 rounded border">
+                      <h6 className="font-semibold text-blue-800 mb-2">📈 Sale History</h6>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div><strong>Last Sale Date:</strong> {propertyMatch.lastSaleDate || 'No recent sales'}</div>
+                        <div><strong>Last Sale Price:</strong> {propertyMatch.lastSalePrice ? `$${parseInt(propertyMatch.lastSalePrice).toLocaleString()}` : 'Not available'}</div>
+                      </div>
                     </div>
 
                     <div className="pt-2 border-t border-green-200 flex gap-2">
@@ -796,10 +807,6 @@ export default function ChatInterface() {
                   size="sm"
                   variant="outline"
                   onClick={() => {
-                    // Extract last sale date and price
-                    const lastSaleDateMatch = content.match(/Last Sale Date:\s*([\d\/]+)/i);
-                    const lastSalePriceMatch = content.match(/Last Sale Price:\s*\$?([\d,]+)/i);
-
                     const propertyData = {
                       address: extractMultipleValues(parsedSections.property || content, ['Address', '🏠', 'Property Address']),
                       city: extractMultipleValues(parsedSections.property || content, ['City']),
@@ -814,9 +821,7 @@ export default function ChatInterface() {
                       ownerStatus: ownerStatus,
                       motivationScore: (extractMultipleValues(parsedSections.motivation || content, ['Score', 'Motivation', '⭐']) || '50').replace(/\/100/, ''),
                       equityPercentage: (extractMultipleValues(parsedSections.financial || content, ['Equity', 'Equity Percentage', '📈']) || '0').replace(/%/, ''),
-                      leadType: content.toLowerCase().includes('foreclosure') ? 'preforeclosure' : 'standard',
-                      lastSaleDate: lastSaleDateMatch ? lastSaleDateMatch[1] : null,
-                      lastSalePrice: lastSalePriceMatch ? lastSalePriceMatch[1].replace(/,/g, '') : null
+                      leadType: content.toLowerCase().includes('foreclosure') ? 'preforeclosure' : 'standard'
                     };
 
                     handleSaveLead(propertyData);
