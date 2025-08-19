@@ -593,7 +593,7 @@ export default function ChatInterface() {
                       {/* Property Details */}
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div><strong>💵 Est. Value:</strong> {price !== 'N/A' ? `$${price}` : 'Available in full report'}</div>
-                        <div><strong>🏠 Details:</strong> {bedBath}</div>
+                        <div><strong>🏠 Details:</strong> {bedBath !== 'N/A' && !bedBath.includes('0BR/0BA') ? bedBath : 'Details available via property inspection'}</div>
                         <div><strong>⭐ Motivation:</strong> {motivation !== 'N/A' ? motivation : 'High (multiple factors)'}</div>
                         <div><strong>📈 Equity:</strong> {equity !== 'N/A' ? equity : 'High equity property'}</div>
                         <div><strong>🏷️ Lead Type:</strong> {leadType !== 'N/A' ? leadType : 'Distressed/Motivated'}</div>
@@ -605,11 +605,11 @@ export default function ChatInterface() {
                           <strong>💡 Why it's good:</strong> {whyGood}
                         </div>
                       )}
-                      {price === 'N/A' || bedBath === 'N/A' ? (
+                      {(price === 'N/A' || bedBath === 'N/A' || bedBath.includes('0BR/0BA')) && (
                         <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
-                          <strong>ℹ️ Note:</strong> Some details require skip tracing or property inspection. This ensures data accuracy for serious investors.
+                          <strong>ℹ️ Note:</strong> Building details (bedrooms/bathrooms/sq ft) require property inspection or county records research. Financial data (value, equity, owner info) is verified through multiple data sources.
                         </div>
-                      ) : null}
+                      )}
                     </div>
 
                     <div className="pt-2 border-t border-green-200 flex gap-2">
