@@ -528,8 +528,8 @@ export default function ChatInterface() {
 
       console.log('Multiple properties detected. Content:', content);
 
-      // Extract numbered property entries more precisely - only match actual property addresses
-      const propertyRegex = /(\d+)\.\s+(\d+\s+[A-Za-z][^,\n]*,\s*Orlando,\s*FL[^\n]*(?:\n(?!\d+\.)[^\n]*)*)/g;
+      // Extract numbered property entries more precisely - match property addresses from any city/state
+      const propertyRegex = /(\d+)\.\s+(\d+\s+[A-Za-z][^,\n]*,\s*[A-Za-z\s]+,\s*[A-Z]{2}[^\n]*(?:\n(?!\d+\.)[^\n]*)*)/g;
       const propertyMatches = [];
       let match;
       
