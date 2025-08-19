@@ -479,19 +479,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Detailed owner information
           let ownerInfo = `**OWNER INFORMATION:**\n`;
-          ownerInfo += `Full Name: ${owner?.fullName || 'Not available'}\n`;
+          ownerInfo += `Owner Name: ${owner?.fullName || 'Not available'}\n`;
+          ownerInfo += `Owner Phone: ${owner?.phoneNumbers?.[0] || 'Not available'}\n`;
+          ownerInfo += `Owner Email: ${owner?.emailAddresses?.[0] || 'Not available'}\n`;
 
           if (owner?.mailingAddress) {
             const mailingAddr = `${owner.mailingAddress.street}, ${owner.mailingAddress.city}, ${owner.mailingAddress.state} ${owner.mailingAddress.zip}`;
             const isDifferent = mailingAddr.toLowerCase() !== propertyAddress.toLowerCase();
             ownerInfo += `Mailing Address: ${mailingAddr}\n`;
-            ownerInfo += `Owner Status: ${isDifferent ? '🏃 ABSENTEE OWNER (Lives elsewhere - High motivation!)' : '🏠 Owner Occupied'}\n`;
-            if (isDifferent) {
-              ownerInfo += `Distance Factor: Owner lives in ${owner.mailingAddress.state} while property is in ${address?.state}\n`;
-            }
+            ownerInfo += `Owner Status: ${isDifferent ? 'Absentee Owner (High motivation potential!)' : 'Owner Occupied'}\n`;
           } else {
             ownerInfo += `Mailing Address: Same as property address\n`;
-            ownerInfo += `Owner Status: Likely owner occupied\n`;
+            ownerInfo += `Owner Status: Owner Occupied\n`;
           }
 
           // Mortgage and lien information

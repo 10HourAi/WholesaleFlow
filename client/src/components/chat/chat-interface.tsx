@@ -220,7 +220,7 @@ export default function ChatInterface() {
   const states = [
     'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA', 'HI', 'ID', 'IL', 'IN', 'IA', 'KS',
     'KY', 'LA', 'ME', 'MD', 'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ', 'NM', 'NY',
-    'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WV', 'WI', 'WY'
+    'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC', 'SD', 'TN', 'UT', 'VT', 'VA', 'WV', 'WI', 'WY'
   ];
 
   const sellerTypes = [
@@ -324,7 +324,9 @@ export default function ChatInterface() {
         ownerEmail: propertyData.ownerEmail || '',
         equityPercentage: propertyData.equityPercentage ? parseInt(propertyData.equityPercentage.toString()) : 0,
         motivationScore: propertyData.motivationScore ? parseInt(propertyData.motivationScore.toString()) : 0,
-        distressedIndicator: propertyData.distressedIndicator || ''
+        distressedIndicator: propertyData.distressedIndicator || '',
+        ownerMailingAddress: propertyData.ownerMailingAddress || '',
+        ownerStatus: propertyData.ownerStatus || ''
       };
 
       await savePropertyMutation.mutateAsync(cleanPropertyData);
@@ -521,7 +523,7 @@ export default function ChatInterface() {
 
   const renderMultipleProperties = (content: string) => {
     // Check if this is a multiple properties response
-    if (content.includes("Great! I found") && content.includes("properties") && 
+    if (content.includes("Great! I found") && content.includes("properties") &&
         (content.match(/\d+\.\s+\d+/g) || content.match(/1\.\s+/))) {
 
       console.log('Multiple properties detected. Content:', content);
@@ -553,14 +555,13 @@ export default function ChatInterface() {
             };
 
             // Extract key property details with multiple patterns
-            const price = extractValue(propertyText, /(?:Price|ARV|Value):\s*\$?([^\n]+)/i);
-            const bedBath = extractValue(propertyText, /(\d+BR\/\d+BA[^\n]*)/i) || 
-                          extractValue(propertyText, /(\d+\s*bed[^\n]*\d+\s*bath[^\n]*)/i) ||
-                          'Property details available';
-            const owner = extractValue(propertyText, /Owner:\s*([^\n]+)/i);
-            const motivation = extractValue(propertyText, /Motivation[^:]*:\s*([^\n]+)/i);
-            const equity = extractValue(propertyText, /Equity[^:]*:\s*([^\n]+)/i);
-            const leadType = extractValue(propertyText, /(?:Lead Type|Type):\s*([^\n]+)/i);
+            const price = extractValue(propertyText, /(?:Price|ARV|Value):\s*\$?([^\n]+)/i) || 'N/A';
+            const bedBath = extractValue(propertyText, /(\d+BR\/\d+BA[^\n]*)/i) ||
+                          extractValue(propertyText, /(\d+\s*bed[^\n]*\d+\s*bath[^\n]*)/i) || 'N/A';
+            const owner = extractValue(propertyText, /Owner Name:\s*([^\n]+)/i) || extractValue(propertyText, /Owner:\s*([^\n]+)/i) || 'N/A';
+            const motivation = extractValue(propertyText, /Motivation[^:]*:\s*([^\n]+)/i) || 'N/A';
+            const equity = extractValue(propertyText, /Equity[^:]*:\s*([^\n]+)/i) || 'N/A';
+            const leadType = extractValue(propertyText, /(?:Lead Type|Type):\s*([^\n]+)/i) || 'N/A';
             const whyGood = extractValue(propertyText, /Why[^:]*:\s*([^\n]+)/i);
 
             return (
@@ -584,7 +585,8 @@ export default function ChatInterface() {
                         <div className="text-sm text-blue-700">
                           <div><strong>Name:</strong> {owner !== 'N/A' ? owner : 'Available via skip trace'}</div>
                           <div><strong>Contact:</strong> Phone & Email available via skip trace</div>
-                          <div><strong>Status:</strong> Out-of-state owner (High motivation potential)</div>
+                          <div><strong>Mailing:</strong> Same as property address</div>
+                          <div><strong>Status:</strong> Owner Occupied</div>
                         </div>
                       </div>
 
@@ -598,12 +600,12 @@ export default function ChatInterface() {
                         <div><strong>📊 Max Offer:</strong> 70% ARV Rule Applied</div>
                       </div>
 
-                      {whyGood !== 'N/A' && (
+                      {whyGood && (
                         <div className="mt-2 p-2 bg-yellow-50 rounded text-sm">
                           <strong>💡 Why it's good:</strong> {whyGood}
                         </div>
                       )}
-                      {price === 'N/A' || bedBath === 'Property details available' ? (
+                      {price === 'N/A' || bedBath === 'N/A' ? (
                         <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
                           <strong>ℹ️ Note:</strong> Some details require skip tracing or property inspection. This ensures data accuracy for serious investors.
                         </div>
@@ -625,6 +627,8 @@ export default function ChatInterface() {
                             ownerName: owner,
                             ownerPhone: 'Available via skip trace',
                             ownerEmail: 'Available via skip trace',
+                            ownerMailingAddress: 'Same as property address',
+                            ownerStatus: 'Owner Occupied',
                             motivationScore: motivation.replace(/\/100/, '') || '50',
                             equityPercentage: equity.replace(/%/, '') || '0',
                             leadType: leadType.toLowerCase().replace(/\s+/g, '_') || 'standard'
@@ -733,7 +737,12 @@ export default function ChatInterface() {
       };
 
       const propertyAddress = extractMultipleValues(parsedSections.property || content, ['Address', '🏠', 'Property Address']);
-      const ownerName = extractMultipleValues(parsedSections.owner || parsedSections.contact || content, ['Owner', 'Full Name', 'Name', '👤']);
+      const ownerName = extractMultipleValues(parsedSections.owner || parsedSections.contact || content, ['Owner Name', 'Owner', 'Full Name', 'Name', '👤']);
+      const ownerPhone = extractMultipleValues(parsedSections.contact || parsedSections.owner || content, ['Owner Phone', 'Phone', 'Contact Phone', '📞', '☎️']);
+      const ownerEmail = extractMultipleValues(parsedSections.contact || parsedSections.owner || content, ['Owner Email', 'Email', 'Contact Email', '📧', '✉️']);
+      const ownerMailingAddress = extractMultipleValues(parsedSections.owner || content, ['Mailing Address', 'Mailing']) || 'Same as property address';
+      const ownerStatus = extractMultipleValues(parsedSections.owner || content, ['Owner Status', 'Status']) || 'Owner Occupied';
+
       const propertyId = `${propertyAddress}_${ownerName}`; // Simple unique ID
 
       // Track this property as shown and store search criteria
@@ -758,7 +767,6 @@ export default function ChatInterface() {
                 <Badge variant="secondary" className="bg-green-100 text-green-700">BatchData API</Badge>
               </div>
 
-              {/* Always show the content in a fallback format since sections aren't being parsed correctly */}
               <div className="bg-white p-3 rounded border">
                 <h5 className="font-semibold text-gray-800 mb-2">📋 Property Information</h5>
                 <div className="text-sm text-gray-700 max-h-64 overflow-y-auto whitespace-pre-wrap">
@@ -778,10 +786,11 @@ export default function ChatInterface() {
                       zipCode: extractMultipleValues(parsedSections.property || content, ['ZIP', 'Zip Code']),
                       arv: (extractMultipleValues(parsedSections.financial || content, ['Est. Value', 'Estimated Value', 'ARV', 'Value']) || '0').replace(/[$,]/g, ''),
                       maxOffer: (extractMultipleValues(parsedSections.financial || content, ['Max Offer', 'Offer']) || '0').replace(/[$,]/g, ''),
-                      ownerName: extractMultipleValues(parsedSections.owner || parsedSections.contact || content, ['Owner', 'Full Name', 'Name', '👤']),
-                      ownerPhone: extractMultipleValues(parsedSections.contact || content, ['Phone', 'Contact Phone', 'Owner Phone', '📞', '☎️']),
-                      ownerEmail: extractMultipleValues(parsedSections.contact || content, ['Email', 'Owner Email', 'Contact Email', '📧', '✉️']),
-                      ownerMailingAddress: extractMultipleValues(parsedSections.contact || parsedSections.owner || content, ['Mailing Address', 'Mailing', 'Owner Address', '📬']),
+                      ownerName: ownerName,
+                      ownerPhone: ownerPhone,
+                      ownerEmail: ownerEmail,
+                      ownerMailingAddress: ownerMailingAddress,
+                      ownerStatus: ownerStatus,
                       motivationScore: (extractMultipleValues(parsedSections.motivation || content, ['Score', 'Motivation', '⭐']) || '50').replace(/\/100/, ''),
                       equityPercentage: (extractMultipleValues(parsedSections.financial || content, ['Equity', 'Equity Percentage', '📈']) || '0').replace(/%/, ''),
                       leadType: content.toLowerCase().includes('foreclosure') ? 'preforeclosure' : 'standard'
