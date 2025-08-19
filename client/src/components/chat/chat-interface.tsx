@@ -256,16 +256,21 @@ export default function ChatInterface() {
   const handleWizardSubmit = () => {
     // Build search query from wizard data
     const location = `${wizardData.city}, ${wizardData.state}`;
-    let searchQuery = `Find properties in ${location}`;
+    let searchQuery = `Find`;
+
+    // Add property type first if specified
+    if (wizardData.propertyType !== "any") {
+      const propertyTypeLabel = propertyTypes.find(p => p.value === wizardData.propertyType)?.label;
+      searchQuery += ` ${propertyTypeLabel?.toLowerCase()}`;
+    } else {
+      searchQuery += ` properties`;
+    }
+
+    searchQuery += ` in ${location}`;
 
     if (wizardData.sellerType !== "any") {
       const sellerTypeLabel = sellerTypes.find(s => s.value === wizardData.sellerType)?.label;
       searchQuery += ` with ${sellerTypeLabel?.toLowerCase()}`;
-    }
-
-    if (wizardData.propertyType !== "any") {
-      const propertyTypeLabel = propertyTypes.find(p => p.value === wizardData.propertyType)?.label;
-      searchQuery += ` focusing on ${propertyTypeLabel?.toLowerCase()}`;
     }
 
     if (wizardData.minBedrooms) {
