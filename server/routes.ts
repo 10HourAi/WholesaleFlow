@@ -629,10 +629,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Extract price limits
-        const priceMatch = message.match(/under\s+\$?([\d,]+)/i);
+        const priceMatch = message.match(/under\s+\$?([\d,]+)/i) || message.match(/max\s+\$?([\d,]+)/i) || message.match(/maximum\s+\$?([\d,]+)/i);
         if (priceMatch) {
           const price = parseInt(priceMatch[1].replace(/,/g, ''));
           searchCriteria.maxPrice = price;
+          console.log(`💰 Extracted max price: $${price.toLocaleString()}`);
         }
 
         // Property type - default to single family for most searches

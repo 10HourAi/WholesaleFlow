@@ -164,6 +164,7 @@ class BatchLeadsService {
       requestBody.searchCriteria.valuation.estimatedValue = {
         max: criteria.maxPrice
       };
+      console.log(`💰 Added price filter: max $${criteria.maxPrice.toLocaleString()}`);
     }
 
     console.log(`📋 Full request body:`, JSON.stringify(requestBody, null, 2));
