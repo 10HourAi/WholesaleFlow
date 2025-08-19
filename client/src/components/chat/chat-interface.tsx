@@ -527,29 +527,39 @@ export default function ChatInterface() {
   };
 
   const renderMultipleProperties = (content: string) => {
-    // Check if this is a multiple properties response
-    if (content.includes("Great! I found") && content.includes("properties") &&
-        (content.match(/\d+\.\s+\d+/g) || content.match(/1\.\s+/))) {
+    // Enhanced property detection - check for various response formats
+    const hasPropertyIndicators = content.includes("properties") || 
+                                  content.includes("PROPERTY") || 
+                                  content.includes("Address:") ||
+                                  content.includes("Owner:") ||
+                                  content.includes("ARV:") ||
+                                  content.includes("Equity:") ||
+                                  content.match(/\d+\.\s+\d+/) ||
+                                  content.includes("Lead #");
 
-      console.log('Multiple properties detected. Content:', content);
+    if (!hasPropertyIndicators) {
+      return null;
+    }
 
-      // Extract numbered property entries more precisely - match property addresses from any city/state
-      const propertyRegex = /(\d+)\.\s+(\d+\s+[A-Za-z][^,\n]*,\s*[A-Za-z\s]+,\s*[A-Z]{2}[^\n]*(?:\n(?!\d+\.)[^\n]*)*)/g;
-      const propertyMatches = [];
-      let match;
+    console.log('Property content detected. Analyzing format...', content.substring(0, 200));
 
-      while ((match = propertyRegex.exec(content)) !== null) {
-        propertyMatches.push({
-          number: match[1],
-          content: match[2].trim()
-        });
-      }
+    // Extract numbered property entries more precisely - match property addresses from any city/state
+    const propertyRegex = /(\d+)\.\s+(\d+\s+[A-Za-z][^,\n]*,\s*[A-Za-z\s]+,\s*[A-Z]{2}[^\n]*(?:\n(?!\d+\.)[^\n]*)*)/g;
+    const propertyMatches = [];
+    let match;
 
-      if (propertyMatches.length === 0) {
-        return null;
-      }
+    while ((match = propertyRegex.exec(content)) !== null) {
+      propertyMatches.push({
+        number: match[1],
+        content: match[2].trim()
+      });
+    }
 
-      console.log(`Found ${propertyMatches.length} property entries`);
+    if (propertyMatches.length === 0) {
+      return null;
+    }
+
+    console.log(`Found ${propertyMatches.length} property entries`);
 
       return (
         <div className="mt-3 space-y-4">
