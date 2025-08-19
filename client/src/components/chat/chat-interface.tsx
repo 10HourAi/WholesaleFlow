@@ -331,7 +331,9 @@ export default function ChatInterface() {
         motivationScore: propertyData.motivationScore ? parseInt(propertyData.motivationScore.toString()) : 0,
         distressedIndicator: propertyData.distressedIndicator || '',
         ownerMailingAddress: propertyData.ownerMailingAddress || '',
-        ownerStatus: propertyData.ownerStatus || ''
+        ownerStatus: propertyData.ownerStatus || '',
+        lastSaleDate: propertyData.lastSaleDate || null,
+        lastSalePrice: propertyData.lastSalePrice || null
       };
 
       await savePropertyMutation.mutateAsync(cleanPropertyData);
@@ -537,7 +539,7 @@ export default function ChatInterface() {
       const propertyRegex = /(\d+)\.\s+(\d+\s+[A-Za-z][^,\n]*,\s*[A-Za-z\s]+,\s*[A-Z]{2}[^\n]*(?:\n(?!\d+\.)[^\n]*)*)/g;
       const propertyMatches = [];
       let match;
-      
+
       while ((match = propertyRegex.exec(content)) !== null) {
         propertyMatches.push({
           number: match[1],
@@ -560,7 +562,7 @@ export default function ChatInterface() {
             console.log(`Rendering property card ${propertyMatch.number}:`, propertyText.substring(0, 100));
 
             // Extract key information from each property
-            const lines = propertyText.trim().split('\n');
+            const lines = propertyText.split('\n');
             const address = lines[0]?.replace(/^-\s*/, '').trim() || 'Address not found';
 
             // Extract other details with better parsing
@@ -794,6 +796,10 @@ export default function ChatInterface() {
                   size="sm"
                   variant="outline"
                   onClick={() => {
+                    // Extract last sale date and price
+                    const lastSaleDateMatch = content.match(/Last Sale Date:\s*([\d\/]+)/i);
+                    const lastSalePriceMatch = content.match(/Last Sale Price:\s*\$?([\d,]+)/i);
+
                     const propertyData = {
                       address: extractMultipleValues(parsedSections.property || content, ['Address', '🏠', 'Property Address']),
                       city: extractMultipleValues(parsedSections.property || content, ['City']),
@@ -808,7 +814,9 @@ export default function ChatInterface() {
                       ownerStatus: ownerStatus,
                       motivationScore: (extractMultipleValues(parsedSections.motivation || content, ['Score', 'Motivation', '⭐']) || '50').replace(/\/100/, ''),
                       equityPercentage: (extractMultipleValues(parsedSections.financial || content, ['Equity', 'Equity Percentage', '📈']) || '0').replace(/%/, ''),
-                      leadType: content.toLowerCase().includes('foreclosure') ? 'preforeclosure' : 'standard'
+                      leadType: content.toLowerCase().includes('foreclosure') ? 'preforeclosure' : 'standard',
+                      lastSaleDate: lastSaleDateMatch ? lastSaleDateMatch[1] : null,
+                      lastSalePrice: lastSalePriceMatch ? lastSalePriceMatch[1].replace(/,/g, '') : null
                     };
 
                     handleSaveLead(propertyData);
