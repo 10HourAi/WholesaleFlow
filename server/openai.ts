@@ -74,7 +74,6 @@ Try searching in a different location or expanding your criteria.`;
         response += `   - Price: $${property.arv ? parseInt(property.arv).toLocaleString() : 'N/A'}\n`;
         response += `   - ${property.bedrooms || 0}BR/${property.bathrooms || 0}BA, ${property.squareFeet?.toLocaleString() || 0} sq ft\n`;
         response += `   - Owner: ${property.ownerName || 'N/A'}\n`;
-        response += `   - Last Sale: ${property.lastSaleDate ? new Date(property.lastSaleDate).toLocaleDateString() : 'N/A'} for $${property.lastSalePrice ? parseInt(property.lastSalePrice).toLocaleString() : 'N/A'}\n`;
         response += `   - Motivation Score: ${property.motivationScore || 0}/100\n`;
         response += `   - Equity: ${property.equityPercentage || 0}%\n`;
         response += `   - Lead Type: ${property.leadType ? property.leadType.replace('_', ' ').toUpperCase() : 'Standard'}\n`;

@@ -107,25 +107,9 @@ class BatchLeadsService {
       }
     };
 
-    // Add property type filter
-    if (criteria.propertyType && criteria.propertyType !== 'any') {
-      if (!requestBody.searchCriteria.building) {
-        requestBody.searchCriteria.building = {};
-      }
-      
-      // Map our property types to BatchData API values
-      const propertyTypeMap = {
-        'single_family': 'SFR', // Single Family Residence
-        'multi_family': 'MFR',  // Multi Family Residence
-        'condo': 'CONDO',
-        'townhouse': 'TOWNHOUSE'
-      };
-      
-      const apiPropertyType = propertyTypeMap[criteria.propertyType];
-      if (apiPropertyType) {
-        requestBody.searchCriteria.building.propertyType = apiPropertyType;
-        console.log(`🏠 Added property type filter: ${criteria.propertyType} -> ${apiPropertyType}`);
-      }
+    // Add property type filter for single family homes
+    if (criteria.propertyType === 'single_family') {
+      requestBody.searchCriteria.quickLists = ['not-owner-occupied'];
     }
 
     // Add distressed property filters - use OR logic instead of AND
