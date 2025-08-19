@@ -76,6 +76,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contacts = await storage.getContacts(userId);
       res.json(contacts);
     } catch (error: any) {
+      console.error("Error fetching contacts:", error);
       res.status(500).json({ message: error.message });
     }
   });
@@ -310,45 +311,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/properties/batch", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const { location, maxPrice, minEquity, propertyType, distressedOnly, motivationScore, count = 5 } = req.body; // Default to 5 properties
+      const { location, maxPrice, minEquity, propertyType, distressedOnly, motivationScore, count = 5 } = req.body;
+      const cappedCount = Math.min(count, 5); // Cap at 5 properties
 
       const { batchLeadsService } = await import("./batchleads");
-      const results = await batchLeadsService.searchProperties({
+      const results = await batchLeadsService.searchValidProperties({
         location,
         maxPrice,
         minEquity,
         propertyType,
         distressedOnly,
         motivationScore
-      });
+      }, cappedCount);
 
-      const propertiesToReturn = [];
-      let propertiesChecked = 0;
-      let propertiesFiltered = 0;
-
-      for (const batchProperty of results.data) {
-        if (propertiesToReturn.length >= count) break; // Stop once we have enough properties
-
-        propertiesChecked++;
-        const propertyData = batchLeadsService.convertToProperty(batchProperty, userId);
-
-        if (propertyData !== null) { // Only save valid properties
-          await storage.createProperty(propertyData); // Save to storage
-          propertiesToReturn.push(propertyData);
-        } else {
-          propertiesFiltered++;
-        }
+      // Save properties to storage
+      for (const propertyData of results.data) {
+        await storage.createProperty(propertyData);
       }
 
       res.json({
-        properties: propertiesToReturn,
-        total: results.total_results,
-        page: results.page,
-        hasMore: results.data.length > propertiesToReturn.length, // Indicates if there were more results in the API call
-        stats: {
-          totalChecked: propertiesChecked,
-          filtered: propertiesFiltered
-        }
+        properties: results.data,
+        total: results.totalChecked,
+        filtered: results.filtered,
+        hasMore: results.hasMore
       });
     } catch (error: any) {
       console.error("Batch properties error:", error);
@@ -495,19 +480,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
           // Detailed owner information
           let ownerInfo = `**OWNER INFORMATION:**\n`;
-          ownerInfo += `Full Name: ${owner?.fullName || 'Not available'}\n`;
+          ownerInfo += `Owner Name: ${owner?.fullName || 'Not available'}\n`;
+          ownerInfo += `Owner Phone: ${owner?.phoneNumbers?.[0] || 'Not available'}\n`;
+          ownerInfo += `Owner Email: ${owner?.emailAddresses?.[0] || 'Not available'}\n`;
 
           if (owner?.mailingAddress) {
             const mailingAddr = `${owner.mailingAddress.street}, ${owner.mailingAddress.city}, ${owner.mailingAddress.state} ${owner.mailingAddress.zip}`;
             const isDifferent = mailingAddr.toLowerCase() !== propertyAddress.toLowerCase();
             ownerInfo += `Mailing Address: ${mailingAddr}\n`;
-            ownerInfo += `Owner Status: ${isDifferent ? '🏃 ABSENTEE OWNER (Lives elsewhere - High motivation!)' : '🏠 Owner Occupied'}\n`;
-            if (isDifferent) {
-              ownerInfo += `Distance Factor: Owner lives in ${owner.mailingAddress.state} while property is in ${address?.state}\n`;
-            }
+            ownerInfo += `Owner Status: ${isDifferent ? 'Absentee Owner (High motivation potential!)' : 'Owner Occupied'}\n`;
           } else {
             ownerInfo += `Mailing Address: Same as property address\n`;
-            ownerInfo += `Owner Status: Likely owner occupied\n`;
+            ownerInfo += `Owner Status: Owner Occupied\n`;
           }
 
           // Mortgage and lien information
@@ -581,7 +565,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           res.json({
             response: aiResponse,
             property: convertedProperty,
-            sessionState: { ...result.sessionState, searchCriteria: searchCriteria },
+            sessionState: { ...result.sessionState, searchCriteria: sessionState.searchCriteria },
             hasMore: result.hasMore
           });
         } else {
@@ -646,10 +630,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         // Extract price limits
-        const priceMatch = message.match(/under\s+\$?([\d,]+)/i);
+        const priceMatch = message.match(/under\s+\$?([\d,]+)/i) || message.match(/max\s+\$?([\d,]+)/i) || message.match(/maximum\s+\$?([\d,]+)/i);
         if (priceMatch) {
           const price = parseInt(priceMatch[1].replace(/,/g, ''));
           searchCriteria.maxPrice = price;
+          console.log(`💰 Extracted max price: $${price.toLocaleString()}`);
         }
 
         // Property type - default to single family for most searches
@@ -663,29 +648,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         console.log(`📋 Search criteria:`, searchCriteria);
 
-        // Get first property only
-        let result = await batchLeadsService.getNextValidProperty(searchCriteria);
+        // Handle excluded properties from sessionState
+        const excludePropertyIds = sessionState?.excludePropertyIds || [];
+        console.log(`🚫 Excluding ${excludePropertyIds.length} already shown properties`);
+
+        // Get single property for cleaner display
+        const result = await batchLeadsService.searchValidProperties(searchCriteria, 1, excludePropertyIds);
 
         console.log(`📊 Search result stats:`, {
-          totalChecked: result.totalChecked,
-          filtered: result.filtered,
-          hasProperty: !!result.property
+          totalChecked: result.totalChecked || 0,
+          filtered: result.filtered || 0,
+          propertiesFound: result.data.length,
+          excludedCount: excludePropertyIds.length
         });
 
         // If no results found with city name, try with ZIP code fallback
-        if (!result.property && result.totalChecked === 0 && location.toLowerCase().includes('hershey')) {
+        if (result.data.length === 0 && result.totalChecked === 0 && location.toLowerCase().includes('hershey')) {
           console.log(`🔄 No results for "${location}", trying ZIP code 17033 (Hershey area)`);
           const zipSearchCriteria = { ...searchCriteria, location: '17033' };
-          result = await batchLeadsService.getNextValidProperty(zipSearchCriteria);
+          const zipResult = await batchLeadsService.searchValidProperties(zipSearchCriteria, 1);
+          result.data = zipResult.data;
+          result.totalChecked = zipResult.totalChecked;
+          result.filtered = zipResult.filtered;
+          result.hasMore = zipResult.hasMore;
 
           console.log(`📊 ZIP search result stats:`, {
             totalChecked: result.totalChecked,
             filtered: result.filtered,
-            hasProperty: !!result.property
+            propertiesFound: result.data.length
           });
         }
 
-        if (!result.property) {
+        // Handle single property response
+        if (result.data.length === 0) {
           const noResultsMessage = result.totalChecked === 0
             ? `I couldn't find any properties in "${location}". This might be due to:
 • Location not recognized by the API (try "Hershey, PA" or a ZIP code like "17033")
@@ -703,96 +698,39 @@ Try expanding your search area or checking a nearby city.`;
           return;
         }
 
-        // Use the same detailed property display logic for regular searches
-        const rawProperty = result.property;
-        const address = rawProperty.address;
-        const valuation = rawProperty.valuation;
-        const owner = rawProperty.owner;
-        const quickLists = rawProperty.quickLists || {};
-        const building = rawProperty.building;
-        const openLien = rawProperty.openLien;
-        const foreclosure = rawProperty.foreclosure;
+        // Get the first converted property from results
+        const convertedProperty = result.data[0];
+        
+        // For display purposes, we'll use the converted property data directly
+        const propertyAddress = `${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}`;
+        
+        console.log(`🏠 Displaying converted property:`, convertedProperty.id);
 
-        // Convert property first to get structured data
-        const convertedPropertyForStorage = batchLeadsService.convertToProperty(result.property, 'demo-user');
-
-        // Enhanced contact information display using raw property data
-        let contactInfo = `**CONTACT INFORMATION:**\n`;
-        contactInfo += `👤 Owner: ${owner?.fullName || convertedPropertyForStorage.ownerName}\n`;
-
-        // Property vs Mailing Address Analysis
-        const propertyAddress = `${convertedPropertyForStorage.address}, ${convertedPropertyForStorage.city}, ${convertedPropertyForStorage.state} ${convertedPropertyForStorage.zipCode}`;
-        if (owner?.mailingAddress) {
-          const mailingAddr = `${owner.mailingAddress.street}, ${owner.mailingAddress.city}, ${owner.mailingAddress.state} ${owner.mailingAddress.zip}`;
-          const isDifferent = mailingAddr.toLowerCase() !== propertyAddress.toLowerCase();
-          contactInfo += `🏠 Property: ${propertyAddress}\n`;
-          contactInfo += `📬 Mailing: ${mailingAddr}\n`;
-          contactInfo += `📍 Status: ${isDifferent ? '🏃 ABSENTEE OWNER - High potential!' : '🏠 Owner Occupied'}\n`;
-        } else {
-          contactInfo += `🏠 Address: ${propertyAddress}\n`;
-          contactInfo += `📍 Status: Property owner information available\n`;
-        }
-
-        // Owner portfolio analysis
-        if (rawProperty.propertyOwnerProfile) {
-          const profile = rawProperty.propertyOwnerProfile;
-          contactInfo += `\n**OWNER PORTFOLIO:**\n`;
-          contactInfo += `🏘️ Properties: ${profile.propertiesCount || 0}\n`;
-          contactInfo += `💰 Portfolio Value: $${(profile.propertiesTotalEstimatedValue || 0).toLocaleString()}\n`;
-          if (profile.propertiesCount > 1) {
-            contactInfo += `🎯 INVESTOR PROFILE - Multiple properties!\n`;
-          }
-        }
-
-        // Contact methods
-        contactInfo += `\n📞 Phone: Skip trace available\n`;
-        contactInfo += `📧 Email: Skip trace available\n`;
-
-        // Format building details with better presentation
+        // Create detailed property display using converted data
         const buildingDetails = [];
-        if (building?.bedrooms || convertedPropertyForStorage.bedrooms) buildingDetails.push(`🛏️ ${building?.bedrooms || convertedPropertyForStorage.bedrooms}BR`);
-        if (building?.bathrooms || convertedPropertyForStorage.bathrooms) buildingDetails.push(`🚿 ${building?.bathrooms || convertedPropertyForStorage.bathrooms}BA`);
-        if (building?.livingArea || convertedPropertyForStorage.squareFeet) buildingDetails.push(`📐 ${(building?.livingArea || convertedPropertyForStorage.squareFeet).toLocaleString()} sq ft`);
-        if (building?.yearBuilt) buildingDetails.push(`🏗️ Built ${building.yearBuilt}`);
-        const buildingInfo = buildingDetails.length > 0 ? buildingDetails.join(' • ') : '🏠 Single Family Property';
+        if (convertedProperty.bedrooms > 0) buildingDetails.push(`🛏️ ${convertedProperty.bedrooms}BR`);
+        if (convertedProperty.bathrooms > 0) buildingDetails.push(`🚿 ${convertedProperty.bathrooms}BA`);
+        if (convertedProperty.squareFeet > 0) buildingDetails.push(`📐 ${convertedProperty.squareFeet.toLocaleString()} sq ft`);
+        if (convertedProperty.yearBuilt) buildingDetails.push(`🏗️ Built ${convertedProperty.yearBuilt}`);
+        const buildingInfo = buildingDetails.length > 0 ? buildingDetails.join(' • ') : '🏠 Property Details';
 
-        // Financial analysis with better data handling
-        const estimatedValue = valuation?.estimatedValue || 0;
-        const equityPercent = valuation?.equityPercent || 50;
-        const maxOffer = Math.floor(estimatedValue * 0.7);
-        const confidenceScore = valuation?.confidenceScore || 85;
-
-        // Loan analysis
-        let loanInfo = "";
-        if (rawProperty.openLien && rawProperty.openLien.totalOpenLienBalance > 0) {
-          loanInfo = `\n**LOAN ANALYSIS:**\n`;
-          loanInfo += `🏦 Open Liens: ${rawProperty.openLien.totalOpenLienCount}\n`;
-          loanInfo += `💳 Total Balance: $${rawProperty.openLien.totalOpenLienBalance.toLocaleString()}\n`;
-          loanInfo += `📊 LTV: ${Math.round((rawProperty.openLien.totalOpenLienBalance / estimatedValue) * 100)}%\n`;
-        }
-
-        // Motivation indicators with better context
-        const motivationFactors = [];
-        if (quickLists.preforeclosure) motivationFactors.push('🚨 PRE-FORECLOSURE - Urgent situation!');
-        if (quickLists.vacant) motivationFactors.push('🏚️ VACANT - No rental income');
-        if (quickLists.absenteeOwner) motivationFactors.push('🏃 ABSENTEE OWNER - Remote management challenges');
-        if (quickLists.highEquity) motivationFactors.push('💰 HIGH EQUITY - Great cash position');
-        if (quickLists.corporateOwned) motivationFactors.push('🏢 CORPORATE OWNED - Business decision');
-        if (foreclosure) motivationFactors.push(`⚖️ FORECLOSURE AUCTION: ${foreclosure.auctionDate ? new Date(foreclosure.auctionDate).toLocaleDateString() : 'Scheduled'}`);
-
-        const propertyText = `**PROPERTY OVERVIEW:**\n🏠 ${convertedPropertyForStorage.address}\n📍 ${convertedPropertyForStorage.city}, ${convertedPropertyForStorage.state} ${convertedPropertyForStorage.zipCode}\n${buildingInfo}\n\n**FINANCIAL ANALYSIS:**\n💵 Est. Value: $${parseInt(convertedPropertyForStorage.arv).toLocaleString()}\n🎯 Max Offer: $${parseInt(convertedPropertyForStorage.maxOffer).toLocaleString()}\n📈 Equity: ${convertedPropertyForStorage.equityPercentage}%\n⭐ Motivation: ${convertedPropertyForStorage.motivationScore}/100\n🏷️ Lead Type: ${convertedPropertyForStorage.leadType.replace('_', ' ').toUpperCase()}\n\n${contactInfo}`;
+        const propertyText = `**PROPERTY OVERVIEW:**\n🏠 ${convertedProperty.address}\n📍 ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}\n${buildingInfo}\n\n**FINANCIAL ANALYSIS:**\n💵 Est. Value: $${parseInt(convertedProperty.arv).toLocaleString()}\n🎯 Max Offer: $${parseInt(convertedProperty.maxOffer).toLocaleString()}\n📈 Equity: ${convertedProperty.equityPercentage}%\n⭐ Motivation: ${convertedProperty.motivationScore}/100\n🏷️ Lead Type: ${convertedProperty.leadType.replace('_', ' ').toUpperCase()}\n\n**CONTACT INFORMATION:**\n👤 Owner: ${convertedProperty.ownerName}\n📞 Phone: ${convertedProperty.ownerPhone}\n📧 Email: ${convertedProperty.ownerEmail}\n🏠 Address: ${propertyAddress}\n📍 Status: ${convertedProperty.distressedIndicator.replace('_', ' ').toUpperCase()}`;
 
         let qualityNote = "";
         if (result.filtered > 0) {
           qualityNote = `\n✅ Data Quality: Filtered out ${result.filtered} properties with incomplete data to show you only actionable leads.`;
         }
 
-        const aiResponse = `💡 This is LIVE property data from BatchData API with complete owner and financial details! ${result.hasMore ? "Say 'next' to see another property." : "This was the only quality property found."}`;
+        const aiResponse = `💡 This is LIVE property data from BatchData API with complete owner and financial details!${qualityNote} ${result.hasMore ? "Say 'next' to see another property." : ""}`;
 
         res.json({
           response: aiResponse,
-          property: convertedPropertyForStorage,
-          sessionState: { ...result.sessionState, searchCriteria: searchCriteria },
+          property: convertedProperty,
+          sessionState: { 
+            ...sessionState, 
+            searchCriteria: searchCriteria,
+            excludePropertyIds: [...excludePropertyIds, convertedProperty.id]
+          },
           hasMore: result.hasMore
         });
       } else {
