@@ -134,10 +134,16 @@ class BatchLeadsService {
       if (!requestBody.searchCriteria.building) {
         requestBody.searchCriteria.building = {};
       }
+      // Try multiple filter approaches for better API compatibility
       requestBody.searchCriteria.building.bedrooms = {
-        min: criteria.minBedrooms
+        min: criteria.minBedrooms,
+        gte: criteria.minBedrooms  // Also try "greater than or equal" syntax
       };
-      console.log(`🛏️ Added bedroom filter: min ${criteria.minBedrooms} bedrooms`);
+      
+      // Also try filtering out null/empty bedroom data
+      requestBody.searchCriteria.building.bedroomsExists = true;
+      
+      console.log(`🛏️ Added comprehensive bedroom filter: min ${criteria.minBedrooms} bedrooms (with existence check)`);
     }
 
     // Add equity filter
@@ -384,10 +390,19 @@ class BatchLeadsService {
       passesSquareFootageFilter: squareFeet === null || squareFeet > 0
     });
 
-    // Apply bedroom filter if provided in criteria and bedrooms are available
-    if (criteria?.minBedrooms && bedrooms !== null && bedrooms < criteria.minBedrooms) {
-      console.log(`❌ Property filtered out - does not meet minimum bedroom requirement (${bedrooms} bedrooms found, ${criteria.minBedrooms} required)`);
-      return null;
+    // Apply bedroom filter if provided in criteria
+    if (criteria?.minBedrooms) {
+      // Reject properties with no bedroom data when bedroom criteria is specified
+      if (bedrooms === null || bedrooms === undefined) {
+        console.log(`❌ Property filtered out - no bedroom data available (required: ${criteria.minBedrooms}+ bedrooms)`);
+        return null;
+      }
+      
+      // Reject properties that don't meet minimum bedroom requirement
+      if (bedrooms < criteria.minBedrooms) {
+        console.log(`❌ Property filtered out - does not meet minimum bedroom requirement (${bedrooms} bedrooms found, ${criteria.minBedrooms} required)`);
+        return null;
+      }
     }
 
     // Balanced validation - require core data but allow properties when building data is not provided by API
