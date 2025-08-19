@@ -528,8 +528,17 @@ export default function ChatInterface() {
 
       console.log('Multiple properties detected. Content:', content);
 
-      // Split the content into individual property entries
-      const propertyMatches = content.split(/\d+\.\s+/).filter(match => match.trim().length > 10);
+      // Extract numbered property entries more precisely
+      const propertyRegex = /(\d+)\.\s+([^\n]+(?:\n(?!\d+\.)[^\n]*)*)/g;
+      const propertyMatches = [];
+      let match;
+      
+      while ((match = propertyRegex.exec(content)) !== null) {
+        propertyMatches.push({
+          number: match[1],
+          content: match[2].trim()
+        });
+      }
 
       if (propertyMatches.length === 0) {
         return null;
@@ -539,10 +548,11 @@ export default function ChatInterface() {
 
       return (
         <div className="mt-3 space-y-4">
-          {propertyMatches.map((propertyText, index) => {
+          {propertyMatches.map((propertyMatch, index) => {
+            const propertyText = propertyMatch.content;
             if (!propertyText.trim()) return null;
 
-            console.log(`Rendering property card ${index + 1}:`, propertyText.substring(0, 100));
+            console.log(`Rendering property card ${propertyMatch.number}:`, propertyText.substring(0, 100));
 
             // Extract key information from each property
             const lines = propertyText.trim().split('\n');
@@ -565,13 +575,13 @@ export default function ChatInterface() {
             const whyGood = extractValue(propertyText, /Why[^:]*:\s*([^\n]+)/i);
 
             return (
-              <Card key={index} className="border-green-200 bg-green-50">
+              <Card key={`property-${propertyMatch.number}`} className="border-green-200 bg-green-50">
                 <CardContent className="p-4">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                        <h4 className="font-medium text-green-800">Live Property Lead #{index + 1}</h4>
+                        <h4 className="font-medium text-green-800">Live Property Lead #{propertyMatch.number}</h4>
                       </div>
                       <Badge variant="secondary" className="bg-green-100 text-green-700">BatchData API</Badge>
                     </div>
