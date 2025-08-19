@@ -256,7 +256,7 @@ export default function ChatInterface() {
   const handleWizardSubmit = () => {
     // Build search query from wizard data
     const location = `${wizardData.city}, ${wizardData.state}`;
-    let searchQuery = `Find`;
+    let searchQuery = "Find";
 
     // Add property type first if specified
     if (wizardData.propertyType !== "any") {
@@ -528,8 +528,8 @@ export default function ChatInterface() {
 
   const renderMultipleProperties = (content: string) => {
     // Enhanced property detection - check for various response formats
-    const hasPropertyIndicators = content.includes("properties") || 
-                                  content.includes("PROPERTY") || 
+    const hasPropertyIndicators = content.includes("properties") ||
+                                  content.includes("PROPERTY") ||
                                   content.includes("Address:") ||
                                   content.includes("Owner:") ||
                                   content.includes("ARV:") ||
