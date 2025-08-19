@@ -11,7 +11,7 @@ import { Send, Search, TrendingUp, MessageSquare, FileText, Lightbulb, ArrowRigh
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { Conversation, Message, Property } from "@shared/schema";
-import * as batchLeadsService from "@/lib/batchLeadsService"; // Assuming this is where convertToProperty is
+// BatchLeads service is handled server-side
 
 const agentTypes = [
   { id: "lead-finder", name: "🔍 Lead Finder Agent", icon: Search },
@@ -115,11 +115,11 @@ export default function ChatInterface() {
         if (demoResult.response && demoResult.response.includes("Great! I found")) {
           const propertyMatches = demoResult.response.match(/(\d+)\.\s+([^\n]+)\n/g);
           if (propertyMatches) {
-            propertyMatches.forEach(match => {
+            propertyMatches.forEach((match: string) => {
               const address = match.replace(/^\d+\.\s*/, '').trim().split('\n')[0];
               // A simple way to generate a unique ID for now, could be improved
               const propertyId = `${address}_${currentConversation}`;
-              setShownPropertyIds(prev => new Set([...prev, propertyId]));
+              setShownPropertyIds(prev => new Set([...Array.from(prev), propertyId]));
             });
           }
         }
@@ -581,8 +581,8 @@ export default function ChatInterface() {
             const lastSaleDate = extractValue(propertyText, /Last Sale Date:\s*([^\n]+)/i) || null;
             const lastSalePrice = extractValue(propertyText, /Last Sale Price:\s*\$?([^\n]+)/i) || null;
 
-            const propertyMatch = {
-                number: propertyIndex + 1,
+            const propertyData = {
+                number: propertyMatch.number,
                 address,
                 price,
                 bedBath,
@@ -595,13 +595,13 @@ export default function ChatInterface() {
               };
 
             return (
-              <Card key={`property-${propertyMatch.number}`} className="border-green-200 bg-green-50">
+              <Card key={`property-${propertyData.number}`} className="border-green-200 bg-green-50">
                 <CardContent className="p-4">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                        <h4 className="font-medium text-green-800">Live Property Lead #{propertyMatch.number}</h4>
+                        <h4 className="font-medium text-green-800">Live Property Lead #{propertyData.number}</h4>
                       </div>
                       <Badge variant="secondary" className="bg-green-100 text-green-700">BatchData API</Badge>
                     </div>
@@ -635,8 +635,8 @@ export default function ChatInterface() {
                     <div className="bg-blue-50 p-3 rounded border">
                       <h6 className="font-semibold text-blue-800 mb-2">📈 Sale History</h6>
                       <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div><strong>Last Sale Date:</strong> {propertyMatch.lastSaleDate || 'No recent sales'}</div>
-                        <div><strong>Last Sale Price:</strong> {propertyMatch.lastSalePrice ? `$${parseInt(propertyMatch.lastSalePrice).toLocaleString()}` : 'Not available'}</div>
+                        <div><strong>Last Sale Date:</strong> {propertyData.lastSaleDate || 'No recent sales'}</div>
+                        <div><strong>Last Sale Price:</strong> {propertyData.lastSalePrice ? `$${parseInt(propertyData.lastSalePrice).toLocaleString()}` : 'Not available'}</div>
                       </div>
                     </div>
 
@@ -775,7 +775,7 @@ export default function ChatInterface() {
 
       // Track this property as shown and store search criteria
       if (!shownPropertyIds.has(propertyId)) {
-        setShownPropertyIds(prev => new Set([...prev, propertyId]));
+        setShownPropertyIds(prev => new Set([...Array.from(prev), propertyId]));
       }
 
       // This logic assumes the content itself is a single property search result
