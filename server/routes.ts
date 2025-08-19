@@ -312,6 +312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const { location, maxPrice, minEquity, propertyType, distressedOnly, motivationScore, count = 5 } = req.body;
+      const cappedCount = Math.min(count, 5); // Cap at 5 properties
 
       const { batchLeadsService } = await import("./batchleads");
       const results = await batchLeadsService.searchValidProperties({
@@ -321,7 +322,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         propertyType,
         distressedOnly,
         motivationScore
-      }, count);
+      }, cappedCount);
 
       // Save properties to storage
       for (const propertyData of results.data) {
@@ -651,7 +652,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const excludePropertyIds = sessionState?.excludePropertyIds || [];
         console.log(`🚫 Excluding ${excludePropertyIds.length} already shown properties`);
 
-        // Get multiple valid properties for searches
+        // Get single property for cleaner display
         const result = await batchLeadsService.searchValidProperties(searchCriteria, 1, excludePropertyIds);
 
         console.log(`📊 Search result stats:`, {

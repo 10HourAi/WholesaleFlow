@@ -22,9 +22,9 @@ export async function generateLeadFinderResponse(userMessage: string, userId?: s
         location = locationMatch[1].trim();
       }
 
-      // Extract number of properties requested
+      // Extract number of properties requested, cap at 5
       const numberMatch = userMessage.match(/(\d+)\s+properties/i);
-      const requestedCount = numberMatch ? parseInt(numberMatch[1]) : 5;
+      const requestedCount = numberMatch ? Math.min(parseInt(numberMatch[1]), 5) : 5;
 
       console.log(`🔍 Searching for ${requestedCount} properties in: ${location}`);
 
