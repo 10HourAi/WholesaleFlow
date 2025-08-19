@@ -11,7 +11,7 @@ import { Send, Search, TrendingUp, MessageSquare, FileText, Lightbulb, ArrowRigh
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { Conversation, Message, Property } from "@shared/schema";
-import * as batchLeadsService from "@/lib/batchLeadsService"; // Assuming this is where convertToProperty is
+// BatchLeads service is handled server-side
 
 const agentTypes = [
   { id: "lead-finder", name: "🔍 Lead Finder Agent", icon: Search },
@@ -115,11 +115,11 @@ export default function ChatInterface() {
         if (demoResult.response && demoResult.response.includes("Great! I found")) {
           const propertyMatches = demoResult.response.match(/(\d+)\.\s+([^\n]+)\n/g);
           if (propertyMatches) {
-            propertyMatches.forEach(match => {
+            propertyMatches.forEach((match: string) => {
               const address = match.replace(/^\d+\.\s*/, '').trim().split('\n')[0];
               // A simple way to generate a unique ID for now, could be improved
               const propertyId = `${address}_${currentConversation}`;
-              setShownPropertyIds(prev => new Set([...prev, propertyId]));
+              setShownPropertyIds(prev => new Set([...Array.from(prev), propertyId]));
             });
           }
         }
@@ -256,16 +256,21 @@ export default function ChatInterface() {
   const handleWizardSubmit = () => {
     // Build search query from wizard data
     const location = `${wizardData.city}, ${wizardData.state}`;
-    let searchQuery = `Find properties in ${location}`;
+    let searchQuery = "Find";
+
+    // Add property type first if specified
+    if (wizardData.propertyType !== "any") {
+      const propertyTypeLabel = propertyTypes.find(p => p.value === wizardData.propertyType)?.label;
+      searchQuery += ` ${propertyTypeLabel?.toLowerCase()}`;
+    } else {
+      searchQuery += ` properties`;
+    }
+
+    searchQuery += ` in ${location}`;
 
     if (wizardData.sellerType !== "any") {
       const sellerTypeLabel = sellerTypes.find(s => s.value === wizardData.sellerType)?.label;
       searchQuery += ` with ${sellerTypeLabel?.toLowerCase()}`;
-    }
-
-    if (wizardData.propertyType !== "any") {
-      const propertyTypeLabel = propertyTypes.find(p => p.value === wizardData.propertyType)?.label;
-      searchQuery += ` focusing on ${propertyTypeLabel?.toLowerCase()}`;
     }
 
     if (wizardData.minBedrooms) {
@@ -522,29 +527,39 @@ export default function ChatInterface() {
   };
 
   const renderMultipleProperties = (content: string) => {
-    // Check if this is a multiple properties response
-    if (content.includes("Great! I found") && content.includes("properties") &&
-        (content.match(/\d+\.\s+\d+/g) || content.match(/1\.\s+/))) {
+    // Enhanced property detection - check for various response formats
+    const hasPropertyIndicators = content.includes("properties") ||
+                                  content.includes("PROPERTY") ||
+                                  content.includes("Address:") ||
+                                  content.includes("Owner:") ||
+                                  content.includes("ARV:") ||
+                                  content.includes("Equity:") ||
+                                  content.match(/\d+\.\s+\d+/) ||
+                                  content.includes("Lead #");
 
-      console.log('Multiple properties detected. Content:', content);
+    if (!hasPropertyIndicators) {
+      return null;
+    }
 
-      // Extract numbered property entries more precisely - match property addresses from any city/state
-      const propertyRegex = /(\d+)\.\s+(\d+\s+[A-Za-z][^,\n]*,\s*[A-Za-z\s]+,\s*[A-Z]{2}[^\n]*(?:\n(?!\d+\.)[^\n]*)*)/g;
-      const propertyMatches = [];
-      let match;
-      
-      while ((match = propertyRegex.exec(content)) !== null) {
-        propertyMatches.push({
-          number: match[1],
-          content: match[2].trim()
-        });
-      }
+    console.log('Property content detected. Analyzing format...', content.substring(0, 200));
 
-      if (propertyMatches.length === 0) {
-        return null;
-      }
+    // Extract numbered property entries more precisely - match property addresses from any city/state
+    const propertyRegex = /(\d+)\.\s+(\d+\s+[A-Za-z][^,\n]*,\s*[A-Za-z\s]+,\s*[A-Z]{2}[^\n]*(?:\n(?!\d+\.)[^\n]*)*)/g;
+    const propertyMatches = [];
+    let match;
 
-      console.log(`Found ${propertyMatches.length} property entries`);
+    while ((match = propertyRegex.exec(content)) !== null) {
+      propertyMatches.push({
+        number: match[1],
+        content: match[2].trim()
+      });
+    }
+
+    if (propertyMatches.length === 0) {
+      return null;
+    }
+
+    console.log(`Found ${propertyMatches.length} property entries`);
 
       return (
         <div className="mt-3 space-y-4">
@@ -558,13 +573,13 @@ export default function ChatInterface() {
             const lines = propertyText.trim().split('\n');
             const address = lines[0]?.replace(/^-\s*/, '').trim() || 'Address not found';
 
-            // Extract other details with better parsing
-            const extractValue = (text: string, pattern: RegExp) => {
+            // Extract key details with multiple patterns
+            const extractValue = (text: string | undefined, pattern: RegExp) => {
+              if (!text) return 'N/A';
               const match = text.match(pattern);
               return match ? match[1].trim() : 'N/A';
             };
 
-            // Extract key property details with multiple patterns
             const price = extractValue(propertyText, /(?:Price|ARV|Value):\s*\$?([^\n]+)/i) || 'N/A';
             const bedBath = extractValue(propertyText, /(\d+BR\/\d+BA[^\n]*)/i) ||
                           extractValue(propertyText, /(\d+\s*bed[^\n]*\d+\s*bath[^\n]*)/i) || 'N/A';
@@ -573,15 +588,30 @@ export default function ChatInterface() {
             const equity = extractValue(propertyText, /Equity[^:]*:\s*([^\n]+)/i) || 'N/A';
             const leadType = extractValue(propertyText, /(?:Lead Type|Type):\s*([^\n]+)/i) || 'N/A';
             const whyGood = extractValue(propertyText, /Why[^:]*:\s*([^\n]+)/i);
+            const lastSaleDate = extractValue(propertyText, /Last Sale Date:\s*([^\n]+)/i) || null;
+            const lastSalePrice = extractValue(propertyText, /Last Sale Price:\s*\$?([^\n]+)/i) || null;
+
+            const propertyData = {
+                number: propertyMatch.number,
+                address,
+                price,
+                bedBath,
+                owner,
+                motivation,
+                equity,
+                leadType,
+                lastSaleDate,
+                lastSalePrice
+              };
 
             return (
-              <Card key={`property-${propertyMatch.number}`} className="border-green-200 bg-green-50">
+              <Card key={`property-${propertyData.number}`} className="border-green-200 bg-green-50">
                 <CardContent className="p-4">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-2">
                         <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                        <h4 className="font-medium text-green-800">Live Property Lead #{propertyMatch.number}</h4>
+                        <h4 className="font-medium text-green-800">Live Property Lead #{propertyData.number}</h4>
                       </div>
                       <Badge variant="secondary" className="bg-green-100 text-green-700">BatchData API</Badge>
                     </div>
@@ -609,17 +639,15 @@ export default function ChatInterface() {
                         <div><strong>🏷️ Lead Type:</strong> {leadType !== 'N/A' ? leadType : 'Distressed/Motivated'}</div>
                         <div><strong>📊 Max Offer:</strong> 70% ARV Rule Applied</div>
                       </div>
+                    </div>
 
-                      {whyGood && (
-                        <div className="mt-2 p-2 bg-yellow-50 rounded text-sm">
-                          <strong>💡 Why it's good:</strong> {whyGood}
-                        </div>
-                      )}
-                      {(price === 'N/A' || bedBath === 'N/A' || bedBath.includes('0BR/0BA')) && (
-                        <div className="mt-2 p-2 bg-blue-50 rounded text-sm">
-                          <strong>ℹ️ Note:</strong> Building details (bedrooms/bathrooms/sq ft) require property inspection or county records research. Financial data (value, equity, owner info) is verified through multiple data sources.
-                        </div>
-                      )}
+                    {/* Sale History Section */}
+                    <div className="bg-blue-50 p-3 rounded border">
+                      <h6 className="font-semibold text-blue-800 mb-2">📈 Sale History</h6>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div><strong>Last Sale Date:</strong> {propertyData.lastSaleDate || 'No recent sales'}</div>
+                        <div><strong>Last Sale Price:</strong> {propertyData.lastSalePrice ? `$${parseInt(propertyData.lastSalePrice).toLocaleString()}` : 'Not available'}</div>
+                      </div>
                     </div>
 
                     <div className="pt-2 border-t border-green-200 flex gap-2">
@@ -757,7 +785,7 @@ export default function ChatInterface() {
 
       // Track this property as shown and store search criteria
       if (!shownPropertyIds.has(propertyId)) {
-        setShownPropertyIds(prev => new Set([...prev, propertyId]));
+        setShownPropertyIds(prev => new Set([...Array.from(prev), propertyId]));
       }
 
       // This logic assumes the content itself is a single property search result
