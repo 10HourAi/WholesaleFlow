@@ -81,6 +81,14 @@ Preferred communication style: Simple, everyday language.
   - Step 4: Advanced filters (bedrooms, price range)
 - Future wizards planned: Cash Buyer Wizard, Market Research Wizard
 
+**Current Status (August 2025):**
+- ✅ Price filtering enforcement working correctly (properties respect specified limits)
+- ✅ Comprehensive data format implemented with full BatchLeads API integration
+- ✅ Real mailing addresses from different states displaying correctly
+- ✅ Max offer calculations using 70% rule working
+- ⚠️ Property cards show mixed results - some display full data, others show blanks due to cached vs. fresh response formatting differences
+- 🔧 Property cards kept as-is per user request while investigating response consistency
+
 #### Dashboard and Analytics
 - Revenue tracking and deal metrics
 - Performance analytics with conversion rates
