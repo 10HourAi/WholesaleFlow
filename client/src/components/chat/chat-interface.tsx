@@ -620,14 +620,21 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                                    content.includes('**PROPERTY DETAILS:**') ||
                                    (content.includes('Address:') && content.includes('Price:'));
         
-        // Exclude instructional content
+        // Exclude ALL instructional content completely
         const isInstructional = content.includes('you can use') ||
                                 content.includes('search term') ||
                                 content.includes('try a different') ||
                                 content.includes('filtered out') ||
                                 content.includes('expand your search') ||
                                 content.includes('This will help') ||
-                                content.includes('ensures you only get');
+                                content.includes('ensures you only get') ||
+                                content.includes('To assist you') ||
+                                content.includes('To find') ||
+                                content.includes('you can use the following') ||
+                                content.includes('Searched') ||
+                                content.includes('were filtered out') ||
+                                content.startsWith('To ') ||
+                                content.startsWith('Searched ');
         
         if (hasRealPropertyData && !isInstructional) {
           propertyMatches.push({
@@ -671,8 +678,12 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
             const equity = extractValue(propertyText, /Equity[^:]*:\s*([^\n]+)/i) || 'N/A';
             const leadType = extractValue(propertyText, /(?:Lead Type|Type):\s*([^\n]+)/i) || 'N/A';
             const whyGood = extractValue(propertyText, /Why[^:]*:\s*([^\n]+)/i);
-            const lastSaleDate = extractValue(propertyText, /Last Sale Date:\s*([^\n]+)/i) || null;
-            const lastSalePrice = extractValue(propertyText, /Last Sale Price:\s*\$?([^\n]+)/i) || null;
+            const lastSaleDate = extractValue(propertyText, /Last Sale Date:\s*([^\n]+)/i) || 
+                            extractValue(propertyText, /Sale Date:\s*([^\n]+)/i) ||
+                            extractValue(propertyText, /Last Sold:\s*([^\n]+)/i) || 'No recent sales';
+            const lastSalePrice = extractValue(propertyText, /Last Sale Price:\s*\$?([^\n]+)/i) || 
+                             extractValue(propertyText, /Sale Price:\s*\$?([^\n]+)/i) ||
+                             extractValue(propertyText, /Sold for:\s*\$?([^\n]+)/i) || 'Not available';
 
             const propertyData = {
                 number: propertyMatch.number,
@@ -708,19 +719,19 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                         <div className="text-sm text-blue-700">
                           <div><strong>Name:</strong> {owner !== 'N/A' ? owner : 'Available via skip trace'}</div>
                           <div><strong>Contact:</strong> Phone & Email available via skip trace</div>
-                          <div><strong>Mailing:</strong> {extractValue(propertyText, /Mailing[^:]*:\s*([^\n]+)/i) || 'Same as property address'}</div>
+                          <div><strong>Mailing:</strong> {extractValue(propertyText, /Mailing[^:]*:\s*([^\n]+)/i) || extractValue(propertyText, /Owner Mailing[^:]*:\s*([^\n]+)/i) || 'Same as property address'}</div>
                           <div><strong>Status:</strong> {leadType.includes('ABSENTEE') ? 'Absentee Owner' : leadType.includes('OUT-OF-STATE') ? 'Out-of-State Owner' : 'Investment Property'}</div>
                         </div>
                       </div>
 
                       {/* Property Details */}
                       <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div><strong>💵 Est. Value:</strong> {price !== 'N/A' ? `$${price}` : 'Available in full report'}</div>
+                        <div><strong>💵 Est. Value:</strong> {price !== 'N/A' ? `$${parseInt(price.replace(/[$,]/g, '')).toLocaleString()}` : 'Available in full report'}</div>
                         <div><strong>🏠 Details:</strong> {bedBath !== 'N/A' && !bedBath.includes('0BR/0BA') ? bedBath : 'Building details available via skip trace'}</div>
                         <div><strong>⭐ Motivation:</strong> {motivation !== 'N/A' ? motivation : 'High (multiple factors)'}</div>
                         <div><strong>📈 Equity:</strong> {equity !== 'N/A' ? equity : 'High equity property'}</div>
                         <div><strong>🏷️ Lead Type:</strong> {leadType !== 'N/A' ? leadType : 'Distressed/Motivated'}</div>
-                        <div><strong>📊 Max Offer:</strong> 70% ARV Rule Applied</div>
+                        <div><strong>📊 Max Offer:</strong> {price !== 'N/A' ? `$${Math.floor(parseInt(price.replace(/[$,]/g, '')) * 0.7).toLocaleString()}` : '70% ARV Rule Applied'}</div>
                       </div>
                     </div>
 
@@ -728,8 +739,8 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                     <div className="bg-blue-50 p-3 rounded border">
                       <h6 className="font-semibold text-blue-800 mb-2">📈 Sale History</h6>
                       <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div><strong>Last Sale Date:</strong> {propertyData.lastSaleDate || 'No recent sales'}</div>
-                        <div><strong>Last Sale Price:</strong> {propertyData.lastSalePrice ? `$${parseInt(propertyData.lastSalePrice).toLocaleString()}` : 'Not available'}</div>
+                        <div><strong>Last Sale Date:</strong> {lastSaleDate}</div>
+                        <div><strong>Last Sale Price:</strong> {lastSalePrice !== 'Not available' ? `$${parseInt(lastSalePrice.replace(/[$,]/g, '')).toLocaleString()}` : lastSalePrice}</div>
                       </div>
                     </div>
 
