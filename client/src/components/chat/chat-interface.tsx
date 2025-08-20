@@ -579,19 +579,23 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
   };
 
   const renderMultipleProperties = (content: string) => {
-    // Enhanced property detection - check for various response formats
+    // Enhanced property detection - only process comprehensive BatchLeads format
     console.log('Checking content for properties:', content.substring(0, 300));
     
-    const hasPropertyIndicators = content.includes("properties") || 
-                                  content.includes("PROPERTY") || 
-                                  content.includes("Address:") ||
-                                  content.includes("Owner:") ||
-                                  content.includes("ARV:") ||
-                                  content.includes("Equity:") ||
-                                  content.includes("Harrisburg") ||
-                                  content.includes("absentee") ||
-                                  content.match(/\d+\.\s+\d+/) ||
-                                  content.includes("Lead");
+    // Only process comprehensive **PROPERTY DETAILS:** format from BatchLeads
+    const hasComprehensiveFormat = content.includes("**PROPERTY DETAILS:**") &&
+                                   content.includes("**OWNER INFORMATION:**") &&
+                                   content.includes("**FINANCIAL ANALYSIS:**");
+    
+    // Exclude instructional or incomplete content
+    const isInstructional = content.includes('you can use') ||
+                            content.includes('search term') ||
+                            content.includes('try a different') ||
+                            content.includes('To find') ||
+                            content.includes('Searched') ||
+                            content.startsWith('To ');
+    
+    const hasPropertyIndicators = hasComprehensiveFormat && !isInstructional;
 
     if (hasPropertyIndicators) {
       console.log('Property indicators found, analyzing content...');
@@ -670,9 +674,8 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
               return match ? match[1].trim() : 'N/A';
             };
 
-            // Enhanced data extraction for both old and new comprehensive formats
-            const price = extractValue(propertyText, /Est\. Value \(ARV\):\s*\$?([^\n]+)/i) || 
-                         extractValue(propertyText, /(?:Price|ARV|Value):\s*\$?([^\n]+)/i) || 'N/A';
+            // Enhanced data extraction specifically for comprehensive BatchLeads format
+            const price = extractValue(propertyText, /Est\. Value \(ARV\):\s*\$?([^\n]+)/i) || 'N/A';
             const maxOffer = extractValue(propertyText, /Max Offer \(70% Rule\):\s*\$?([^\n]+)/i) || 
                             extractValue(propertyText, /Max Offer[^:]*:\s*\$?([^\n]+)/i) || 'Calculate 70% ARV';
             const bedBath = extractValue(propertyText, /Building:\s*([^\n]+)/i) ||
@@ -1086,38 +1089,51 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
           </div>
         )}
 
-        {messages.map((message) => (
-          <div key={message.id} className={`flex items-start space-x-3 ${message.role === "user" ? "justify-end" : ""}`}>
-            {message.role === "assistant" && (
-              <Avatar>
-                <AvatarImage />
-                <AvatarFallback>
-                  {currentAgent && <currentAgent.icon className="h-4 w-4" />}
-                </AvatarFallback>
-              </Avatar>
-            )}
-            <div className={`flex-1 ${message.role === "user" ? "max-w-xs sm:max-w-md" : ""}`}>
-              <Card className={message.role === "user" ? "bg-primary text-primary-foreground" : ""}>
-                <CardContent className="p-4">
-                  {message.role === "assistant" ? (
-                    <>
-                      {renderMultipleProperties(message.content) || renderPropertyCard(message.content) || (
-                        <p className="text-sm">{message.content}</p>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-sm">{message.content}</p>
-                  )}
-                </CardContent>
-              </Card>
+        {messages.map((message, messageIndex) => {
+          // Skip duplicate property search responses - only show the most recent one
+          const isPropertyResponse = message.role === "assistant" && message.content.includes("**PROPERTY DETAILS:**");
+          if (isPropertyResponse) {
+            const hasNewerPropertyResponse = messages.slice(messageIndex + 1).some(laterMessage => 
+              laterMessage.role === "assistant" && laterMessage.content.includes("**PROPERTY DETAILS:**")
+            );
+            if (hasNewerPropertyResponse) {
+              return null; // Skip older property responses to prevent duplicates
+            }
+          }
+
+          return (
+            <div key={message.id} className={`flex items-start space-x-3 ${message.role === "user" ? "justify-end" : ""}`}>
+              {message.role === "assistant" && (
+                <Avatar>
+                  <AvatarImage />
+                  <AvatarFallback>
+                    {currentAgent && <currentAgent.icon className="h-4 w-4" />}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+              <div className={`flex-1 ${message.role === "user" ? "max-w-xs sm:max-w-md" : ""}`}>
+                <Card className={message.role === "user" ? "bg-primary text-primary-foreground" : ""}>
+                  <CardContent className="p-4">
+                    {message.role === "assistant" ? (
+                      <>
+                        {renderMultipleProperties(message.content) || renderPropertyCard(message.content) || (
+                          <p className="text-sm">{message.content}</p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm">{message.content}</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+              {message.role === "user" && (
+                <Avatar>
+                  <AvatarFallback>U</AvatarFallback>
+                </Avatar>
+              )}
             </div>
-            {message.role === "user" && (
-              <Avatar>
-                <AvatarFallback>U</AvatarFallback>
-              </Avatar>
-            )}
-          </div>
-        ))}
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
