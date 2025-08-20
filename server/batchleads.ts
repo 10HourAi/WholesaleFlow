@@ -107,25 +107,38 @@ class BatchLeadsService {
       }
     };
 
-    // Add property type filter for single family homes
-    if (criteria.propertyType === 'single_family') {
-      requestBody.searchCriteria.quickLists = ['not-owner-occupied'];
+    // Apply quicklists from search criteria (mapped from wizard step 2)
+    if (criteria.quickLists && criteria.quickLists.length > 0) {
+      requestBody.searchCriteria.quickLists = criteria.quickLists;
+      console.log(`🎯 Using quicklists: ${criteria.quickLists.join(', ')}`);
     }
 
-    // Add distressed property filters - use OR logic instead of AND
-    if (criteria.distressedOnly) {
-      // Use individual filters that are more likely to have results
-      // This searches for properties that have ANY of these indicators, not ALL
-      requestBody.searchCriteria.quickLists = [
-        'absentee-owner'  // Start with the most common distressed indicator
-      ];
+    // Add property type filters
+    if (criteria.propertyType === 'single_family') {
+      // Don't override quicklists, just ensure we're looking for residential
+      if (!requestBody.searchCriteria.property) {
+        requestBody.searchCriteria.property = {};
+      }
+      requestBody.searchCriteria.property.propertyType = 'single-family';
+    } else if (criteria.propertyType === 'multi_family') {
+      if (!requestBody.searchCriteria.property) {
+        requestBody.searchCriteria.property = {};
+      }
+      requestBody.searchCriteria.property.propertyType = 'multi-family';
+    } else if (criteria.propertyType === 'condo') {
+      if (!requestBody.searchCriteria.property) {
+        requestBody.searchCriteria.property = {};
+      }
+      requestBody.searchCriteria.property.propertyType = 'condominium';
+    }
 
-      // Add equity filter separately for better results
+    // Add equity filter if specified
+    if (criteria.minEquity || (criteria.quickLists && criteria.quickLists.includes('high-equity'))) {
       if (!requestBody.searchCriteria.valuation) {
         requestBody.searchCriteria.valuation = {};
       }
       requestBody.searchCriteria.valuation.equityPercent = {
-        min: 30  // Lower threshold for better results
+        min: criteria.minEquity || 70
       };
     }
 
@@ -357,19 +370,29 @@ class BatchLeadsService {
   }
 
 
-  // Convert BatchData property to our schema format
+  // Convert BatchData property to our schema format with enhanced data extraction
   convertToProperty(batchProperty: any, userId: string, criteria?: SearchCriteria): any {
     console.log(`🔍 Converting property with ID: ${batchProperty._id}`);
-    console.log(`📊 Raw property data:`, JSON.stringify(batchProperty, null, 2));
 
     const estimatedValue = batchProperty.valuation?.estimatedValue || 0;
     const equityPercent = batchProperty.valuation?.equityPercent;
 
-    // Extract building details with better fallbacks
+    // Extract comprehensive building details from tax assessor data
     const building = batchProperty.building || {};
-    const bedrooms = building.bedrooms !== undefined && building.bedrooms !== null ? building.bedrooms : null; // Use null instead of 0 to indicate unknown
-    const bathrooms = building.bathrooms !== undefined && building.bathrooms !== null ? building.bathrooms : null;
-    const squareFeet = building.livingArea || building.totalLivingArea || null;
+    const taxAssessor = batchProperty.taxAssessor || {};
+    
+    // Enhanced building data extraction - check multiple sources
+    const bedrooms = building.bedrooms || taxAssessor.bedrooms || building.rooms || 
+                     batchProperty.propertyDetails?.bedrooms || null;
+    const bathrooms = building.bathrooms || taxAssessor.bathrooms || building.fullBaths || 
+                      building.halfBaths || batchProperty.propertyDetails?.bathrooms || null;
+    const squareFeet = building.livingArea || building.totalLivingArea || taxAssessor.livingArea || 
+                      building.buildingSquareFeet || taxAssessor.squareFeet || 
+                      batchProperty.propertyDetails?.squareFeet || null;
+    const yearBuilt = building.yearBuilt || taxAssessor.yearBuilt || 
+                     batchProperty.propertyDetails?.yearBuilt || null;
+    
+    // Extract address information
     const address = batchProperty.address?.street;
     const city = batchProperty.address?.city;
     const state = batchProperty.address?.state;
@@ -472,11 +495,15 @@ class BatchLeadsService {
       leadType: this.getLeadType(batchProperty),
       propertyType: batchProperty.building?.propertyType || 'single_family',
       yearBuilt: batchProperty.building?.yearBuilt || null,
-      lastSalePrice: batchProperty.sale?.lastSalePrice?.toString() || null,
-      lastSaleDate: batchProperty.sale?.lastSaleDate || null,
-      ownerName: ownerName || 'Owner Info Available',
-      ownerPhone: batchProperty.owner?.phoneNumbers?.[0] || 'Available via skip trace',
-      ownerEmail: batchProperty.owner?.emailAddresses?.[0] || 'Available via skip trace',
+      lastSalePrice: batchProperty.sale?.lastSale?.salePrice?.toString() || 
+                     batchProperty.sale?.priorSale?.salePrice?.toString() || 
+                     batchProperty.propertyDetails?.lastSalePrice?.toString() || null,
+      lastSaleDate: batchProperty.sale?.lastSale?.saleDate || 
+                    batchProperty.sale?.priorSale?.saleDate || 
+                    batchProperty.propertyDetails?.lastSaleDate || null,
+      ownerName: ownerName || 'Contact info available via skip trace',
+      ownerPhone: 'Available via skip trace',
+      ownerEmail: 'Available via skip trace',
       ownerMailingAddress: batchProperty.owner?.mailingAddress ?
         `${batchProperty.owner.mailingAddress.street}, ${batchProperty.owner.mailingAddress.city}, ${batchProperty.owner.mailingAddress.state} ${batchProperty.owner.mailingAddress.zip}` :
         `${address}, ${city}, ${state} ${zipCode}`,

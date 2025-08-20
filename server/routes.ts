@@ -632,14 +632,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Determine search criteria based on query content
         const searchCriteria: any = { location };
 
-        // Check for seller type indicators
-        if (message.toLowerCase().includes('distressed') ||
-            message.toLowerCase().includes('pre-foreclosure') ||
-            message.toLowerCase().includes('vacant') ||
-            message.toLowerCase().includes('absentee') ||
-            message.toLowerCase().includes('out-of-state') ||
-            message.toLowerCase().includes('non-resident')) {
-          searchCriteria.distressedOnly = true;
+        // Map seller types to BatchLeads quicklists
+        if (message.toLowerCase().includes('distressed') || 
+            message.toLowerCase().includes('pre-foreclosure') || 
+            message.toLowerCase().includes('vacant')) {
+          searchCriteria.quickLists = ['preforeclosure', 'vacant'];
+        } else if (message.toLowerCase().includes('absentee') || 
+                   message.toLowerCase().includes('out-of-state') || 
+                   message.toLowerCase().includes('non-resident')) {
+          searchCriteria.quickLists = ['absentee-owner', 'out-of-state-owner'];
+        } else if (message.toLowerCase().includes('corporate owned')) {
+          searchCriteria.quickLists = ['corporate-owned'];
+        } else if (message.toLowerCase().includes('tired landlord')) {
+          searchCriteria.quickLists = ['tired-landlord'];
+        } else if (message.toLowerCase().includes('motivated seller')) {
+          searchCriteria.quickLists = ['absentee-owner', 'high-equity'];
+        } else {
+          // Default to distressed properties if no specific type is mentioned
+          searchCriteria.quickLists = ['absentee-owner'];
         }
 
         if (message.toLowerCase().includes('high equity') || message.toLowerCase().includes('70%')) {
