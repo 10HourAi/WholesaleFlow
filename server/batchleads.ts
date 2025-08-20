@@ -443,20 +443,15 @@ class BatchLeadsService {
       }
     }
 
-    // Apply bedroom filter if provided in criteria
-    if (criteria?.minBedrooms) {
-      // Reject properties with no bedroom data when bedroom criteria is specified
-      if (bedrooms === null || bedrooms === undefined) {
-        console.log(`❌ Property filtered out - no bedroom data available (required: ${criteria.minBedrooms}+ bedrooms)`);
-        return null;
-      }
-      
-      // Reject properties that don't meet minimum bedroom requirement
+    // Apply bedroom filter if provided in criteria - but only filter if we have bedroom data
+    if (criteria?.minBedrooms && bedrooms !== null && bedrooms !== undefined) {
+      // Only filter properties that actually have bedroom data and don't meet requirement
       if (bedrooms < criteria.minBedrooms) {
         console.log(`❌ Property filtered out - does not meet minimum bedroom requirement (${bedrooms} bedrooms found, ${criteria.minBedrooms} required)`);
         return null;
       }
     }
+    // Note: We allow properties with missing bedroom data to pass through since API often lacks this info
 
     // Apply price filter if provided in criteria
     if (criteria?.maxPrice && estimatedValue > criteria.maxPrice) {
