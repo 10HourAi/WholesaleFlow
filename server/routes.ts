@@ -724,11 +724,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
           searchCriteria.minEquity = 70;
         }
 
-        // Extract price filter - critical for budget filtering
-        const priceMatch = message.match(/under\s+\$?([0-9,]+)/i);
+        // Extract price filter - comprehensive pattern matching
+        const pricePatterns = [
+          /under\s+\$?([0-9,]+)/i,           // "under $500,000" or "under 500000"
+          /below\s+\$?([0-9,]+)/i,           // "below $500,000"
+          /max\s+\$?([0-9,]+)/i,             // "max $500,000"
+          /maximum\s+\$?([0-9,]+)/i,         // "maximum $500,000"
+          /\$([0-9,]+)\s*or\s*less/i,        // "$500,000 or less"
+          /up\s+to\s+\$?([0-9,]+)/i,         // "up to $500,000"
+          /\$([0-9,]+)/                      // any "$500,000" format
+        ];
+        
+        let priceMatch = null;
+        for (const pattern of pricePatterns) {
+          priceMatch = message.match(pattern);
+          if (priceMatch) break;
+        }
+        
         if (priceMatch) {
           searchCriteria.maxPrice = parseInt(priceMatch[1].replace(/,/g, ''));
-          console.log(`💰 Added price filter: max $${searchCriteria.maxPrice.toLocaleString()}`);
+          console.log(`💰 ✅ EXTRACTED PRICE FILTER: max $${searchCriteria.maxPrice.toLocaleString()}`);
+        } else {
+          console.log(`💰 ❌ NO PRICE FILTER FOUND in message: "${message}"`);
         }
 
         // Extract bedroom filter

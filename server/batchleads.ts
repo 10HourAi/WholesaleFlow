@@ -229,7 +229,7 @@ class BatchLeadsService {
     let page = 1;
     const maxPages = 10; // Prevent infinite loops
 
-    console.log(`🔍 Searching for ${count} properties with criteria:`, criteria);
+    console.log(`🔍 Searching for ${count} properties with criteria:`, JSON.stringify(criteria, null, 2));
     console.log(`🚫 Excluding ${excludePropertyIds.length} property IDs:`, excludePropertyIds);
 
     while (validProperties.length < count && page <= maxPages) {
