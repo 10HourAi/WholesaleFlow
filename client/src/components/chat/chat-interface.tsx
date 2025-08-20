@@ -625,7 +625,9 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                                 content.includes('search term') ||
                                 content.includes('try a different') ||
                                 content.includes('filtered out') ||
-                                content.includes('expand your search');
+                                content.includes('expand your search') ||
+                                content.includes('This will help') ||
+                                content.includes('ensures you only get');
         
         if (hasRealPropertyData && !isInstructional) {
           propertyMatches.push({
@@ -694,7 +696,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                         <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
                         <h4 className="font-medium text-green-800">Live Property Lead #{propertyData.number}</h4>
                       </div>
-                      <Badge variant="secondary" className="bg-green-100 text-green-700">BatchData API</Badge>
+                      <Badge variant="secondary" className="bg-green-100 text-green-700">Live Data</Badge>
                     </div>
 
                     <div className="bg-white p-3 rounded border">
@@ -706,15 +708,15 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                         <div className="text-sm text-blue-700">
                           <div><strong>Name:</strong> {owner !== 'N/A' ? owner : 'Available via skip trace'}</div>
                           <div><strong>Contact:</strong> Phone & Email available via skip trace</div>
-                          <div><strong>Mailing:</strong> Same as property address</div>
-                          <div><strong>Status:</strong> Owner Occupied</div>
+                          <div><strong>Mailing:</strong> {extractValue(propertyText, /Mailing[^:]*:\s*([^\n]+)/i) || 'Same as property address'}</div>
+                          <div><strong>Status:</strong> {leadType.includes('ABSENTEE') ? 'Absentee Owner' : leadType.includes('OUT-OF-STATE') ? 'Out-of-State Owner' : 'Investment Property'}</div>
                         </div>
                       </div>
 
                       {/* Property Details */}
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <div><strong>💵 Est. Value:</strong> {price !== 'N/A' ? `$${price}` : 'Available in full report'}</div>
-                        <div><strong>🏠 Details:</strong> {bedBath !== 'N/A' && !bedBath.includes('0BR/0BA') ? bedBath : 'Details available via property inspection'}</div>
+                        <div><strong>🏠 Details:</strong> {bedBath !== 'N/A' && !bedBath.includes('0BR/0BA') ? bedBath : 'Building details available via skip trace'}</div>
                         <div><strong>⭐ Motivation:</strong> {motivation !== 'N/A' ? motivation : 'High (multiple factors)'}</div>
                         <div><strong>📈 Equity:</strong> {equity !== 'N/A' ? equity : 'High equity property'}</div>
                         <div><strong>🏷️ Lead Type:</strong> {leadType !== 'N/A' ? leadType : 'Distressed/Motivated'}</div>
@@ -770,7 +772,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
 
           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-700 text-center">
-              💡 These are LIVE properties from BatchData API with verified owner information and equity calculations!
+              💡 These are LIVE properties with verified owner information and equity calculations!
             </p>
           </div>
         </div>
