@@ -216,7 +216,7 @@ class BatchLeadsService {
     return response.data;
   }
 
-  // Search for multiple valid properties with exclusion support
+  // 3-Step BatchLeads Integration: Quicklists → Core Property → Contact Enrichment
   async searchValidProperties(criteria: any, count: number = 5, excludePropertyIds: string[] = []): Promise<{
     data: any[];
     totalChecked: number;
@@ -227,42 +227,61 @@ class BatchLeadsService {
     let filtered = 0;
     const validProperties = [];
     let page = 1;
-    const maxPages = 10; // Prevent infinite loops
+    const maxPages = 10;
 
-    console.log(`🔍 Searching for ${count} properties with criteria:`, JSON.stringify(criteria, null, 2));
-    console.log(`🚫 Excluding ${excludePropertyIds.length} property IDs:`, excludePropertyIds);
+    console.log(`🔍 Starting 3-step BatchLeads integration for ${count} properties`);
+    console.log(`📋 Search criteria:`, JSON.stringify(criteria, null, 2));
 
     while (validProperties.length < count && page <= maxPages) {
       try {
-        const response = await this.searchProperties(criteria, page, 50);
+        // STEP 1: Get quicklists (property IDs matching criteria)
+        console.log(`📊 STEP 1: Getting quicklists from BatchLeads...`);
+        const quicklistResponse = await this.searchProperties(criteria, page, 50);
 
-        if (!response.data || response.data.length === 0) {
-          console.log(`📄 Page ${page}: No more properties available`);
+        if (!quicklistResponse.data || quicklistResponse.data.length === 0) {
+          console.log(`📄 Page ${page}: No more properties in quicklists`);
           break;
         }
 
-        console.log(`📄 Page ${page}: Found ${response.data.length} raw properties`);
+        console.log(`📄 Page ${page}: Found ${quicklistResponse.data.length} properties in quicklists`);
 
-        for (const rawProperty of response.data) {
+        for (const quicklistProperty of quicklistResponse.data) {
           totalChecked++;
-
-          // Generate property ID for deduplication
-          const propertyId = rawProperty._id || `${rawProperty.address?.street}_${rawProperty.owner?.fullName}`;
-
-          // Skip if already shown
+          
+          const propertyId = quicklistProperty._id || `${quicklistProperty.address?.street}_${quicklistProperty.owner?.fullName}`;
+          
           if (excludePropertyIds.includes(propertyId)) {
             console.log(`⏭️ Skipping already shown property: ${propertyId}`);
             filtered++;
             continue;
           }
 
-          const convertedProperty = this.convertToProperty(rawProperty, 'demo-user', criteria);
+          // STEP 2: Get core property data (building details, tax assessor data)
+          console.log(`🏠 STEP 2: Getting core property data for ${quicklistProperty.address?.street}...`);
+          const corePropertyData = await this.getCorePropertyData(propertyId, quicklistProperty);
+          
+          // STEP 3: Get contact enrichment (complete owner information)
+          console.log(`👤 STEP 3: Getting contact enrichment for ${quicklistProperty.address?.street}...`);
+          const contactData = await this.getContactEnrichment(propertyId, quicklistProperty);
+          
+          // Merge all 3 data sources
+          const enrichedProperty = {
+            ...quicklistProperty,
+            building: corePropertyData.building || {},
+            taxAssessor: corePropertyData.taxAssessor || {},
+            propertyDetails: corePropertyData.propertyDetails || {},
+            owner: {
+              ...quicklistProperty.owner,
+              ...contactData.owner
+            }
+          };
+
+          const convertedProperty = this.convertToProperty(enrichedProperty, 'demo-user', criteria);
 
           if (convertedProperty !== null) {
-            // Add the property ID for future exclusion
             convertedProperty.id = propertyId;
             validProperties.push(convertedProperty);
-            console.log(`✅ Added valid property ${validProperties.length}/${count}: ${convertedProperty.address}`);
+            console.log(`✅ Added enriched property ${validProperties.length}/${count}: ${convertedProperty.address}`);
 
             if (validProperties.length >= count) {
               break;
@@ -279,7 +298,7 @@ class BatchLeadsService {
       }
     }
 
-    console.log(`📊 Search complete: ${validProperties.length} valid properties, ${totalChecked} checked, ${filtered} filtered`);
+    console.log(`📊 3-step integration complete: ${validProperties.length} valid properties, ${totalChecked} checked, ${filtered} filtered`);
 
     return {
       data: validProperties,
@@ -287,6 +306,56 @@ class BatchLeadsService {
       filtered,
       hasMore: page <= maxPages && totalChecked > 0
     };
+  }
+
+  // STEP 2: Get core property data (building details, tax assessor)
+  async getCorePropertyData(propertyId: string, quicklistProperty: any): Promise<any> {
+    try {
+      // Use BatchLeads core property endpoint for detailed building data
+      const coreResponse = await this.makeRequest('/api/v1/property/core', {
+        propertyId: propertyId,
+        includeBuilding: true,
+        includeTaxAssessor: true,
+        includePropertyDetails: true
+      });
+      
+      console.log(`🏗️ Core property data retrieved for ${propertyId}:`, {
+        building: Object.keys(coreResponse.building || {}),
+        taxAssessor: Object.keys(coreResponse.taxAssessor || {}),
+        propertyDetails: Object.keys(coreResponse.propertyDetails || {})
+      });
+      
+      return coreResponse;
+    } catch (error) {
+      console.log(`⚠️ Core property data not available for ${propertyId}, using quicklist data only`);
+      return { building: {}, taxAssessor: {}, propertyDetails: {} };
+    }
+  }
+
+  // STEP 3: Get contact enrichment (complete owner information)
+  async getContactEnrichment(propertyId: string, quicklistProperty: any): Promise<any> {
+    try {
+      // Use BatchLeads contact enrichment for complete owner data
+      const contactResponse = await this.makeRequest('/api/v1/property/contact-enrichment', {
+        propertyId: propertyId,
+        includePhoneNumbers: true,
+        includeEmailAddresses: true,
+        includeMailingAddress: true,
+        skipTrace: false
+      });
+      
+      console.log(`👤 Contact enrichment retrieved for ${propertyId}:`, {
+        owner: Object.keys(contactResponse.owner || {}),
+        hasPhone: !!(contactResponse.owner?.phoneNumbers?.length),
+        hasEmail: !!(contactResponse.owner?.emailAddresses?.length),
+        hasMailingAddress: !!(contactResponse.owner?.mailingAddress)
+      });
+      
+      return contactResponse;
+    } catch (error) {
+      console.log(`⚠️ Contact enrichment not available for ${propertyId}, using quicklist owner data only`);
+      return { owner: {} };
+    }
   }
 
   // Get next valid property with error handling and filtering
