@@ -195,8 +195,27 @@ class BatchLeadsService {
       page: page
     });
     
-    // Debug the raw API response structure
-    console.log(`🔍 RAW BATCHDATA API RESPONSE:`, JSON.stringify(response, null, 2));
+    // Debug the complete raw API response structure
+    console.log(`🔍 COMPLETE RAW BATCHDATA API RESPONSE:`);
+    console.log(JSON.stringify(response, null, 2));
+    
+    // Debug first property specifically
+    if (response.results?.properties?.length > 0) {
+      const firstProperty = response.results.properties[0];
+      console.log(`🏠 FIRST PROPERTY RAW DATA:`);
+      console.log(JSON.stringify(firstProperty, null, 2));
+      console.log(`🏠 FIRST PROPERTY FIELD ANALYSIS:`, {
+        topLevel: Object.keys(firstProperty),
+        address: Object.keys(firstProperty.address || {}),
+        building: Object.keys(firstProperty.building || {}),
+        owner: Object.keys(firstProperty.owner || {}),
+        valuation: Object.keys(firstProperty.valuation || {}),
+        assessment: Object.keys(firstProperty.assessment || {}),
+        taxAssessor: Object.keys(firstProperty.taxAssessor || {}),
+        propertyDetails: Object.keys(firstProperty.propertyDetails || {}),
+        allFields: firstProperty
+      });
+    }
 
     // Transform response to match expected format
     return {
