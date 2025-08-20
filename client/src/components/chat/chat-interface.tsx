@@ -997,7 +997,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
               <Card>
                 <CardContent className="p-4">
                   <p className="text-sm text-slate-900">
-                    {selectedAgent === "lead-finder" && "Hello! I'm your Lead Finder Agent. I can help you discover off-market properties, distressed sales, and motivated sellers. What type of leads are you looking for today?"}
+                    {selectedAgent === "lead-finder" && "Hello! I'm your Seller Lead Finder. I can help you discover off-market properties, distressed sales, and motivated sellers using live data from BatchLeads API. Use the wizard below to get started!"}
                     {selectedAgent === "deal-analyzer" && "Hi! I'm your Deal Analyzer Agent. I can help you analyze property deals, calculate ARV, estimate repair costs, and determine maximum allowable offers. Share a property address to get started!"}
                     {selectedAgent === "negotiation" && "Hello! I'm your Negotiation Agent. I can help you craft compelling offers, write follow-up messages, and develop negotiation strategies for your deals. What property are you working on?"}
                     {selectedAgent === "closing" && "Hi! I'm your Closing Agent. I can help you prepare contracts, coordinate closings, and manage documents. What deal are you looking to close?"}
@@ -1014,36 +1014,6 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                           <Search className="h-4 w-4" />
                           Use Seller Lead Wizard
                         </Button>
-                        <div className="flex flex-wrap gap-2">
-                          <Badge
-                            variant="secondary"
-                            className="cursor-pointer hover:bg-slate-200"
-                            onClick={() => setInputMessage("Show me 5 properties in Orlando, FL")}
-                          >
-                            5 Properties Grid View
-                          </Badge>
-                          <Badge
-                            variant="secondary"
-                            className="cursor-pointer hover:bg-slate-200"
-                            onClick={() => setInputMessage("Find distressed properties in Philadelphia, PA")}
-                          >
-                            Find distressed properties
-                          </Badge>
-                          <Badge
-                            variant="secondary"
-                            className="cursor-pointer hover:bg-slate-200"
-                            onClick={() => setInputMessage("Show me 3 high equity properties in Dallas, TX")}
-                          >
-                            Multiple high equity
-                          </Badge>
-                          <Badge
-                            variant="secondary"
-                            className="cursor-pointer hover:bg-slate-200"
-                            onClick={() => setInputMessage("Find high equity properties in 90210")}
-                          >
-                            Single property search
-                          </Badge>
-                        </div>
                       </>
                     )}
                     {selectedAgent === "deal-analyzer" && (
