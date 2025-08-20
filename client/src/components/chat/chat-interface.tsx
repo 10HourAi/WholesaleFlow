@@ -527,25 +527,52 @@ export default function ChatInterface() {
   };
 
   const renderMultipleProperties = (content: string) => {
-    // Check if this is a multiple properties response
-    if (content.includes("Great! I found") && content.includes("properties") &&
-        (content.match(/\d+\.\s+\d+/g) || content.match(/1\.\s+/))) {
+    // Enhanced property detection - check for various response formats
+    console.log('Checking content for properties:', content.substring(0, 300));
+    
+    const hasPropertyIndicators = content.includes("properties") || 
+                                  content.includes("PROPERTY") || 
+                                  content.includes("Address:") ||
+                                  content.includes("Owner:") ||
+                                  content.includes("ARV:") ||
+                                  content.includes("Equity:") ||
+                                  content.includes("Harrisburg") ||
+                                  content.includes("absentee") ||
+                                  content.match(/\d+\.\s+\d+/) ||
+                                  content.includes("Lead");
 
-      console.log('Multiple properties detected. Content:', content);
+    if (hasPropertyIndicators) {
+      console.log('Property indicators found, analyzing content...');
 
-      // Extract numbered property entries more precisely - match property addresses from any city/state
-      const propertyRegex = /(\d+)\.\s+(\d+\s+[A-Za-z][^,\n]*,\s*[A-Za-z\s]+,\s*[A-Z]{2}[^\n]*(?:\n(?!\d+\.)[^\n]*)*)/g;
-      const propertyMatches = [];
+      // Try multiple extraction patterns for different response formats
+      let propertyMatches = [];
+      
+      // Pattern 1: Numbered properties with addresses
+      const numberedRegex = /(\d+)\.\s+([^\n]+(?:\n(?!\d+\.)[^\n]*)*)/g;
       let match;
+      while ((match = numberedRegex.exec(content)) !== null) {
+        const propertyContent = match[2].trim();
+        if (propertyContent.length > 20) { // Only include substantial content
+          propertyMatches.push({
+            number: match[1],
+            content: propertyContent
+          });
+        }
+      }
 
-      while ((match = propertyRegex.exec(content)) !== null) {
-        propertyMatches.push({
-          number: match[1],
-          content: match[2].trim()
-        });
+      // Pattern 2: If no numbered properties, look for single property with key indicators
+      if (propertyMatches.length === 0) {
+        const singlePropertyIndicators = ['Address:', 'Owner:', 'ARV:', 'Equity:', 'Harrisburg', 'absentee'];
+        if (singlePropertyIndicators.some(indicator => content.includes(indicator))) {
+          propertyMatches.push({
+            number: '1',
+            content: content.trim()
+          });
+        }
       }
 
       if (propertyMatches.length === 0) {
+        console.log('No property patterns matched, showing as regular text');
         return null;
       }
 
