@@ -611,10 +611,22 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
         }
       }
 
-      // Pattern 2: If no numbered properties, look for single property with key indicators
+      // Pattern 2: Only match content that contains actual property data, not instructions
       if (propertyMatches.length === 0) {
-        const singlePropertyIndicators = ['Address:', 'Owner:', 'ARV:', 'Equity:', 'Harrisburg', 'absentee'];
-        if (singlePropertyIndicators.some(indicator => content.includes(indicator))) {
+        const hasRealPropertyData = content.includes('ARV:') || 
+                                   content.includes('Owner Name:') ||
+                                   content.includes('Equity Percentage:') ||
+                                   content.includes('**PROPERTY DETAILS:**') ||
+                                   (content.includes('Address:') && content.includes('Price:'));
+        
+        // Exclude instructional content
+        const isInstructional = content.includes('you can use') ||
+                                content.includes('search term') ||
+                                content.includes('try a different') ||
+                                content.includes('filtered out') ||
+                                content.includes('expand your search');
+        
+        if (hasRealPropertyData && !isInstructional) {
           propertyMatches.push({
             number: '1',
             content: content.trim()

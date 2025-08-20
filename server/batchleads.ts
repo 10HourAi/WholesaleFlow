@@ -391,6 +391,35 @@ class BatchLeadsService {
       passesSquareFootageFilter: squareFeet === null || squareFeet > 0
     });
 
+    // Apply state filtering based on location criteria  
+    if (criteria?.location && state) {
+      const locationLower = criteria.location.toLowerCase();
+      const stateLower = state.toLowerCase();
+      
+      // Check if location specifies a state and property state matches
+      if (locationLower.includes(', pa') && stateLower !== 'pa') {
+        console.log(`❌ Property filtered out - wrong state (property in ${state}, search for PA)`);
+        return null;
+      }
+      if (locationLower.includes(', ca') && stateLower !== 'ca') {
+        console.log(`❌ Property filtered out - wrong state (property in ${state}, search for CA)`);
+        return null;
+      }
+      if (locationLower.includes(', ny') && stateLower !== 'ny') {
+        console.log(`❌ Property filtered out - wrong state (property in ${state}, search for NY)`);
+        return null;
+      }
+      // Add more states as needed - prioritize common search states
+      if (locationLower.includes(', fl') && stateLower !== 'fl') {
+        console.log(`❌ Property filtered out - wrong state (property in ${state}, search for FL)`);
+        return null;
+      }
+      if (locationLower.includes(', tx') && stateLower !== 'tx') {
+        console.log(`❌ Property filtered out - wrong state (property in ${state}, search for TX)`);
+        return null;
+      }
+    }
+
     // Apply bedroom filter if provided in criteria
     if (criteria?.minBedrooms) {
       // Reject properties with no bedroom data when bedroom criteria is specified
