@@ -296,12 +296,26 @@ class BatchLeadsService {
           const convertedProperty = this.convertToProperty(enrichedProperty, 'demo-user', criteria);
 
           if (convertedProperty !== null) {
-            convertedProperty.id = propertyId;
-            validProperties.push(convertedProperty);
-            console.log(`✅ Added enriched property ${validProperties.length}/${count}: ${convertedProperty.address}`);
+            // Filter out properties with null building data as requested
+            const hasValidBuildingData = convertedProperty.bedrooms !== null && 
+                                       convertedProperty.bathrooms !== null && 
+                                       convertedProperty.squareFeet !== null;
+            
+            // Check if bedrooms meet step 4 criteria (minBedrooms)
+            const meetsBedroomCriteria = !criteria.minBedrooms || 
+                                        (convertedProperty.bedrooms && convertedProperty.bedrooms >= criteria.minBedrooms);
+            
+            if (hasValidBuildingData && meetsBedroomCriteria) {
+              convertedProperty.id = propertyId;
+              validProperties.push(convertedProperty);
+              console.log(`✅ Added enriched property ${validProperties.length}/${count}: ${convertedProperty.address} (${convertedProperty.bedrooms}BR/${convertedProperty.bathrooms}BA, ${convertedProperty.squareFeet} sqft)`);
 
-            if (validProperties.length >= count) {
-              break;
+              if (validProperties.length >= count) {
+                break;
+              }
+            } else {
+              console.log(`🚫 Filtered out property: ${convertedProperty.address} - Missing building data or doesn't meet bedroom criteria`);
+              filtered++;
             }
           } else {
             filtered++;
@@ -325,79 +339,66 @@ class BatchLeadsService {
     };
   }
 
-  // STEP 2: Get core property data (building details, tax assessor)
+  // STEP 2: Get detailed property data using Property Lookup API
   async getCorePropertyData(propertyId: string, quicklistProperty: any): Promise<any> {
     try {
-      console.log(`🔍 DEBUGGING: Making core property API call for ${propertyId}`);
-      console.log(`📋 API Request URL: ${this.baseUrl}/api/v1/property/core`);
-      console.log(`📋 API Request Body:`, {
-        propertyId: propertyId,
-        includeBuilding: true,
-        includeTaxAssessor: true,
-        includePropertyDetails: true
-      });
+      const address = quicklistProperty.address;
+      if (!address?.street || !address?.city || !address?.state) {
+        console.log(`⚠️ Insufficient address data for property lookup: ${propertyId}`);
+        return { building: {}, assessment: {} };
+      }
 
-      // Use BatchLeads core property endpoint for detailed building data
-      const coreResponse = await this.makeRequest('/api/v1/property/core', {
-        propertyId: propertyId,
-        includeBuilding: true,
-        includeTaxAssessor: true,
-        includePropertyDetails: true
+      console.log(`🔍 STEP 2: Making Property Lookup API call for detailed building data`);
+      console.log(`📋 API Request URL: ${this.baseUrl}/api/v1/property/lookup`);
+      
+      const lookupRequest = {
+        requests: [{
+          address: {
+            street: address.street,
+            city: address.city,
+            state: address.state,
+            zip: address.zip
+          }
+        }]
+      };
+      
+      console.log(`📋 Property Lookup Request:`, JSON.stringify(lookupRequest, null, 2));
+
+      // Use BatchData Property Lookup API for detailed building data
+      const lookupResponse = await this.makeRequest('/api/v1/property/lookup', lookupRequest);
+      
+      console.log(`🏗️ FULL PROPERTY LOOKUP API RESPONSE:`, JSON.stringify(lookupResponse, null, 2));
+      
+      // Extract the first property result
+      const propertyData = lookupResponse.results?.[0]?.property || {};
+      
+      console.log(`🏗️ Building fields available:`, {
+        buildingKeys: Object.keys(propertyData.building || {}),
+        assessmentKeys: Object.keys(propertyData.assessment || {}),
+        hasBedroomCount: !!(propertyData.building?.bedroomCount),
+        hasBathroomCount: !!(propertyData.building?.bathroomCount),
+        hasYearBuilt: !!(propertyData.building?.effectiveYearBuilt),
+        hasTotalArea: !!(propertyData.building?.totalBuildingAreaSquareFeet),
+        hasMarketValue: !!(propertyData.assessment?.totalMarketValue)
       });
       
-      console.log(`🏗️ FULL CORE PROPERTY API RESPONSE for ${propertyId}:`, JSON.stringify(coreResponse, null, 2));
-      console.log(`🏗️ Available fields:`, {
-        responseKeys: Object.keys(coreResponse),
-        building: Object.keys(coreResponse.building || {}),
-        taxAssessor: Object.keys(coreResponse.taxAssessor || {}),
-        propertyDetails: Object.keys(coreResponse.propertyDetails || {})
-      });
-      
-      return coreResponse;
+      return {
+        building: propertyData.building || {},
+        assessment: propertyData.assessment || {},
+        rawData: propertyData
+      };
     } catch (error) {
-      console.log(`❌ CORE PROPERTY API ERROR for ${propertyId}:`, error);
-      console.log(`⚠️ Core property data not available for ${propertyId}, using quicklist data only`);
-      return { building: {}, taxAssessor: {}, propertyDetails: {} };
+      console.log(`❌ PROPERTY LOOKUP API ERROR for ${propertyId}:`, error);
+      console.log(`⚠️ Property lookup failed, using quicklist data only`);
+      return { building: {}, assessment: {} };
     }
   }
 
-  // STEP 3: Get contact enrichment (complete owner information)
+  // STEP 3: Contact enrichment - skip for now since main focus is building data
   async getContactEnrichment(propertyId: string, quicklistProperty: any): Promise<any> {
-    try {
-      console.log(`🔍 DEBUGGING: Making contact enrichment API call for ${propertyId}`);
-      console.log(`📋 API Request URL: ${this.baseUrl}/api/v1/property/contact-enrichment`);
-      console.log(`📋 API Request Body:`, {
-        propertyId: propertyId,
-        includePhoneNumbers: true,
-        includeEmailAddresses: true,
-        includeMailingAddress: true,
-        skipTrace: false
-      });
-
-      // Use BatchLeads contact enrichment for complete owner data
-      const contactResponse = await this.makeRequest('/api/v1/property/contact-enrichment', {
-        propertyId: propertyId,
-        includePhoneNumbers: true,
-        includeEmailAddresses: true,
-        includeMailingAddress: true,
-        skipTrace: false
-      });
-      
-      console.log(`👤 FULL CONTACT ENRICHMENT API RESPONSE for ${propertyId}:`, JSON.stringify(contactResponse, null, 2));
-      console.log(`👤 Available contact fields:`, {
-        responseKeys: Object.keys(contactResponse),
-        owner: Object.keys(contactResponse.owner || {}),
-        hasPhone: !!(contactResponse.owner?.phoneNumbers?.length),
-        hasEmail: !!(contactResponse.owner?.emailAddresses?.length),
-        hasMailingAddress: !!(contactResponse.owner?.mailingAddress)
-      });
-      
-      return contactResponse;
-    } catch (error) {
-      console.log(`❌ CONTACT ENRICHMENT API ERROR for ${propertyId}:`, error);
-      console.log(`⚠️ Contact enrichment not available for ${propertyId}, using quicklist owner data only`);
-      return { owner: {} };
-    }
+    // For now, just return quicklist owner data since the main issue is missing building details
+    console.log(`👤 STEP 3: Using quicklist owner data (contact enrichment disabled for debugging)`);
+    return { owner: quicklistProperty.owner || {} };
   }
 
   // Get next valid property with error handling and filtering
@@ -502,29 +503,17 @@ class BatchLeadsService {
       taxAssessorData: taxAssessor
     });
     
-    // Comprehensive building data extraction - try all possible field names
-    const bedrooms = building.bedrooms || building.bedroomCount || building.bedroomcount || 
-                     building.bedroom_count || building.num_bedrooms || building.numBedrooms ||
-                     taxAssessor.bedrooms || taxAssessor.bedroomCount || taxAssessor.bedroomcount ||
-                     taxAssessor.bedroom_count || propertyDetails.bedrooms || building.rooms || null;
-                     
-    const bathrooms = building.bathrooms || building.bathroomCount || building.bathroomcount ||
-                      building.bathroom_count || building.num_bathrooms || building.numBathrooms ||
-                      building.fullBaths || building.halfBaths || building.total_baths ||
-                      taxAssessor.bathrooms || taxAssessor.bathroomCount || taxAssessor.bathroomcount ||
-                      taxAssessor.bathroom_count || propertyDetails.bathrooms || null;
-                      
-    const squareFeet = building.livingArea || building.totalLivingArea || building.living_area ||
-                      building.buildingSquareFeet || building.building_square_feet || 
-                      building.totalSquareFeet || building.total_square_feet || building.sqft ||
-                      building.square_feet || building.squareFeet || 
-                      taxAssessor.livingArea || taxAssessor.squareFeet || taxAssessor.square_feet ||
-                      taxAssessor.totalSquareFeet || propertyDetails.squareFeet || null;
-                      
-    const yearBuilt = building.yearBuilt || building.year_built || building.constructionYear ||
-                     building.construction_year || building.built_year ||
-                     taxAssessor.yearBuilt || taxAssessor.year_built || 
-                     propertyDetails.yearBuilt || null;
+    // Extract building data using correct BatchData field names
+    const assessment = batchProperty.assessment || {};
+    
+    // Use the exact field names from BatchData Property Lookup API
+    const bedrooms = building.bedroomCount || building.bedrooms || taxAssessor.bedrooms || null;
+    const bathrooms = building.bathroomCount || building.bathrooms || taxAssessor.bathrooms || null;
+    const squareFeet = building.totalBuildingAreaSquareFeet || building.livingArea || 
+                      building.totalLivingArea || taxAssessor.livingArea || null;
+    const yearBuilt = building.effectiveYearBuilt || building.yearBuilt || taxAssessor.yearBuilt || null;
+    const buildingType = building.buildingType || building.propertyType || null;
+    const marketValue = assessment.totalMarketValue || estimatedValue || null;
     
     console.log(`🏗️ Extracted building data:`, {
       bedrooms, bathrooms, squareFeet, yearBuilt,
