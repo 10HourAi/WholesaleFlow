@@ -17,7 +17,7 @@ export async function generateLeadFinderResponse(userMessage: string, userId?: s
       // Extract location from message
       let location = 'Orlando, FL'; // Default
 
-      const locationMatch = userMessage.match(/in\s+([^,\n]+)/i);
+      const locationMatch = userMessage.match(/in\s+([^,\n]+(?:,\s*[A-Z]{2})?)/i);
       if (locationMatch) {
         location = locationMatch[1].trim();
       }
@@ -26,17 +26,37 @@ export async function generateLeadFinderResponse(userMessage: string, userId?: s
       const numberMatch = userMessage.match(/(\d+)\s+properties/i);
       const requestedCount = numberMatch ? Math.min(parseInt(numberMatch[1]), 5) : 5;
 
+      // Extract price filter from message
+      let maxPrice;
+      const priceMatch = userMessage.match(/under\s+\$?([0-9,]+)/i);
+      if (priceMatch) {
+        maxPrice = parseInt(priceMatch[1].replace(/,/g, ''));
+      }
+
+      // Extract minimum bedrooms
+      let minBedrooms;
+      const bedroomMatch = userMessage.match(/at least (\d+) bedrooms?/i);
+      if (bedroomMatch) {
+        minBedrooms = parseInt(bedroomMatch[1]);
+      }
+
       console.log(`🔍 Searching for ${requestedCount} properties in: ${location}`);
 
       // Import and use BatchLeads service
       const { batchLeadsService } = await import("./batchleads");
 
-      // Search for properties
-      const results = await batchLeadsService.searchValidProperties({
+      // Search for properties with extracted criteria
+      const searchCriteria = {
         location,
         distressedOnly: true,
-        propertyType: 'single_family'
-      }, requestedCount);
+        propertyType: 'single_family',
+        maxPrice,
+        minBedrooms
+      };
+
+      console.log('🔍 Search criteria:', searchCriteria);
+
+      const results = await batchLeadsService.searchValidProperties(searchCriteria, requestedCount);
 
       console.log(`📊 Search results: ${results.data.length} raw properties, ${results.filteredCount} filtered`);
 
@@ -76,7 +96,10 @@ Try searching in a different location or expanding your criteria.`;
         response += `   - Owner: ${property.ownerName || 'N/A'}\n`;
         response += `   - Motivation Score: ${property.motivationScore || 0}/100\n`;
         response += `   - Equity: ${property.equityPercentage || 0}%\n`;
-        response += `   - Lead Type: ${property.leadType ? property.leadType.replace('_', ' ').toUpperCase() : 'Standard'}\n`;
+        response += `   - Lead Type: ${property.leadType ? property.leadType.replace('_', ' ').toUpperCase() : 'STANDARD'}\n`;
+        response += `   - Mailing Address: ${property.ownerMailingAddress || 'Same as property address'}\n`;
+        response += `   - Last Sale Date: ${property.lastSaleDate || 'No recent sales'}\n`;
+        response += `   - Last Sale Price: ${property.lastSalePrice ? `$${parseInt(property.lastSalePrice).toLocaleString()}` : 'Not available'}\n`;
         response += `   - Why it's good: ${property.distressedIndicator ? property.distressedIndicator.replace('_', ' ') : 'Good equity opportunity'}\n\n`;
       });
 
