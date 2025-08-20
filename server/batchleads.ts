@@ -192,9 +192,11 @@ class BatchLeadsService {
     console.log(`📊 BatchLeads API response:`, {
       propertiesFound: response.results?.properties?.length || 0,
       totalResults: response.meta?.totalResults || 0,
-      page: page,
-      rawResponse: JSON.stringify(response, null, 2)
+      page: page
     });
+    
+    // Debug the raw API response structure
+    console.log(`🔍 RAW BATCHDATA API RESPONSE:`, JSON.stringify(response, null, 2));
 
     // Transform response to match expected format
     return {
@@ -290,12 +292,22 @@ class BatchLeadsService {
           const convertedProperty = this.convertToProperty(enrichedProperty, 'demo-user', criteria);
 
           if (convertedProperty !== null) {
-            convertedProperty.id = propertyId;
-            validProperties.push(convertedProperty);
-            console.log(`✅ Added property ${validProperties.length}/${count}: ${convertedProperty.address}`);
+            // Skip properties with null building data as requested
+            const hasBuildingData = convertedProperty.bedrooms !== null && 
+                                   convertedProperty.bathrooms !== null && 
+                                   convertedProperty.squareFeet !== null;
+            
+            if (hasBuildingData) {
+              convertedProperty.id = propertyId;
+              validProperties.push(convertedProperty);
+              console.log(`✅ Added property with building data ${validProperties.length}/${count}: ${convertedProperty.address} (${convertedProperty.bedrooms}BR/${convertedProperty.bathrooms}BA, ${convertedProperty.squareFeet} sqft)`);
 
-            if (validProperties.length >= count) {
-              break;
+              if (validProperties.length >= count) {
+                break;
+              }
+            } else {
+              console.log(`🚫 Skipped property with null building data: ${convertedProperty.address}`);
+              filtered++;
             }
           } else {
             filtered++;
