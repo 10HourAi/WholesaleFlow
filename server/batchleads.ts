@@ -103,7 +103,12 @@ class BatchLeadsService {
       options: {
         skip: (page - 1) * perPage,
         take: Math.min(perPage, 500),
-        skipTrace: false
+        skipTrace: false,
+        // Explicitly request building data in response
+        includeBuilding: true,
+        includeTaxAssessor: true,
+        includePropertyDetails: true,
+        includeAssessment: true
       }
     };
 
