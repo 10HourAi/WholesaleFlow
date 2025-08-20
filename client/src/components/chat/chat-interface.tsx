@@ -697,17 +697,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
             const lastSalePrice = extractValue(propertyText, /Last Sale Price:\s*\$?([^\n]+)/i) || 'Not available';
             const status = extractValue(propertyText, /Status:\s*([^\n]+)/i) || 'New';
 
-            // Debug logging to see what data we're extracting
-            console.log('🔍 Extracted property data:', {
-              price,
-              maxOffer,
-              bedBath,
-              owner,
-              mailingAddress,
-              equity,
-              motivation,
-              leadType
-            });
+            // Property data extracted successfully
 
             const propertyData = {
                 number: propertyMatch.number,
