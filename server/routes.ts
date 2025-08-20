@@ -169,7 +169,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 maxPrice
               };
               
+              console.log(`🔍 ROUTES: About to call BatchLeads API with criteria:`, searchCriteria);
               const results = await batchLeadsService.searchValidProperties(searchCriteria, 5);
+              console.log(`🔍 ROUTES: BatchLeads API returned:`, JSON.stringify(results, null, 2));
               
               if (results.data.length === 0) {
                 aiResponse = `I couldn't find any properties matching your criteria in ${location}. Try a different location or expanding your search criteria.`;

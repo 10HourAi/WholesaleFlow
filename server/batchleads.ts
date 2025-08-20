@@ -94,7 +94,8 @@ class BatchLeadsService {
   }
 
   async searchProperties(criteria: SearchCriteria, page = 1, perPage = 50): Promise<BatchLeadsResponse> {
-    console.log(`🔍 BatchLeads API search for: "${criteria.location}"`);
+    console.log(`🔍 STARTING BatchLeads API search for: "${criteria.location}"`);
+    console.log(`🔍 SEARCH CRITERIA:`, JSON.stringify(criteria, null, 2));
 
     const requestBody: any = {
       searchCriteria: {
