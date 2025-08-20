@@ -249,6 +249,23 @@ class BatchLeadsService {
           totalChecked++;
           
           const propertyId = quicklistProperty._id || `${quicklistProperty.address?.street}_${quicklistProperty.owner?.fullName}`;
+          const propertyAddress = quicklistProperty.address?.street;
+          
+          // Special debugging for 360 Fishing Creek Valley Rd
+          if (propertyAddress && propertyAddress.includes('360 Fishing Creek Valley')) {
+            console.log(`🔍 DEBUGGING PROPERTY: 360 Fishing Creek Valley Rd`);
+            console.log(`📋 FULL QUICKLIST API RESPONSE:`, JSON.stringify(quicklistProperty, null, 2));
+            console.log(`📋 QUICKLIST AVAILABLE FIELDS:`, {
+              topLevelKeys: Object.keys(quicklistProperty),
+              addressKeys: Object.keys(quicklistProperty.address || {}),
+              buildingKeys: Object.keys(quicklistProperty.building || {}),
+              ownerKeys: Object.keys(quicklistProperty.owner || {}),
+              valuationKeys: Object.keys(quicklistProperty.valuation || {}),
+              saleKeys: Object.keys(quicklistProperty.sale || {}),
+              taxAssessorKeys: Object.keys(quicklistProperty.taxAssessor || {}),
+              quickListsKeys: Object.keys(quicklistProperty.quickLists || {})
+            });
+          }
           
           if (excludePropertyIds.includes(propertyId)) {
             console.log(`⏭️ Skipping already shown property: ${propertyId}`);
@@ -311,6 +328,15 @@ class BatchLeadsService {
   // STEP 2: Get core property data (building details, tax assessor)
   async getCorePropertyData(propertyId: string, quicklistProperty: any): Promise<any> {
     try {
+      console.log(`🔍 DEBUGGING: Making core property API call for ${propertyId}`);
+      console.log(`📋 API Request URL: ${this.baseUrl}/api/v1/property/core`);
+      console.log(`📋 API Request Body:`, {
+        propertyId: propertyId,
+        includeBuilding: true,
+        includeTaxAssessor: true,
+        includePropertyDetails: true
+      });
+
       // Use BatchLeads core property endpoint for detailed building data
       const coreResponse = await this.makeRequest('/api/v1/property/core', {
         propertyId: propertyId,
@@ -319,7 +345,9 @@ class BatchLeadsService {
         includePropertyDetails: true
       });
       
-      console.log(`🏗️ Core property data retrieved for ${propertyId}:`, {
+      console.log(`🏗️ FULL CORE PROPERTY API RESPONSE for ${propertyId}:`, JSON.stringify(coreResponse, null, 2));
+      console.log(`🏗️ Available fields:`, {
+        responseKeys: Object.keys(coreResponse),
         building: Object.keys(coreResponse.building || {}),
         taxAssessor: Object.keys(coreResponse.taxAssessor || {}),
         propertyDetails: Object.keys(coreResponse.propertyDetails || {})
@@ -327,6 +355,7 @@ class BatchLeadsService {
       
       return coreResponse;
     } catch (error) {
+      console.log(`❌ CORE PROPERTY API ERROR for ${propertyId}:`, error);
       console.log(`⚠️ Core property data not available for ${propertyId}, using quicklist data only`);
       return { building: {}, taxAssessor: {}, propertyDetails: {} };
     }
@@ -335,6 +364,16 @@ class BatchLeadsService {
   // STEP 3: Get contact enrichment (complete owner information)
   async getContactEnrichment(propertyId: string, quicklistProperty: any): Promise<any> {
     try {
+      console.log(`🔍 DEBUGGING: Making contact enrichment API call for ${propertyId}`);
+      console.log(`📋 API Request URL: ${this.baseUrl}/api/v1/property/contact-enrichment`);
+      console.log(`📋 API Request Body:`, {
+        propertyId: propertyId,
+        includePhoneNumbers: true,
+        includeEmailAddresses: true,
+        includeMailingAddress: true,
+        skipTrace: false
+      });
+
       // Use BatchLeads contact enrichment for complete owner data
       const contactResponse = await this.makeRequest('/api/v1/property/contact-enrichment', {
         propertyId: propertyId,
@@ -344,7 +383,9 @@ class BatchLeadsService {
         skipTrace: false
       });
       
-      console.log(`👤 Contact enrichment retrieved for ${propertyId}:`, {
+      console.log(`👤 FULL CONTACT ENRICHMENT API RESPONSE for ${propertyId}:`, JSON.stringify(contactResponse, null, 2));
+      console.log(`👤 Available contact fields:`, {
+        responseKeys: Object.keys(contactResponse),
         owner: Object.keys(contactResponse.owner || {}),
         hasPhone: !!(contactResponse.owner?.phoneNumbers?.length),
         hasEmail: !!(contactResponse.owner?.emailAddresses?.length),
@@ -353,6 +394,7 @@ class BatchLeadsService {
       
       return contactResponse;
     } catch (error) {
+      console.log(`❌ CONTACT ENRICHMENT API ERROR for ${propertyId}:`, error);
       console.log(`⚠️ Contact enrichment not available for ${propertyId}, using quicklist owner data only`);
       return { owner: {} };
     }
