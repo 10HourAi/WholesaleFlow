@@ -435,11 +435,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check if this is a "next property" request
       const isNextPropertyRequest = message.toLowerCase().match(/(next|another|more|show me another)/i);
 
-      // Check if this is a property search request
-      const isPropertySearch = message.toLowerCase().match(/(find|search|show|get)\s+(properties|distressed|leads)/i) ||
-                               message.toLowerCase().includes('properties in') ||
-                               message.match(/\d+\s+properties/i) ||
-                               message.toLowerCase().match(/properties.*philadelphia|philadelphia.*properties/i);
+      // Enhanced property search detection - much more flexible
+      const hasSearchAction = message.toLowerCase().match(/(find|search|show|get|locate|display)/i);
+      const hasPropertyTerm = message.toLowerCase().match(/(properties|homes|houses|leads|distressed)/i) ||
+                              message.toLowerCase().match(/(harrisburg|philadelphia|pa)/i) ||
+                              message.toLowerCase().includes('absentee') ||
+                              message.toLowerCase().includes('bedroom') ||
+                              message.toLowerCase().includes('single-family') ||
+                              message.toLowerCase().includes('family homes') ||
+                              message.match(/\d+\s+(properties|homes)/i);
+      
+      const isPropertySearch = hasSearchAction && hasPropertyTerm;
+      
+      console.log('🔍 Search detection:', {
+        message: message.substring(0, 100),
+        hasSearchAction,
+        hasPropertyTerm,
+        isPropertySearch,
+        isNextPropertyRequest
+      });
 
       if (isNextPropertyRequest && sessionState && sessionState.searchCriteria) {
         // User wants the next property in the current search
