@@ -370,34 +370,57 @@ class BatchLeadsService {
   }
 
 
-  // Convert BatchData property to our schema format with enhanced data extraction
+  // Convert BatchData property with comprehensive data integration from all sources
   convertToProperty(batchProperty: any, userId: string, criteria?: SearchCriteria): any {
     console.log(`🔍 Converting property with ID: ${batchProperty._id}`);
 
     const estimatedValue = batchProperty.valuation?.estimatedValue || 0;
     const equityPercent = batchProperty.valuation?.equityPercent;
 
-    // Extract comprehensive building details from tax assessor data
+    // STEP 1: Core Property Data (Tax Assessor) - Enhanced extraction
     const building = batchProperty.building || {};
     const taxAssessor = batchProperty.taxAssessor || {};
+    const propertyDetails = batchProperty.propertyDetails || {};
     
-    // Enhanced building data extraction - check multiple sources
+    // Multi-source building data extraction - comprehensive approach
     const bedrooms = building.bedrooms || taxAssessor.bedrooms || building.rooms || 
-                     batchProperty.propertyDetails?.bedrooms || null;
+                     propertyDetails.bedrooms || building.bedroomCount || 
+                     taxAssessor.bedroomCount || null;
     const bathrooms = building.bathrooms || taxAssessor.bathrooms || building.fullBaths || 
-                      building.halfBaths || batchProperty.propertyDetails?.bathrooms || null;
+                      building.halfBaths || propertyDetails.bathrooms || 
+                      building.bathroomCount || taxAssessor.bathroomCount || null;
     const squareFeet = building.livingArea || building.totalLivingArea || taxAssessor.livingArea || 
                       building.buildingSquareFeet || taxAssessor.squareFeet || 
-                      batchProperty.propertyDetails?.squareFeet || null;
+                      propertyDetails.squareFeet || building.totalSquareFeet ||
+                      taxAssessor.totalSquareFeet || null;
     const yearBuilt = building.yearBuilt || taxAssessor.yearBuilt || 
-                     batchProperty.propertyDetails?.yearBuilt || null;
+                     propertyDetails.yearBuilt || building.constructionYear || null;
     
-    // Extract address information
+    // STEP 2: Address and Owner Data (Core Property + Contact Enrichment)
     const address = batchProperty.address?.street;
     const city = batchProperty.address?.city;
     const state = batchProperty.address?.state;
     const zipCode = batchProperty.address?.zip;
-    const ownerName = batchProperty.owner?.fullName;
+    
+    // STEP 3: Contact Enrichment - Enhanced owner information extraction
+    const owner = batchProperty.owner || {};
+    const ownerName = owner.fullName || owner.firstName + ' ' + owner.lastName || 
+                     owner.name || 'Owner information available via skip trace';
+    
+    // Enhanced mailing address extraction with multiple fallbacks
+    const mailingAddr = owner.mailingAddress || owner.address || {};
+    let ownerMailingAddress = 'Same as property address';
+    
+    if (mailingAddr.street && mailingAddr.city && mailingAddr.state) {
+      ownerMailingAddress = `${mailingAddr.street}, ${mailingAddr.city}, ${mailingAddr.state} ${mailingAddr.zip || ''}`.trim();
+    } else if (owner.mailingStreet || owner.mailingCity) {
+      ownerMailingAddress = `${owner.mailingStreet || ''} ${owner.mailingCity || ''} ${owner.mailingState || ''} ${owner.mailingZip || ''}`.trim();
+    }
+    
+    // Contact enrichment - extract available phone/email if present
+    const ownerPhone = owner.phone || owner.primaryPhone || owner.homePhone || 
+                      owner.cellPhone || 'Available via skip trace';
+    const ownerEmail = owner.email || owner.primaryEmail || 'Available via skip trace';
 
     console.log(`📋 Extracted values:`, {
       estimatedValue,
@@ -502,12 +525,10 @@ class BatchLeadsService {
       lastSaleDate: batchProperty.sale?.lastSale?.saleDate || 
                     batchProperty.sale?.priorSale?.saleDate || 
                     batchProperty.propertyDetails?.lastSaleDate || null,
-      ownerName: ownerName || 'Contact info available via skip trace',
-      ownerPhone: 'Available via skip trace',
-      ownerEmail: 'Available via skip trace',
-      ownerMailingAddress: batchProperty.owner?.mailingAddress ?
-        `${batchProperty.owner.mailingAddress.street}, ${batchProperty.owner.mailingAddress.city}, ${batchProperty.owner.mailingAddress.state} ${batchProperty.owner.mailingAddress.zip}` :
-        `${address}, ${city}, ${state} ${zipCode}`,
+      ownerName: ownerName,
+      ownerPhone: ownerPhone,
+      ownerEmail: ownerEmail,
+      ownerMailingAddress: ownerMailingAddress,
       equityPercentage: Math.round(finalEquityPercent),
       motivationScore: this.calculateMotivationScore(batchProperty),
       distressedIndicator: this.getDistressedIndicator(batchProperty)

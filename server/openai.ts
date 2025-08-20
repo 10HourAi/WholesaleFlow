@@ -79,8 +79,8 @@ Try searching in a different location or expanding your criteria.`;
         return `Found ${results.totalChecked} properties in ${location}, but ${results.filtered} were filtered out due to missing critical data. Try a different location.`;
       }
 
-      // Format response with actual property data
-      let response = `Great! I found ${properties.length} distressed properties in ${location} that could be excellent wholesale opportunities:\n\n`;
+      // Format response with comprehensive BatchLeads data integration
+      let response = `Great! I found ${properties.length} distressed properties in "${location}" that could be excellent wholesale opportunities:\n\n`;
 
       properties.forEach((property, index) => {
         console.log(`📝 Formatting property ${index + 1}:`, {
