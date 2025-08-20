@@ -738,7 +738,7 @@ Try expanding your search area or checking a nearby city.`;
         // Handle multiple properties response
         console.log(`✅ Final converted properties: ${result.data.length}`);
         
-        // Format multiple properties for display
+        // Format multiple properties with comprehensive BatchLeads data integration
         let propertiesText = `Great! I found ${result.data.length} distressed properties in "${location}" that could be excellent wholesale opportunities:\n\n`;
         
         result.data.forEach((convertedProperty, index) => {
@@ -749,20 +749,27 @@ Try expanding your search area or checking a nearby city.`;
             bedrooms: convertedProperty.bedrooms
           });
           
-          const buildingDetails = [];
-          if (convertedProperty.bedrooms > 0) buildingDetails.push(`${convertedProperty.bedrooms}BR`);
-          if (convertedProperty.bathrooms > 0) buildingDetails.push(`${convertedProperty.bathrooms}BA`);
-          if (convertedProperty.squareFeet > 0) buildingDetails.push(`${convertedProperty.squareFeet.toLocaleString()} sq ft`);
-          const buildingInfo = buildingDetails.length > 0 ? buildingDetails.join('/') : '0BR/0BA, 0 sq ft';
-          
-          propertiesText += `${index + 1}. ${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state}\n`;
-          propertiesText += `   - Price: $${parseInt(convertedProperty.arv).toLocaleString()}\n`;
-          propertiesText += `   - ${buildingInfo}\n`;
-          propertiesText += `   - Owner: ${convertedProperty.ownerName}\n`;
-          propertiesText += `   - Motivation Score: ${convertedProperty.motivationScore}/100\n`;
-          propertiesText += `   - Equity: ${convertedProperty.equityPercentage}%\n`;
-          propertiesText += `   - Lead Type: ${convertedProperty.leadType.replace('_', ' ').toUpperCase()}\n`;
-          propertiesText += `   - Why it's good: ${convertedProperty.distressedIndicator.replace('_', ' ')}\n\n`;
+          propertiesText += `${index + 1}. ${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}\n`;
+          propertiesText += `   - **PROPERTY DETAILS:**\n`;
+          propertiesText += `   - Est. Value (ARV): $${convertedProperty.arv ? parseInt(convertedProperty.arv).toLocaleString() : 'N/A'}\n`;
+          propertiesText += `   - Max Offer (70% Rule): $${convertedProperty.maxOffer ? parseInt(convertedProperty.maxOffer).toLocaleString() : 'N/A'}\n`;
+          propertiesText += `   - Building: ${convertedProperty.bedrooms || 'Unknown'}BR/${convertedProperty.bathrooms || 'Unknown'}BA, ${convertedProperty.squareFeet?.toLocaleString() || 'Unknown'} sq ft\n`;
+          propertiesText += `   - Year Built: ${convertedProperty.yearBuilt || 'Not available'}\n`;
+          propertiesText += `   - Property Type: ${convertedProperty.propertyType || 'Single Family'}\n`;
+          propertiesText += `   - **OWNER INFORMATION:**\n`;
+          propertiesText += `   - Owner Name: ${convertedProperty.ownerName || 'Available via skip trace'}\n`;
+          propertiesText += `   - Owner Phone: ${convertedProperty.ownerPhone || 'Available via skip trace'}\n`;
+          propertiesText += `   - Owner Email: ${convertedProperty.ownerEmail || 'Available via skip trace'}\n`;
+          propertiesText += `   - Mailing Address: ${convertedProperty.ownerMailingAddress || 'Same as property address'}\n`;
+          propertiesText += `   - **FINANCIAL ANALYSIS:**\n`;
+          propertiesText += `   - Equity Percentage: ${convertedProperty.equityPercentage || 0}%\n`;
+          propertiesText += `   - Motivation Score: ${convertedProperty.motivationScore || 0}/100\n`;
+          propertiesText += `   - Lead Type: ${convertedProperty.leadType ? convertedProperty.leadType.replace('_', ' ').toUpperCase() : 'STANDARD'}\n`;
+          propertiesText += `   - Distressed Indicator: ${convertedProperty.distressedIndicator ? convertedProperty.distressedIndicator.replace('_', ' ') : 'Standard opportunity'}\n`;
+          propertiesText += `   - **SALES HISTORY:**\n`;
+          propertiesText += `   - Last Sale Date: ${convertedProperty.lastSaleDate || 'No recent sales'}\n`;
+          propertiesText += `   - Last Sale Price: ${convertedProperty.lastSalePrice ? `$${parseInt(convertedProperty.lastSalePrice).toLocaleString()}` : 'Not available'}\n`;
+          propertiesText += `   - Status: ${convertedProperty.status || 'New'}\n\n`;
         });
 
         let qualityNote = "";
