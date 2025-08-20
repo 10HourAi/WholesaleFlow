@@ -476,9 +476,17 @@ class BatchLeadsService {
     }
     // Note: We allow properties with missing bedroom data to pass through since API often lacks this info
 
-    // Apply price filter if provided in criteria
+    // Apply price filter if provided in criteria - ensure estimated value is within budget
     if (criteria?.maxPrice && estimatedValue > criteria.maxPrice) {
-      console.log(`❌ Property filtered out - exceeds max price (${estimatedValue} > ${criteria.maxPrice})`);
+      console.log(`❌ Property filtered out - exceeds max price (Est. Value: $${estimatedValue.toLocaleString()} > Max: $${criteria.maxPrice.toLocaleString()})`);
+      return null;
+    }
+    
+    // Additional wholesaling logic: Also filter if max offer would exceed reasonable budget expectations
+    // If someone searches for properties under $500K, they probably don't want max offers over $350K (70% of $500K)
+    const maxOffer = Math.floor(estimatedValue * 0.7);
+    if (criteria?.maxPrice && maxOffer > (criteria.maxPrice * 0.7)) {
+      console.log(`❌ Property filtered out - max offer too high (Max Offer: $${maxOffer.toLocaleString()} > 70% of budget: $${Math.floor(criteria.maxPrice * 0.7).toLocaleString()})`);
       return null;
     }
 
@@ -505,8 +513,6 @@ class BatchLeadsService {
     // Use default equity if not available
     const finalEquityPercent = equityPercent !== undefined && equityPercent !== null ? equityPercent : 50;
 
-    const maxOffer = Math.floor(estimatedValue * 0.7); // 70% rule
-
     const convertedProperty = {
       userId,
       address: address,
@@ -517,7 +523,7 @@ class BatchLeadsService {
       bathrooms: bathrooms !== null ? bathrooms : null, // Preserve null for missing data
       squareFeet: squareFeet !== null ? squareFeet : null, // Preserve null for missing data
       arv: estimatedValue.toString(),
-      maxOffer: maxOffer.toString(),
+      maxOffer: Math.floor(estimatedValue * 0.7).toString(),
       status: 'new',
       leadType: this.getLeadType(batchProperty),
       propertyType: batchProperty.building?.propertyType || 'single_family',
