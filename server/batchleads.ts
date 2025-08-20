@@ -434,7 +434,9 @@ class BatchLeadsService {
       bathrooms: bathrooms !== null ? bathrooms : 'Not provided by API',
       squareFeet: squareFeet !== null ? squareFeet : 'Not provided by API',
       hasBuildingData: !!(bedrooms !== null || bathrooms !== null || squareFeet !== null),
-      passesSquareFootageFilter: squareFeet === null || squareFeet > 0
+      passesSquareFootageFilter: squareFeet === null || squareFeet > 0,
+      maxPriceFilter: criteria?.maxPrice ? `$${criteria.maxPrice.toLocaleString()}` : 'None',
+      willBeFiltered: criteria?.maxPrice ? estimatedValue > criteria.maxPrice : false
     });
 
     // Apply state filtering based on location criteria  

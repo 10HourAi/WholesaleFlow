@@ -724,23 +724,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
           searchCriteria.minEquity = 70;
         }
 
+        // Extract price filter - critical for budget filtering
+        const priceMatch = message.match(/under\s+\$?([0-9,]+)/i);
+        if (priceMatch) {
+          searchCriteria.maxPrice = parseInt(priceMatch[1].replace(/,/g, ''));
+          console.log(`💰 Added price filter: max $${searchCriteria.maxPrice.toLocaleString()}`);
+        }
+
+        // Extract bedroom filter
+        const bedroomMatch = message.match(/at least\s+(\d+)\s+bedrooms?/i);
+        if (bedroomMatch) {
+          searchCriteria.minBedrooms = parseInt(bedroomMatch[1]);
+          console.log(`🛏️ Added bedroom filter: min ${searchCriteria.minBedrooms} bedrooms`);
+        }
+
         if (message.toLowerCase().includes('motivated seller') || message.toLowerCase().includes('multiple indicators')) {
           searchCriteria.distressedOnly = true;
         }
 
-        // Extract bedroom requirements
-        const bedroomMatch = message.match(/(\d+)\s+bedrooms?/i) || message.match(/at least\s+(\d+)\s+bedrooms?/i);
-        if (bedroomMatch) {
-          searchCriteria.minBedrooms = parseInt(bedroomMatch[1]);
-        }
 
-        // Extract price limits
-        const priceMatch = message.match(/under\s+\$?([\d,]+)/i) || message.match(/max\s+\$?([\d,]+)/i) || message.match(/maximum\s+\$?([\d,]+)/i);
-        if (priceMatch) {
-          const price = parseInt(priceMatch[1].replace(/,/g, ''));
-          searchCriteria.maxPrice = price;
-          console.log(`💰 Extracted max price: $${price.toLocaleString()}`);
-        }
 
         // Property type - default to single family for most searches
         if (message.toLowerCase().includes('single family')) {
