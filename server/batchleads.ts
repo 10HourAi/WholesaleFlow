@@ -377,24 +377,50 @@ class BatchLeadsService {
     const estimatedValue = batchProperty.valuation?.estimatedValue || 0;
     const equityPercent = batchProperty.valuation?.equityPercent;
 
-    // STEP 1: Core Property Data (Tax Assessor) - Enhanced extraction
+    // STEP 1: Core Property Data (Tax Assessor) - Enhanced extraction with debugging
     const building = batchProperty.building || {};
     const taxAssessor = batchProperty.taxAssessor || {};
     const propertyDetails = batchProperty.propertyDetails || {};
     
-    // Multi-source building data extraction - comprehensive approach
-    const bedrooms = building.bedrooms || taxAssessor.bedrooms || building.rooms || 
-                     propertyDetails.bedrooms || building.bedroomCount || 
-                     taxAssessor.bedroomCount || null;
-    const bathrooms = building.bathrooms || taxAssessor.bathrooms || building.fullBaths || 
-                      building.halfBaths || propertyDetails.bathrooms || 
-                      building.bathroomCount || taxAssessor.bathroomCount || null;
-    const squareFeet = building.livingArea || building.totalLivingArea || taxAssessor.livingArea || 
-                      building.buildingSquareFeet || taxAssessor.squareFeet || 
-                      propertyDetails.squareFeet || building.totalSquareFeet ||
-                      taxAssessor.totalSquareFeet || null;
-    const yearBuilt = building.yearBuilt || taxAssessor.yearBuilt || 
-                     propertyDetails.yearBuilt || building.constructionYear || null;
+    // Debug: Log all available building-related fields
+    console.log(`🏗️ Available building data fields:`, {
+      buildingKeys: Object.keys(building),
+      taxAssessorKeys: Object.keys(taxAssessor),
+      propertyDetailsKeys: Object.keys(propertyDetails),
+      buildingData: building,
+      taxAssessorData: taxAssessor
+    });
+    
+    // Comprehensive building data extraction - try all possible field names
+    const bedrooms = building.bedrooms || building.bedroomCount || building.bedroomcount || 
+                     building.bedroom_count || building.num_bedrooms || building.numBedrooms ||
+                     taxAssessor.bedrooms || taxAssessor.bedroomCount || taxAssessor.bedroomcount ||
+                     taxAssessor.bedroom_count || propertyDetails.bedrooms || building.rooms || null;
+                     
+    const bathrooms = building.bathrooms || building.bathroomCount || building.bathroomcount ||
+                      building.bathroom_count || building.num_bathrooms || building.numBathrooms ||
+                      building.fullBaths || building.halfBaths || building.total_baths ||
+                      taxAssessor.bathrooms || taxAssessor.bathroomCount || taxAssessor.bathroomcount ||
+                      taxAssessor.bathroom_count || propertyDetails.bathrooms || null;
+                      
+    const squareFeet = building.livingArea || building.totalLivingArea || building.living_area ||
+                      building.buildingSquareFeet || building.building_square_feet || 
+                      building.totalSquareFeet || building.total_square_feet || building.sqft ||
+                      building.square_feet || building.squareFeet || 
+                      taxAssessor.livingArea || taxAssessor.squareFeet || taxAssessor.square_feet ||
+                      taxAssessor.totalSquareFeet || propertyDetails.squareFeet || null;
+                      
+    const yearBuilt = building.yearBuilt || building.year_built || building.constructionYear ||
+                     building.construction_year || building.built_year ||
+                     taxAssessor.yearBuilt || taxAssessor.year_built || 
+                     propertyDetails.yearBuilt || null;
+    
+    console.log(`🏗️ Extracted building data:`, {
+      bedrooms, bathrooms, squareFeet, yearBuilt,
+      bedroomsSources: [building.bedrooms, building.bedroomCount, taxAssessor.bedrooms],
+      bathroomsSources: [building.bathrooms, building.bathroomCount, taxAssessor.bathrooms],
+      squareFeetSources: [building.livingArea, building.totalLivingArea, building.squareFeet]
+    });
     
     // STEP 2: Address and Owner Data (Core Property + Contact Enrichment)
     const address = batchProperty.address?.street;
