@@ -693,7 +693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (result.data.length === 0 && result.totalChecked === 0 && location.toLowerCase().includes('hershey')) {
           console.log(`🔄 No results for "${location}", trying ZIP code 17033 (Hershey area)`);
           const zipSearchCriteria = { ...searchCriteria, location: '17033' };
-          const zipResult = await batchLeadsService.searchValidProperties(zipSearchCriteria, 1);
+          const zipResult = await batchLeadsService.searchValidProperties(zipSearchCriteria, 5);
           result.data = zipResult.data;
           result.totalChecked = zipResult.totalChecked;
           result.filtered = zipResult.filtered;
