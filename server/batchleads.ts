@@ -458,6 +458,12 @@ class BatchLeadsService {
       }
     }
 
+    // Apply price filter if provided in criteria
+    if (criteria?.maxPrice && estimatedValue > criteria.maxPrice) {
+      console.log(`❌ Property filtered out - exceeds max price (${estimatedValue} > ${criteria.maxPrice})`);
+      return null;
+    }
+
     // Balanced validation - require core data but allow properties when building data is not provided by API
     if (!estimatedValue ||
         estimatedValue <= 10000 ||
