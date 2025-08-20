@@ -482,14 +482,17 @@ class BatchLeadsService {
       return null;
     }
 
-    // Balanced validation - require core data but allow properties when building data is not provided by API
+    // Enhanced validation - require complete actionable data for property cards
     if (!estimatedValue ||
         estimatedValue <= 10000 ||
         !address ||
         !city ||
         !state ||
-        !zipCode) {
-      console.log(`❌ Property filtered out - missing critical financial or address data`);
+        !zipCode ||
+        !ownerName ||
+        ownerName.trim() === '' ||
+        ownerMailingAddress === 'undefined, undefined, undefined undefined') {
+      console.log(`❌ Property filtered out - missing critical data for actionable lead (value: ${estimatedValue}, address: ${address}, owner: ${ownerName}, mailing: ${ownerMailingAddress})`);
       return null;
     }
 
