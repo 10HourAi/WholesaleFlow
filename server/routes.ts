@@ -138,7 +138,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (conversation) {
         switch (conversation.agentType) {
           case "lead-finder":
-            aiResponse = await generateLeadFinderResponse(validatedData.content, userId);
+            // Check if this is a property search request from Seller Lead Wizard
+            const isPropertySearch = validatedData.content.toLowerCase().match(/(find|search|show|get)\s+(properties|distressed|leads)/i) ||
+                                     validatedData.content.toLowerCase().includes('properties in') ||
+                                     validatedData.content.match(/\d+\s+properties/i);
+            
+            if (isPropertySearch) {
+              // Route directly to BatchLeads API, bypass OpenAI
+              const { batchLeadsService } = await import("./batchleads");
+              
+              // Extract location from message
+              let location = 'Orlando, FL'; // Default
+              const locationMatch = validatedData.content.match(/in\s+([^,\n]+(?:,\s*[A-Z]{2})?)/i);
+              if (locationMatch) {
+                location = locationMatch[1].trim();
+              }
+              
+              // Extract price filter
+              let maxPrice;
+              const priceMatch = validatedData.content.match(/under\s+\$?([0-9,]+)/i);
+              if (priceMatch) {
+                maxPrice = parseInt(priceMatch[1].replace(/,/g, ''));
+              }
+              
+              // Search criteria for BatchLeads
+              const searchCriteria = {
+                location,
+                distressedOnly: true,
+                propertyType: 'single_family',
+                maxPrice
+              };
+              
+              const results = await batchLeadsService.searchValidProperties(searchCriteria, 5);
+              
+              if (results.data.length === 0) {
+                aiResponse = `I couldn't find any properties matching your criteria in ${location}. Try a different location or expanding your search criteria.`;
+              } else {
+                // Format response with comprehensive BatchLeads data
+                let response = `Great! I found ${results.data.length} distressed properties in "${location}" that could be excellent wholesale opportunities:\n\n`;
+                
+                results.data.forEach((property, index) => {
+                  response += `${index + 1}. ${property.address}, ${property.city}, ${property.state} ${property.zipCode}\n`;
+                  response += `   - **PROPERTY DETAILS:**\n`;
+                  response += `   - Est. Value (ARV): $${property.arv ? parseInt(property.arv).toLocaleString() : 'N/A'}\n`;
+                  response += `   - Max Offer (70% Rule): $${property.maxOffer ? parseInt(property.maxOffer).toLocaleString() : 'N/A'}\n`;
+                  response += `   - Building: ${property.bedrooms || 'Unknown'}BR/${property.bathrooms || 'Unknown'}BA, ${property.squareFeet?.toLocaleString() || 'Unknown'} sq ft\n`;
+                  response += `   - Year Built: ${property.yearBuilt || 'Not available'}\n`;
+                  response += `   - Property Type: ${property.propertyType || 'Single Family'}\n`;
+                  response += `   - **OWNER INFORMATION:**\n`;
+                  response += `   - Owner Name: ${property.ownerName || 'Available via skip trace'}\n`;
+                  response += `   - Owner Phone: ${property.ownerPhone || 'Available via skip trace'}\n`;
+                  response += `   - Owner Email: ${property.ownerEmail || 'Available via skip trace'}\n`;
+                  response += `   - Mailing Address: ${property.ownerMailingAddress || 'Same as property address'}\n`;
+                  response += `   - **FINANCIAL ANALYSIS:**\n`;
+                  response += `   - Equity Percentage: ${property.equityPercentage || 0}%\n`;
+                  response += `   - Motivation Score: ${property.motivationScore || 0}/100\n`;
+                  response += `   - Lead Type: ${property.leadType ? property.leadType.replace('_', ' ').toUpperCase() : 'STANDARD'}\n`;
+                  response += `   - Distressed Indicator: ${property.distressedIndicator ? property.distressedIndicator.replace('_', ' ') : 'Standard opportunity'}\n`;
+                  response += `   - **SALES HISTORY:**\n`;
+                  response += `   - Last Sale Date: ${property.lastSaleDate || 'No recent sales'}\n`;
+                  response += `   - Last Sale Price: ${property.lastSalePrice ? `$${parseInt(property.lastSalePrice).toLocaleString()}` : 'Not available'}\n`;
+                  response += `   - Status: ${property.status || 'New'}\n\n`;
+                });
+                
+                aiResponse = response;
+              }
+            } else {
+              // Non-property search, use OpenAI for general lead finder guidance  
+              aiResponse = await generateLeadFinderResponse(validatedData.content, userId);
+            }
             break;
           case "deal-analyzer":
             const property = conversation.propertyId ? await storage.getProperty(conversation.propertyId, userId) : undefined;
