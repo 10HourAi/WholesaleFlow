@@ -251,9 +251,9 @@ class BatchLeadsService {
           const propertyId = quicklistProperty._id || `${quicklistProperty.address?.street}_${quicklistProperty.owner?.fullName}`;
           const propertyAddress = quicklistProperty.address?.street;
           
-          // Special debugging for 360 Fishing Creek Valley Rd
-          if (propertyAddress && propertyAddress.includes('360 Fishing Creek Valley')) {
-            console.log(`🔍 DEBUGGING PROPERTY: 360 Fishing Creek Valley Rd`);
+          // Debug first property to understand available fields
+          if (totalChecked === 1) {
+            console.log(`🔍 DEBUGGING FIRST PROPERTY: ${propertyAddress}`);
             console.log(`📋 FULL QUICKLIST API RESPONSE:`, JSON.stringify(quicklistProperty, null, 2));
             console.log(`📋 QUICKLIST AVAILABLE FIELDS:`, {
               topLevelKeys: Object.keys(quicklistProperty),
@@ -273,49 +273,20 @@ class BatchLeadsService {
             continue;
           }
 
-          // STEP 2: Get core property data (building details, tax assessor data)
-          console.log(`🏠 STEP 2: Getting core property data for ${quicklistProperty.address?.street}...`);
-          const corePropertyData = await this.getCorePropertyData(propertyId, quicklistProperty);
+          // Temporarily use quicklist data only until we identify correct API endpoints
+          console.log(`🏠 Using quicklist data for ${quicklistProperty.address?.street}`);
           
-          // STEP 3: Get contact enrichment (complete owner information)
-          console.log(`👤 STEP 3: Getting contact enrichment for ${quicklistProperty.address?.street}...`);
-          const contactData = await this.getContactEnrichment(propertyId, quicklistProperty);
-          
-          // Merge all 3 data sources
-          const enrichedProperty = {
-            ...quicklistProperty,
-            building: corePropertyData.building || {},
-            taxAssessor: corePropertyData.taxAssessor || {},
-            propertyDetails: corePropertyData.propertyDetails || {},
-            owner: {
-              ...quicklistProperty.owner,
-              ...contactData.owner
-            }
-          };
+          const enrichedProperty = quicklistProperty;
 
           const convertedProperty = this.convertToProperty(enrichedProperty, 'demo-user', criteria);
 
           if (convertedProperty !== null) {
-            // Filter out properties with null building data as requested
-            const hasValidBuildingData = convertedProperty.bedrooms !== null && 
-                                       convertedProperty.bathrooms !== null && 
-                                       convertedProperty.squareFeet !== null;
-            
-            // Check if bedrooms meet step 4 criteria (minBedrooms)
-            const meetsBedroomCriteria = !criteria.minBedrooms || 
-                                        (convertedProperty.bedrooms && convertedProperty.bedrooms >= criteria.minBedrooms);
-            
-            if (hasValidBuildingData && meetsBedroomCriteria) {
-              convertedProperty.id = propertyId;
-              validProperties.push(convertedProperty);
-              console.log(`✅ Added enriched property ${validProperties.length}/${count}: ${convertedProperty.address} (${convertedProperty.bedrooms}BR/${convertedProperty.bathrooms}BA, ${convertedProperty.squareFeet} sqft)`);
+            convertedProperty.id = propertyId;
+            validProperties.push(convertedProperty);
+            console.log(`✅ Added property ${validProperties.length}/${count}: ${convertedProperty.address}`);
 
-              if (validProperties.length >= count) {
-                break;
-              }
-            } else {
-              console.log(`🚫 Filtered out property: ${convertedProperty.address} - Missing building data or doesn't meet bedroom criteria`);
-              filtered++;
+            if (validProperties.length >= count) {
+              break;
             }
           } else {
             filtered++;
