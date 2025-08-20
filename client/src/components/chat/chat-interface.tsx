@@ -404,8 +404,9 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Search className="h-5 w-5 text-blue-600" />
-            Lead Finder Wizard - Step {wizardStep} of 4
+            Seller Lead Wizard - Step {wizardStep} of 4
           </CardTitle>
+          <p className="text-sm text-gray-600 mt-1">Find distressed properties and motivated sellers • First of 3 Lead Finder wizards</p>
         </CardHeader>
         <CardContent className="space-y-4">
           {wizardStep === 1 && (
@@ -1011,7 +1012,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                           className="flex items-center gap-2 mb-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
                         >
                           <Search className="h-4 w-4" />
-                          Use Lead Finder Wizard
+                          Use Seller Lead Wizard
                         </Button>
                         <div className="flex flex-wrap gap-2">
                           <Badge

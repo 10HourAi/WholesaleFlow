@@ -74,6 +74,12 @@ Preferred communication style: Simple, everyday language.
 - Real-time message exchange with AI agents
 - Context-aware responses based on selected properties and contacts
 - Conversation history and thread management
+- Seller Lead Wizard: 4-step guided property search (first of 3 planned Lead Finder wizards)
+  - Step 1: Location targeting (city/ZIP, state selection)
+  - Step 2: Seller type filtering (distressed, absentee, high equity, etc.)
+  - Step 3: Property type selection (single-family, multi-family, condos, etc.)
+  - Step 4: Advanced filters (bedrooms, price range)
+- Future wizards planned: Cash Buyer Wizard, Market Research Wizard
 
 #### Dashboard and Analytics
 - Revenue tracking and deal metrics
