@@ -679,8 +679,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const excludePropertyIds = sessionState?.excludePropertyIds || [];
         console.log(`🚫 Excluding ${excludePropertyIds.length} already shown properties`);
 
-        // Get single property for cleaner display
-        const result = await batchLeadsService.searchValidProperties(searchCriteria, 1, excludePropertyIds);
+        // Get multiple properties for better user experience  
+        const result = await batchLeadsService.searchValidProperties(searchCriteria, 5, excludePropertyIds);
 
         console.log(`📊 Search result stats:`, {
           totalChecked: result.totalChecked || 0,
@@ -725,38 +725,51 @@ Try expanding your search area or checking a nearby city.`;
           return;
         }
 
-        // Get the first converted property from results
-        const convertedProperty = result.data[0];
+        // Handle multiple properties response
+        console.log(`✅ Final converted properties: ${result.data.length}`);
         
-        // For display purposes, we'll use the converted property data directly
-        const propertyAddress = `${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}`;
+        // Format multiple properties for display
+        let propertiesText = `Great! I found ${result.data.length} distressed properties in "${location}" that could be excellent wholesale opportunities:\n\n`;
         
-        console.log(`🏠 Displaying converted property:`, convertedProperty.id);
-
-        // Create detailed property display using converted data
-        const buildingDetails = [];
-        if (convertedProperty.bedrooms > 0) buildingDetails.push(`🛏️ ${convertedProperty.bedrooms}BR`);
-        if (convertedProperty.bathrooms > 0) buildingDetails.push(`🚿 ${convertedProperty.bathrooms}BA`);
-        if (convertedProperty.squareFeet > 0) buildingDetails.push(`📐 ${convertedProperty.squareFeet.toLocaleString()} sq ft`);
-        if (convertedProperty.yearBuilt) buildingDetails.push(`🏗️ Built ${convertedProperty.yearBuilt}`);
-        const buildingInfo = buildingDetails.length > 0 ? buildingDetails.join(' • ') : '🏠 Property Details';
-
-        const propertyText = `**PROPERTY OVERVIEW:**\n🏠 ${convertedProperty.address}\n📍 ${convertedProperty.city}, ${convertedProperty.state} ${convertedProperty.zipCode}\n${buildingInfo}\n\n**FINANCIAL ANALYSIS:**\n💵 Est. Value: $${parseInt(convertedProperty.arv).toLocaleString()}\n🎯 Max Offer: $${parseInt(convertedProperty.maxOffer).toLocaleString()}\n📈 Equity: ${convertedProperty.equityPercentage}%\n⭐ Motivation: ${convertedProperty.motivationScore}/100\n🏷️ Lead Type: ${convertedProperty.leadType.replace('_', ' ').toUpperCase()}\n\n**CONTACT INFORMATION:**\n👤 Owner: ${convertedProperty.ownerName}\n📞 Phone: ${convertedProperty.ownerPhone}\n📧 Email: ${convertedProperty.ownerEmail}\n🏠 Address: ${propertyAddress}\n📍 Status: ${convertedProperty.distressedIndicator.replace('_', ' ').toUpperCase()}`;
+        result.data.forEach((convertedProperty, index) => {
+          console.log(`📝 Formatting property ${index + 1}:`, {
+            address: convertedProperty.address,
+            arv: convertedProperty.arv,
+            owner: convertedProperty.ownerName,
+            bedrooms: convertedProperty.bedrooms
+          });
+          
+          const buildingDetails = [];
+          if (convertedProperty.bedrooms > 0) buildingDetails.push(`${convertedProperty.bedrooms}BR`);
+          if (convertedProperty.bathrooms > 0) buildingDetails.push(`${convertedProperty.bathrooms}BA`);
+          if (convertedProperty.squareFeet > 0) buildingDetails.push(`${convertedProperty.squareFeet.toLocaleString()} sq ft`);
+          const buildingInfo = buildingDetails.length > 0 ? buildingDetails.join('/') : '0BR/0BA, 0 sq ft';
+          
+          propertiesText += `${index + 1}. ${convertedProperty.address}, ${convertedProperty.city}, ${convertedProperty.state}\n`;
+          propertiesText += `   - Price: $${parseInt(convertedProperty.arv).toLocaleString()}\n`;
+          propertiesText += `   - ${buildingInfo}\n`;
+          propertiesText += `   - Owner: ${convertedProperty.ownerName}\n`;
+          propertiesText += `   - Motivation Score: ${convertedProperty.motivationScore}/100\n`;
+          propertiesText += `   - Equity: ${convertedProperty.equityPercentage}%\n`;
+          propertiesText += `   - Lead Type: ${convertedProperty.leadType.replace('_', ' ').toUpperCase()}\n`;
+          propertiesText += `   - Why it's good: ${convertedProperty.distressedIndicator.replace('_', ' ')}\n\n`;
+        });
 
         let qualityNote = "";
         if (result.filtered > 0) {
           qualityNote = `\n✅ Data Quality: Filtered out ${result.filtered} properties with incomplete data to show you only actionable leads.`;
         }
 
-        const aiResponse = `💡 This is LIVE property data from BatchData API with complete owner and financial details!${qualityNote} ${result.hasMore ? "Say 'next' to see another property." : ""}`;
+        const aiResponse = propertiesText + qualityNote;
+        
+        console.log(`📤 Final response length: ${aiResponse.length} characters`);
 
         res.json({
           response: aiResponse,
-          property: convertedProperty,
           sessionState: { 
             ...sessionState, 
             searchCriteria: searchCriteria,
-            excludePropertyIds: [...excludePropertyIds, convertedProperty.id]
+            excludePropertyIds: [...excludePropertyIds, ...result.data.map(p => p.id)]
           },
           hasMore: result.hasMore
         });
