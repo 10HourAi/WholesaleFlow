@@ -90,17 +90,27 @@ Try searching in a different location or expanding your criteria.`;
           bedrooms: property.bedrooms
         });
 
-        response += `${index + 1}. ${property.address}, ${property.city}, ${property.state}\n`;
-        response += `   - Price: $${property.arv ? parseInt(property.arv).toLocaleString() : 'N/A'}\n`;
-        response += `   - ${property.bedrooms || 0}BR/${property.bathrooms || 0}BA, ${property.squareFeet?.toLocaleString() || 0} sq ft\n`;
-        response += `   - Owner: ${property.ownerName || 'N/A'}\n`;
-        response += `   - Motivation Score: ${property.motivationScore || 0}/100\n`;
-        response += `   - Equity: ${property.equityPercentage || 0}%\n`;
-        response += `   - Lead Type: ${property.leadType ? property.leadType.replace('_', ' ').toUpperCase() : 'STANDARD'}\n`;
+        response += `${index + 1}. ${property.address}, ${property.city}, ${property.state} ${property.zipCode}\n`;
+        response += `   - **PROPERTY DETAILS:**\n`;
+        response += `   - Est. Value (ARV): $${property.arv ? parseInt(property.arv).toLocaleString() : 'N/A'}\n`;
+        response += `   - Max Offer (70% Rule): $${property.maxOffer ? parseInt(property.maxOffer).toLocaleString() : 'N/A'}\n`;
+        response += `   - Building: ${property.bedrooms || 'Unknown'}BR/${property.bathrooms || 'Unknown'}BA, ${property.squareFeet?.toLocaleString() || 'Unknown'} sq ft\n`;
+        response += `   - Year Built: ${property.yearBuilt || 'Not available'}\n`;
+        response += `   - Property Type: ${property.propertyType || 'Single Family'}\n`;
+        response += `   - **OWNER INFORMATION:**\n`;
+        response += `   - Owner Name: ${property.ownerName || 'Available via skip trace'}\n`;
+        response += `   - Owner Phone: ${property.ownerPhone || 'Available via skip trace'}\n`;
+        response += `   - Owner Email: ${property.ownerEmail || 'Available via skip trace'}\n`;
         response += `   - Mailing Address: ${property.ownerMailingAddress || 'Same as property address'}\n`;
+        response += `   - **FINANCIAL ANALYSIS:**\n`;
+        response += `   - Equity Percentage: ${property.equityPercentage || 0}%\n`;
+        response += `   - Motivation Score: ${property.motivationScore || 0}/100\n`;
+        response += `   - Lead Type: ${property.leadType ? property.leadType.replace('_', ' ').toUpperCase() : 'STANDARD'}\n`;
+        response += `   - Distressed Indicator: ${property.distressedIndicator ? property.distressedIndicator.replace('_', ' ') : 'Standard opportunity'}\n`;
+        response += `   - **SALES HISTORY:**\n`;
         response += `   - Last Sale Date: ${property.lastSaleDate || 'No recent sales'}\n`;
         response += `   - Last Sale Price: ${property.lastSalePrice ? `$${parseInt(property.lastSalePrice).toLocaleString()}` : 'Not available'}\n`;
-        response += `   - Why it's good: ${property.distressedIndicator ? property.distressedIndicator.replace('_', ' ') : 'Good equity opportunity'}\n\n`;
+        response += `   - Status: ${property.status || 'New'}\n\n`;
       });
 
       response += `💡 These are LIVE properties from BatchData API with verified owner information and equity calculations!`;
