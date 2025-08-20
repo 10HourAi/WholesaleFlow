@@ -670,13 +670,14 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
               return match ? match[1].trim() : 'N/A';
             };
 
-            // Enhanced data extraction with comprehensive patterns
+            // Enhanced data extraction for both old and new comprehensive formats
             const price = extractValue(propertyText, /Est\. Value \(ARV\):\s*\$?([^\n]+)/i) || 
                          extractValue(propertyText, /(?:Price|ARV|Value):\s*\$?([^\n]+)/i) || 'N/A';
-            const maxOffer = extractValue(propertyText, /Max Offer[^:]*:\s*\$?([^\n]+)/i) || 'Calculate 70% ARV';
+            const maxOffer = extractValue(propertyText, /Max Offer \(70% Rule\):\s*\$?([^\n]+)/i) || 
+                            extractValue(propertyText, /Max Offer[^:]*:\s*\$?([^\n]+)/i) || 'Calculate 70% ARV';
             const bedBath = extractValue(propertyText, /Building:\s*([^\n]+)/i) ||
                           extractValue(propertyText, /(\d+BR\/\d+BA[^\n]*)/i) ||
-                          extractValue(propertyText, /(\d+\s*bed[^\n]*\d+\s*bath[^\n]*)/i) || 'Unknown BR/BA';
+                          extractValue(propertyText, /(\d+\s*bed[^\n]*\d+\s*bath[^\n]*)/i) || 'Building details available via skip trace';
             const yearBuilt = extractValue(propertyText, /Year Built:\s*([^\n]+)/i) || 'Not available';
             const propertyType = extractValue(propertyText, /Property Type:\s*([^\n]+)/i) || 'Single Family';
             
@@ -695,6 +696,18 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
             const lastSaleDate = extractValue(propertyText, /Last Sale Date:\s*([^\n]+)/i) || 'No recent sales';
             const lastSalePrice = extractValue(propertyText, /Last Sale Price:\s*\$?([^\n]+)/i) || 'Not available';
             const status = extractValue(propertyText, /Status:\s*([^\n]+)/i) || 'New';
+
+            // Debug logging to see what data we're extracting
+            console.log('🔍 Extracted property data:', {
+              price,
+              maxOffer,
+              bedBath,
+              owner,
+              mailingAddress,
+              equity,
+              motivation,
+              leadType
+            });
 
             const propertyData = {
                 number: propertyMatch.number,
