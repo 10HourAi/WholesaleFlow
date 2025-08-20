@@ -589,27 +589,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
       } else if (isPropertySearch) {
-        // Improved location extraction - handle multiple formats
+        // Enhanced location extraction - prioritize wizard format and exact matches
         let location = '17112'; // Default fallback
 
-        // Try different location patterns - improved to handle multi-word cities
-        const cityStateMatch = message.match(/in\s+([\w\s\-'\.]+),?\s*([A-Z]{2})/i);
-        const cityOnlyMatch = message.match(/in\s+([\w\s\-'\.]+?)(?:\s*,|\s+[A-Z]{2}|\s*$)/i);
+        // First check for ZIP codes - most precise
         const zipMatch = message.match(/(\d{5})/);
-
-        if (cityStateMatch) {
-          location = `${cityStateMatch[1].trim()}, ${cityStateMatch[2].trim()}`;
-        } else if (cityOnlyMatch && cityOnlyMatch[1].length > 2) {
-          const cityName = cityOnlyMatch[1].trim();
-          // Add PA as default state for common PA cities (including multi-word ones)
-          const paCities = ['hershey', 'philadelphia', 'pittsburgh', 'allentown', 'erie', 'valley forge', 'king of prussia', 'west chester'];
-          if (paCities.includes(cityName.toLowerCase())) {
-            location = `${cityName}, PA`;
-          } else {
-            location = cityName;
-          }
-        } else if (zipMatch) {
+        if (zipMatch) {
           location = zipMatch[1];
+          console.log(`📍 Using ZIP code: ${location}`);
+        } else {
+          // Try different city,state patterns - prioritize comma-separated format from wizard
+          const exactCityStateMatch = message.match(/in\s+([\w\s\-'\.]+),\s*([A-Z]{2})\b/i);
+          const looseCityStateMatch = message.match(/in\s+([\w\s\-'\.]+)\s+([A-Z]{2})\b/i);
+          const cityOnlyMatch = message.match(/in\s+([\w\s\-'\.]+?)(?:\s+(?:with|under|at|\d+)|$)/i);
+
+          if (exactCityStateMatch) {
+            // Exact "City, ST" format from wizard
+            location = `${exactCityStateMatch[1].trim()}, ${exactCityStateMatch[2].trim()}`;
+            console.log(`📍 Using exact city,state format: ${location}`);
+          } else if (looseCityStateMatch) {
+            // "City ST" format
+            location = `${looseCityStateMatch[1].trim()}, ${looseCityStateMatch[2].trim()}`;
+            console.log(`📍 Using city state format: ${location}`);
+          } else if (cityOnlyMatch && cityOnlyMatch[1].length > 2) {
+            const cityName = cityOnlyMatch[1].trim();
+            // Add PA as default for known PA cities
+            const paCities = ['harrisburg', 'hershey', 'philadelphia', 'pittsburgh', 'allentown', 'erie', 'valley forge', 'king of prussia', 'west chester'];
+            if (paCities.includes(cityName.toLowerCase())) {
+              location = `${cityName}, PA`;
+              console.log(`📍 Using known PA city: ${location}`);
+            } else {
+              location = cityName;
+              console.log(`📍 Using city name only: ${location}`);
+            }
+          }
         }
 
         console.log(`🔍 Searching for properties in: "${location}"`);

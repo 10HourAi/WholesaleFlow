@@ -279,8 +279,34 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
   };
 
   const handleWizardSubmit = () => {
-    // Build search query from wizard data
-    const location = `${wizardData.city}, ${wizardData.state}`;
+    // Build search query from wizard data with proper location handling
+    let location = '';
+    
+    // Handle different input formats for city field
+    const cityInput = wizardData.city.trim();
+    
+    // Check if city field contains a ZIP code (5 digits)
+    const zipPattern = /^\d{5}$/;
+    if (zipPattern.test(cityInput)) {
+      // If it's a ZIP code, use it directly
+      location = cityInput;
+    } else if (cityInput.includes(',')) {
+      // If city already contains state/country info, use as-is but ensure our state is included
+      const parts = cityInput.split(',').map(p => p.trim());
+      if (parts.length >= 2 && parts[1].length === 2) {
+        // Already has state, use as-is
+        location = cityInput;
+      } else {
+        // Add our selected state
+        location = `${parts[0]}, ${wizardData.state}`;
+      }
+    } else {
+      // Single or multi-word city name - add state
+      location = `${cityInput}, ${wizardData.state}`;
+    }
+    
+    console.log('🏠 Wizard location built:', location);
+    
     let searchQuery = "Find";
 
     // Add property type first if specified
