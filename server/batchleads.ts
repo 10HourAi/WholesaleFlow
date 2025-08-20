@@ -276,8 +276,25 @@ class BatchLeadsService {
           const propertyId = quicklistProperty._id || `${quicklistProperty.address?.street}_${quicklistProperty.owner?.fullName}`;
           const propertyAddress = quicklistProperty.address?.street;
           
+          // Debug the first property's complete API response
+          if (totalChecked === 1) {
+            console.log(`🔍 LIVE PROPERTY 1 - COMPLETE API OUTPUT:`);
+            console.log(`📋 PROPERTY ID: ${propertyId}`);
+            console.log(`📋 FULL API RESPONSE:`, JSON.stringify(quicklistProperty, null, 2));
+            console.log(`📋 AVAILABLE KEYS:`, Object.keys(quicklistProperty));
+            console.log(`📋 NESTED STRUCTURE:`, {
+              address: Object.keys(quicklistProperty.address || {}),
+              building: Object.keys(quicklistProperty.building || {}),
+              owner: Object.keys(quicklistProperty.owner || {}),
+              valuation: Object.keys(quicklistProperty.valuation || {}),
+              assessment: Object.keys(quicklistProperty.assessment || {}),
+              taxAssessor: Object.keys(quicklistProperty.taxAssessor || {}),
+              propertyDetails: Object.keys(quicklistProperty.propertyDetails || {}),
+              sale: Object.keys(quicklistProperty.sale || {}),
+              quickLists: Object.keys(quicklistProperty.quickLists || {})
+            });
+          }
 
-          
           if (excludePropertyIds.includes(propertyId)) {
             console.log(`⏭️ Skipping already shown property: ${propertyId}`);
             filtered++;
