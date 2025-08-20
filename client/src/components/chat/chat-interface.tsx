@@ -52,10 +52,9 @@ export default function ChatInterface() {
     queryKey: ["/api/conversations"],
   });
 
-  // Temporarily disable message history to prevent duplicates
   const { data: messages = [] } = useQuery<Message[]>({
     queryKey: ["/api/conversations", currentConversation, "messages"],
-    enabled: false, // Disabled to prevent cached duplicate results
+    enabled: !!currentConversation,
   });
 
   const createConversationMutation = useMutation({
