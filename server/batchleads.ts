@@ -239,38 +239,42 @@ class BatchLeadsService {
 
     while (validProperties.length < count && page <= maxPages) {
       try {
-        // STEP 1: Get quicklists (property IDs matching criteria)
-        console.log(`📊 STEP 1: Getting quicklists from BatchLeads...`);
-        const quicklistResponse = await this.searchProperties(criteria, page, 50);
+        // STEP 1: Get property search results from BatchData
+        console.log(`📊 STEP 1: Getting property search results from BatchData API...`);
+        const searchResponse = await this.searchProperties(criteria, page, 50);
 
-        if (!quicklistResponse.data || quicklistResponse.data.length === 0) {
-          console.log(`📄 Page ${page}: No more properties in quicklists`);
+        if (!searchResponse.data || searchResponse.data.length === 0) {
+          console.log(`📄 Page ${page}: No more properties available`);
           break;
         }
 
-        console.log(`📄 Page ${page}: Found ${quicklistResponse.data.length} properties in quicklists`);
+        console.log(`📄 Page ${page}: Found ${searchResponse.data.length} properties from search`);
+        
+        // Debug the first property response structure
+        if (page === 1 && searchResponse.data.length > 0) {
+          const firstProperty = searchResponse.data[0];
+          console.log(`🔍 DEBUGGING FIRST PROPERTY STRUCTURE:`);
+          console.log(`📋 COMPLETE API RESPONSE:`, JSON.stringify(firstProperty, null, 2));
+          console.log(`📋 TOP LEVEL KEYS:`, Object.keys(firstProperty));
+          console.log(`📋 NESTED STRUCTURE:`, {
+            address: Object.keys(firstProperty.address || {}),
+            building: Object.keys(firstProperty.building || {}),
+            owner: Object.keys(firstProperty.owner || {}),
+            valuation: Object.keys(firstProperty.valuation || {}),
+            assessment: Object.keys(firstProperty.assessment || {}),
+            taxAssessor: Object.keys(firstProperty.taxAssessor || {}),
+            property: Object.keys(firstProperty.property || {}),
+            propertyDetails: Object.keys(firstProperty.propertyDetails || {})
+          });
+        }
 
-        for (const quicklistProperty of quicklistResponse.data) {
+        for (const quicklistProperty of searchResponse.data) {
           totalChecked++;
           
           const propertyId = quicklistProperty._id || `${quicklistProperty.address?.street}_${quicklistProperty.owner?.fullName}`;
           const propertyAddress = quicklistProperty.address?.street;
           
-          // Debug first property to understand available fields
-          if (totalChecked === 1) {
-            console.log(`🔍 DEBUGGING FIRST PROPERTY: ${propertyAddress}`);
-            console.log(`📋 FULL QUICKLIST API RESPONSE:`, JSON.stringify(quicklistProperty, null, 2));
-            console.log(`📋 QUICKLIST AVAILABLE FIELDS:`, {
-              topLevelKeys: Object.keys(quicklistProperty),
-              addressKeys: Object.keys(quicklistProperty.address || {}),
-              buildingKeys: Object.keys(quicklistProperty.building || {}),
-              ownerKeys: Object.keys(quicklistProperty.owner || {}),
-              valuationKeys: Object.keys(quicklistProperty.valuation || {}),
-              saleKeys: Object.keys(quicklistProperty.sale || {}),
-              taxAssessorKeys: Object.keys(quicklistProperty.taxAssessor || {}),
-              quickListsKeys: Object.keys(quicklistProperty.quickLists || {})
-            });
-          }
+
           
           if (excludePropertyIds.includes(propertyId)) {
             console.log(`⏭️ Skipping already shown property: ${propertyId}`);
