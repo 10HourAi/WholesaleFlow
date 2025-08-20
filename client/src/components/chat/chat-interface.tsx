@@ -105,8 +105,33 @@ export default function ChatInterface() {
           role: "user"
         });
 
+        // If property data was returned, format it for display
+        let messageContent = demoResult.response;
+        if (demoResult.property) {
+          const prop = demoResult.property;
+          messageContent = `${demoResult.response}
+
+**PROPERTY DETAILS:**
+Address: ${prop.address}, ${prop.city}, ${prop.state} ${prop.zipCode}
+ARV: $${parseInt(prop.arv).toLocaleString()}
+Max Offer: $${parseInt(prop.maxOffer).toLocaleString()}
+Property Type: ${prop.propertyType.replace('_', ' ')}
+
+**OWNER INFORMATION:**
+Owner Name: ${prop.ownerName}
+Owner Phone: ${prop.ownerPhone}
+Owner Email: ${prop.ownerEmail}
+Mailing Address: ${prop.ownerMailingAddress}
+
+**FINANCIAL ANALYSIS:**
+Equity Percentage: ${prop.equityPercentage}%
+Motivation Score: ${prop.motivationScore}/100
+Lead Type: ${prop.leadType.replace('_', ' ')}
+Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
+        }
+
         await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
-          content: demoResult.response,
+          content: messageContent,
           role: "assistant",
           isAiGenerated: true
         });
