@@ -429,24 +429,24 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
           let cardContent = `🎯 QUALIFIED CASH BUYER #${index + 1}\n`;
           cardContent += `🔵━━━━━━━━━━━━━━━━━━━━━━━━━━🔵\n\n`;
           
-          cardContent += `👤 **INVESTOR PROFILE**\n`;
+          cardContent += `👤 𝗜𝗡𝗩𝗘𝗦𝗧𝗢𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘\n`;
           cardContent += `${owner.fullName || 'ACTIVE CASH INVESTOR'}\n`;
           cardContent += `📍 Based in ${address.city}, ${address.state}\n\n`;
           
-          cardContent += `💰 **PORTFOLIO OVERVIEW**\n`;
+          cardContent += `💰 𝗣𝗢𝗥𝗧𝗙𝗢𝗟𝗜𝗢 𝗢𝗩𝗘𝗥𝗩𝗜𝗘𝗪\n`;
           cardContent += `• Total Portfolio Value: $${ownerProfile.propertiesTotalEstimatedValue ? parseInt(ownerProfile.propertiesTotalEstimatedValue).toLocaleString() + '.00' : 'N/A'}\n`;
           cardContent += `• Properties Owned: ${ownerProfile.propertiesCount || 'N/A'} properties\n`;
           cardContent += `• Avg Purchase Price: $${ownerProfile.averagePurchasePrice ? parseInt(ownerProfile.averagePurchasePrice).toLocaleString() + '.00' : 'N/A'}\n`;
           cardContent += `• Last Activity: ${lastSaleDate}\n\n`;
           
-          cardContent += `🏠 **RECENT PURCHASE**\n`;
+          cardContent += `🏠 𝗥𝗘𝗖𝗘𝗡𝗧 𝗣𝗨𝗥𝗖𝗛𝗔𝗦𝗘\n`;
           cardContent += `📍 ${address.street}\n`;
           cardContent += `    ${address.city}, ${address.state} ${address.zip}\n`;
           cardContent += `🏘️ ${building.propertyType || 'Single Family'} • ${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() + ' sqft' : 'N/A'}\n`;
           cardContent += `🛏️ ${building.bedrooms || 'N/A'} bed • 🛁 ${building.bathrooms || 'N/A'} bath\n`;
           cardContent += `💵 Last Sale: $${sale.lastSalePrice ? parseInt(sale.lastSalePrice).toLocaleString() + '.00' : valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() + '.00' : 'N/A'}\n\n`;
           
-          cardContent += `📞 **CONTACT DETAILS**\n`;
+          cardContent += `📞 𝗖𝗢𝗡𝗧𝗔𝗖𝗧 𝗗𝗘𝗧𝗔𝗜𝗟𝗦\n`;
           cardContent += `📧 ${emailList}\n`;
           cardContent += `📮 ${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}\n`;
           
