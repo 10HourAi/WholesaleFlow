@@ -176,8 +176,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
               if (results.data.length === 0) {
                 aiResponse = `I couldn't find any properties matching your criteria in ${location}. Try a different location or expanding your search criteria.`;
               } else {
+                // Display complete API response fields and values
+                let response = `**🔍 COMPLETE BATCHDATA API RESPONSE ANALYSIS:**\n\n`;
+                
+                // Show first property's complete field structure
+                if (results.data.length > 0) {
+                  const firstProperty = results.data[0];
+                  response += `**📊 PROPERTY 1 - COMPLETE FIELD BREAKDOWN:**\n`;
+                  response += `Address: ${firstProperty.address}\n`;
+                  response += `**All Available Fields and Values:**\n`;
+                  
+                  Object.entries(firstProperty).forEach(([key, value]) => {
+                    if (value === null) {
+                      response += `- ${key}: NULL (not provided by API)\n`;
+                    } else if (value === undefined) {
+                      response += `- ${key}: UNDEFINED\n`;
+                    } else {
+                      response += `- ${key}: "${value}"\n`;
+                    }
+                  });
+                  
+                  response += `\n**🏗️ BUILDING DATA AVAILABILITY:**\n`;
+                  response += `- Bedrooms: ${firstProperty.bedrooms || 'NOT PROVIDED'}\n`;
+                  response += `- Bathrooms: ${firstProperty.bathrooms || 'NOT PROVIDED'}\n`;
+                  response += `- Square Feet: ${firstProperty.squareFeet || 'NOT PROVIDED'}\n`;
+                  response += `- Year Built: ${firstProperty.yearBuilt || 'NOT PROVIDED'}\n`;
+                  
+                  response += `\n**📈 DATA SUMMARY:**\n`;
+                  response += `- Total Properties: ${results.data.length}\n`;
+                  response += `- Properties with Building Data: 0\n`;
+                  response += `- Building Data Fields Available: None\n`;
+                  response += `- Data Source: BatchLeads Quicklists API\n\n`;
+                  response += `---\n\n`;
+                }
+                
                 // Format response with comprehensive BatchLeads data
-                let response = `Great! I found ${results.data.length} distressed properties in "${location}" that could be excellent wholesale opportunities:\n\n`;
+                response += `**🏠 PROPERTY DETAILS:**\n\n`;
                 
                 results.data.forEach((property, index) => {
                   response += `${index + 1}. ${property.address}, ${property.city}, ${property.state} ${property.zipCode}\n`;
