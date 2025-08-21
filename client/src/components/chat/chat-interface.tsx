@@ -374,25 +374,28 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
             'Available via skip trace';
           const bestEmail = owner.emails && owner.emails[0] ? owner.emails[0] : 'Available via skip trace';
           
+          // Create individual card for each cash buyer
+          formattedResponse += `<div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 8px 0;">\n\n`;
           formattedResponse += `**💰 CASH BUYER ${index + 1}**\n\n`;
           
           formattedResponse += `**PROPERTY DETAILS:**\n`;
-          formattedResponse += `Address: ${address.street}, ${address.city}, ${address.state} ${address.zip}\n`;
-          formattedResponse += `Property Value: $${valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : 'N/A'}\n`;
-          formattedResponse += `Building: ${building.bedrooms || 'N/A'}BR/${building.bathrooms || 'N/A'}BA, ${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() : 'N/A'} sq ft\n`;
-          formattedResponse += `Year Built: ${building.yearBuilt || 'N/A'}\n`;
+          formattedResponse += `📍 Address: ${address.street}, ${address.city}, ${address.state} ${address.zip}\n`;
+          formattedResponse += `💰 Property Value: $${valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : 'N/A'}\n`;
+          formattedResponse += `🏠 Building: ${building.bedrooms || 'N/A'}BR/${building.bathrooms || 'N/A'}BA, ${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() : 'N/A'} sq ft\n`;
+          formattedResponse += `🗓️ Year Built: ${building.yearBuilt || 'N/A'}\n`;
           
           formattedResponse += `\n**OWNER INFORMATION:**\n`;
-          formattedResponse += `Owner Name: ${owner.fullName || 'Active Investor'}\n`;
-          formattedResponse += `Owner Phone: ${bestPhone}\n`;
-          formattedResponse += `Owner Email: ${bestEmail}\n`;
-          formattedResponse += `Mailing Address: ${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}\n`;
+          formattedResponse += `👤 Owner Name: ${owner.fullName || 'Active Investor'}\n`;
+          formattedResponse += `📞 Owner Phone: ${bestPhone}\n`;
+          formattedResponse += `📧 Owner Email: ${bestEmail}\n`;
+          formattedResponse += `📮 Mailing Address: ${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}\n`;
           
           formattedResponse += `\n**FINANCIAL ANALYSIS:**\n`;
-          formattedResponse += `Equity Percentage: ${valuation.equityPercent ? `${Math.round(valuation.equityPercent)}%` : '100%'}\n`;
-          formattedResponse += `Investment Score: ${quickLists.cashBuyer ? '95/100' : '85/100'}\n`;
-          formattedResponse += `Buyer Type: ${quickLists.fixAndFlip ? 'Fix & Flip' : quickLists.corporateOwned ? 'Corporate Investor' : 'Cash Buyer'}\n`;
-          formattedResponse += `Investment Status: ${quickLists.cashBuyer ? 'Verified Cash Buyer' : 'Active Investor'}\n\n`;
+          formattedResponse += `📊 Equity Percentage: ${valuation.equityPercent ? `${Math.round(valuation.equityPercent)}%` : '100%'}\n`;
+          formattedResponse += `⭐ Investment Score: ${quickLists.cashBuyer ? '95/100' : '85/100'}\n`;
+          formattedResponse += `🏷️ Buyer Type: ${quickLists.fixAndFlip ? 'Fix & Flip' : quickLists.corporateOwned ? 'Corporate Investor' : 'Cash Buyer'}\n`;
+          formattedResponse += `✅ Investment Status: ${quickLists.cashBuyer ? 'Verified Cash Buyer' : 'Active Investor'}\n\n`;
+          formattedResponse += `</div>\n\n`;
         });
         
         formattedResponse += `*These are verified active cash buyers in ${location}. All contact information is current and validated.*`;
