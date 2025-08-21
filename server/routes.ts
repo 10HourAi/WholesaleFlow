@@ -521,8 +521,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dedicated Cash Buyer API endpoint - returns raw data
   app.post("/api/cash-buyers/search", async (req, res) => {
     try {
-      const { location = "harrisburg, PA", limit = 5, timestamp } = req.body;
-      console.log(`💰 CASH BUYER API: Starting search for location: ${location}, limit: ${limit}, timestamp: ${timestamp}`);
+      const { location = "harrisburg, PA", limit = 5, timestamp, fresh } = req.body;
+      console.log(`💰 CASH BUYER API: Starting FRESH search for location: ${location}, limit: ${limit}, timestamp: ${timestamp}, fresh: ${fresh}`);
+      console.log(`💰 BACKEND HIT: This log confirms the backend route is being reached`);
       
       // Set no-cache headers
       res.set({
