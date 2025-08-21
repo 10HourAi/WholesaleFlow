@@ -774,7 +774,7 @@ class BatchLeadsService {
       },
       options: {
         skip: 0,
-        take: limit,
+        take: Math.max(limit * 10, 50), // Get more results to find qualified buyers
         skipTrace: true, // Get contact info
         includeBuilding: true,
         includePropertyDetails: true,
@@ -797,6 +797,9 @@ class BatchLeadsService {
       const allBuyers = response.results?.properties || [];
       
       console.log(`💰 RAW BUYERS BEFORE FILTERING:`, allBuyers.length);
+      
+      // Log all buyer names found for debugging
+      console.log(`💰 ALL BUYERS FOUND:`, allBuyers.map(b => `${b.owner?.fullName} (${b.propertyOwnerProfile?.propertiesCount || 0} properties)`));
       
       // Filter to only include cash buyers with at least 3 properties
       const filteredBuyers = allBuyers.filter((buyer: any) => {
