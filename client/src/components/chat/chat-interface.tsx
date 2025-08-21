@@ -1263,63 +1263,31 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                       {selectedAgent === "closing" && "Hi! I'm your Closing Agent. I can help you prepare contracts, coordinate closings, and manage documents. What deal are you looking to close?"}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                    {selectedAgent === "deal-analyzer" && (
-                      <>
-                        <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Calculate ARV</Badge>
-                        <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Estimate repairs</Badge>
-                        <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Find comps</Badge>
-                      </>
-                    )}
-                    {selectedAgent === "negotiation" && (
-                      <>
-                        <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Write offer letter</Badge>
-                        <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Follow-up script</Badge>
-                        <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Objection handling</Badge>
-                      </>
-                    )}
-                    {selectedAgent === "closing" && (
-                      <>
-                        <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Purchase agreement</Badge>
-                        <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Assignment contract</Badge>
-                        <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Closing checklist</Badge>
-                      </>
-                    )}
-                  </div>
+                      {selectedAgent === "deal-analyzer" && (
+                        <>
+                          <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Calculate ARV</Badge>
+                          <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Estimate repairs</Badge>
+                          <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Find comps</Badge>
+                        </>
+                      )}
+                      {selectedAgent === "negotiation" && (
+                        <>
+                          <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Write offer letter</Badge>
+                          <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Follow-up script</Badge>
+                          <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Objection handling</Badge>
+                        </>
+                      )}
+                      {selectedAgent === "closing" && (
+                        <>
+                          <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Purchase agreement</Badge>
+                          <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Assignment contract</Badge>
+                          <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Closing checklist</Badge>
+                        </>
+                      )}
+                    </div>
                 </CardContent>
               </Card>
             </div>
-            
-            {/* Cash Buyer Wizard Card */}
-            {selectedAgent === "lead-finder" && (
-              <div className="flex items-start space-x-3">
-                <Avatar>
-                  <AvatarImage />
-                  <AvatarFallback>
-                    <Search className="h-4 w-4" />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <Card>
-                    <CardContent className="p-4">
-                      <p className="text-sm text-slate-900">
-                        Hello! I'm your Cash Buyer Finder. I can help you discover active real estate investors, cash buyers, and portfolio managers. Use the wizard below to get started!
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowBuyerWizard(true)}
-                          className="flex items-center gap-2 mb-2 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-                        >
-                          <Search className="h-4 w-4" />
-                          Use Cash Buyer Wizard
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            )}
           </div>
         )}
 

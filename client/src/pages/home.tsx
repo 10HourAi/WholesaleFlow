@@ -1,6 +1,6 @@
 import { useState } from "react";
 import Sidebar from "@/components/layout/sidebar";
-import ChatInterface from "@/components/chat/chat-interface";
+import ChatInterface from "@/components/chat/chat-interface-backup";
 import LeadsTable from "@/components/crm/leads-table";
 import KanbanBoard from "@/components/pipeline/kanban-board";
 import MessageThread from "@/components/messages/message-thread";
