@@ -350,6 +350,10 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
     setShowBuyerWizard(false);
     setBuyerWizardStep(1);
     
+    // Clear any previous search results to prevent mixing with new search
+    localStorage.removeItem('pendingCashBuyerResponse');
+    localStorage.removeItem('pendingCashBuyerCards');
+    
     try {
       // Call the dedicated cash buyer API endpoint directly with cache-busting
       console.log('🔥 FRONTEND: Calling dedicated cash buyer API with location:', location);
