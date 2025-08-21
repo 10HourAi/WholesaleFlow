@@ -354,7 +354,8 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
       // Call the dedicated cash buyer API endpoint directly with cache-busting
       console.log('🔥 FRONTEND: Calling dedicated cash buyer API with location:', location);
       
-      const response = await fetch('/api/cash-buyers/search', {
+      const cacheBustingTimestamp = Date.now();
+      const response = await fetch(`/api/cash-buyers/search?t=${cacheBustingTimestamp}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -365,7 +366,8 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
         body: JSON.stringify({
           location: location,
           limit: 5,
-          timestamp: Date.now() // Cache-busting timestamp
+          timestamp: cacheBustingTimestamp,
+          fresh: true // Force fresh data
         })
       });
       
@@ -385,7 +387,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
         const buyersToShow = cashBuyerData.buyers.slice(0, 5);
         
         // Store intro message
-        const introMessage = `Great! I found 5 active cash buyers in **${location}**. Here are qualified investors ready to purchase:`;
+        const introMessage = `Great! I found ${buyersToShow.length} qualified cash buyers with 3+ properties in **${location}**. Here are your leads:`;
         localStorage.setItem('pendingCashBuyerResponse', introMessage);
         
         // Store individual buyer cards
@@ -423,8 +425,8 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
           const regularPhones = phoneNumbers.filter(p => !p.dnc);
           const dncPhones = phoneNumbers.filter(p => p.dnc);
           
-          // Create card content matching the exact format
-          let cardContent = `🎉 Cash Buyer Lead Found!\n`;
+          // Create card content matching the exact format with numbering
+          let cardContent = `🎉 Cash Buyer Lead Found #${index + 1}!\n`;
           cardContent += `📍 Location: ${address.city}, ${address.state}\n\n`;
           
           cardContent += `👤\n`;
@@ -477,7 +479,8 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
         });
       } else {
         // If conversation exists, send intro message and then individual cards
-        const introMessage = `Great! I found 5 active cash buyers in **${location}**. Here are qualified investors ready to purchase:`;
+        const pendingResponse = localStorage.getItem('pendingCashBuyerResponse');
+        const introMessage = pendingResponse || `Great! I found qualified cash buyers in **${location}**. Here are your leads:`;
         sendMessageMutation.mutate({
           content: introMessage,
           role: "assistant",
