@@ -427,7 +427,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
           
           // Create modern, sleek card design
           let cardContent = `🎯 QUALIFIED CASH BUYER #${index + 1}\n`;
-          cardContent += `\x1b[34m━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m\n\n`;
+          cardContent += `🔵━━━━━━━━━━━━━━━━━━━━━━━━━━🔵\n\n`;
           
           cardContent += `👤 INVESTOR PROFILE\n`;
           cardContent += `${owner.fullName || 'ACTIVE CASH INVESTOR'}\n`;
@@ -462,7 +462,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
             cardContent += `📱 Available via skip trace\n`;
           }
           
-          cardContent += `\n\x1b[34m━━━━━━━━━━━━━━━━━━━━━━━━━━\x1b[0m`;
+          cardContent += `\n🔵━━━━━━━━━━━━━━━━━━━━━━━━━━🔵`;
           
           return cardContent;
         });
