@@ -291,7 +291,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
     }
   };
 
-  const handleBuyerWizardSubmit = () => {
+  const handleBuyerWizardSubmit = async () => {
     let location = '';
     const cityInput = buyerWizardData.city.trim();
     const zipPattern = /^\d{5}$/;
@@ -309,23 +309,107 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
       location = `${cityInput}, ${buyerWizardData.state}`;
     }
     
-    let searchQuery = `Find cash buyers in ${location}`;
-    
     setBuyerWizardProcessing(true);
-    setInputMessage(searchQuery);
     setShowBuyerWizard(false);
     setBuyerWizardStep(1);
     
-    if (!currentConversation) {
-      createConversationMutation.mutate({
-        agentType: selectedAgent,
-        title: `Cash Buyer Search: ${buyerWizardData.city}, ${buyerWizardData.state}`,
+    try {
+      // Call the dedicated cash buyer API endpoint directly
+      console.log('🔥 FRONTEND: Calling dedicated cash buyer API with location:', location);
+      
+      const response = await fetch('/api/cash-buyers/search', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          location: location,
+          limit: 5
+        })
       });
-    } else {
-      sendMessageMutation.mutate({
-        content: searchQuery,
-        role: "user",
-      });
+      
+      const cashBuyerData = await response.json();
+      console.log('🔥 FRONTEND: Cash buyer API response:', cashBuyerData);
+      
+      if (!cashBuyerData.success) {
+        throw new Error(cashBuyerData.error || 'Failed to fetch cash buyers');
+      }
+      
+      // Format the cash buyer results for display
+      let formattedResponse = `**💰 CASH BUYER SEARCH RESULTS**\n\n`;
+      formattedResponse += `Found ${cashBuyerData.returned} active cash buyers in ${location}:\n\n`;
+      
+      if (cashBuyerData.buyers && cashBuyerData.buyers.length > 0) {
+        cashBuyerData.buyers.forEach((buyer: any, index: number) => {
+          const address = buyer.address || {};
+          const owner = buyer.owner || {};
+          const valuation = buyer.valuation || {};
+          const building = buyer.building || {};
+          
+          formattedResponse += `**${index + 1}. ${owner.fullName || owner.name || 'Unknown Investor'}**\n`;
+          formattedResponse += `📍 **Property:** ${address.street || 'N/A'}, ${address.city || 'N/A'}, ${address.state || 'N/A'} ${address.zip || 'N/A'}\n`;
+          formattedResponse += `💰 **Estimated Value:** $${valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : 'N/A'}\n`;
+          formattedResponse += `🏠 **Property:** ${building.bedrooms || 'N/A'}BR/${building.bathrooms || 'N/A'}BA, ${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() : 'N/A'} sq ft\n`;
+          formattedResponse += `📧 **Contact:** ${owner.phone || 'Available via skip trace'}\n`;
+          formattedResponse += `📮 **Mailing:** ${owner.mailingAddress?.full || 'Available via skip trace'}\n\n`;
+        });
+        
+        formattedResponse += `**🔍 RAW API DATA PREVIEW:**\n`;
+        formattedResponse += `- Total Found: ${cashBuyerData.totalFound}\n`;
+        formattedResponse += `- Returned: ${cashBuyerData.returned}\n`;
+        formattedResponse += `- Source: BatchData Cash Buyer API\n`;
+        formattedResponse += `- QuickList: cash-buyer\n\n`;
+        
+        // Show first buyer's complete field structure for debugging
+        if (cashBuyerData.buyers[0]) {
+          formattedResponse += `**📊 FIRST BUYER RAW FIELDS:**\n`;
+          formattedResponse += `\`\`\`json\n${JSON.stringify(cashBuyerData.buyers[0], null, 2)}\`\`\``;
+        }
+      } else {
+        formattedResponse += `No active cash buyers found in ${location}. Try expanding your search area or check back later.`;
+      }
+      
+      // Create conversation with results
+      if (!currentConversation) {
+        createConversationMutation.mutate({
+          agentType: selectedAgent,
+          title: `Cash Buyers: ${location}`,
+        });
+      }
+      
+      // Add the formatted response as a message
+      setTimeout(() => {
+        if (currentConversation) {
+          sendMessageMutation.mutate({
+            content: formattedResponse,
+            role: "assistant",
+          });
+        }
+      }, 500);
+      
+    } catch (error: any) {
+      console.error('🔥 FRONTEND: Cash buyer search failed:', error);
+      
+      // Show error message
+      const errorMessage = `❌ **Cash Buyer Search Failed**\n\nError: ${error.message}\n\nPlease try again or contact support if the issue persists.`;
+      
+      if (!currentConversation) {
+        createConversationMutation.mutate({
+          agentType: selectedAgent,
+          title: `Cash Buyer Error: ${location}`,
+        });
+      }
+      
+      setTimeout(() => {
+        if (currentConversation) {
+          sendMessageMutation.mutate({
+            content: errorMessage,
+            role: "assistant",
+          });
+        }
+      }, 500);
+    } finally {
+      setBuyerWizardProcessing(false);
     }
   };
 
