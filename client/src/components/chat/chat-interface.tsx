@@ -11,7 +11,6 @@ import { Send, Search, TrendingUp, MessageSquare, FileText, Lightbulb, ArrowRigh
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { Conversation, Message, Property } from "@shared/schema";
-// BatchLeads service is handled server-side
 
 const agentTypes = [
   { id: "lead-finder", name: "🔍 Lead Finder Agent", icon: Search },
@@ -58,7 +57,7 @@ export default function ChatInterface() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
   const [shownPropertyIds, setShownPropertyIds] = useState<Set<string>>(new Set());
-  const [lastSearchCriteria, setLastSearchCriteria] = useState<any>(null); // To store criteria for "Find 5 More"
+  const [lastSearchCriteria, setLastSearchCriteria] = useState<any>(null);
 
   const { data: conversations = [] } = useQuery<Conversation[]>({
     queryKey: ["/api/conversations"],
@@ -84,7 +83,6 @@ export default function ChatInterface() {
     mutationFn: async (data: { content: string; role: string }) => {
       if (!currentConversation) throw new Error("No conversation selected");
 
-      // For lead-finder agent, use demo chat endpoint for real property data
       if (selectedAgent === "lead-finder") {
         const demoResponse = await fetch('/api/demo/chat', {
           method: 'POST',
@@ -95,7 +93,6 @@ export default function ChatInterface() {
             message: data.content,
             agentType: 'lead_finder',
             sessionState: sessionState,
-            // Pass excluded property IDs to avoid duplicates
             excludedPropertyIds: Array.from(shownPropertyIds)
           })
         });
@@ -106,18 +103,15 @@ export default function ChatInterface() {
 
         const demoResult = await demoResponse.json();
 
-        // Update session state if provided
         if (demoResult.sessionState) {
           setSessionState(demoResult.sessionState);
         }
 
-        // Create both user and AI messages in the conversation
         await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
           content: data.content,
           role: "user"
         });
 
-        // If property data was returned, format it for display
         let messageContent = demoResult.response;
         if (demoResult.property) {
           const prop = demoResult.property;
@@ -148,40 +142,18 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
           isAiGenerated: true
         });
 
-        // Extract property IDs from the response to update shownPropertyIds
-        if (demoResult.response && demoResult.response.includes("Great! I found")) {
-          const propertyMatches = demoResult.response.match(/(\d+)\.\s+([^\n]+)\n/g);
-          if (propertyMatches) {
-            propertyMatches.forEach((match: string) => {
-              const address = match.replace(/^\d+\.\s*/, '').trim().split('\n')[0];
-              // A simple way to generate a unique ID for now, could be improved
-              const propertyId = `${address}_${currentConversation}`;
-              setShownPropertyIds(prev => new Set([...Array.from(prev), propertyId]));
-            });
-          }
-        }
-        // Store search criteria if it's a property search
-        if (data.content.toLowerCase().includes("find") || data.content.toLowerCase().includes("properties")) {
-          setLastSearchCriteria({ query: data.content, sessionState: demoResult.sessionState });
-        }
-
         return demoResult;
       } else {
-        // Regular conversation flow for other agents
         const response = await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, data);
         return response.json();
       }
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/conversations", currentConversation, "messages"] });
-      // Clear processing state
       setWizardProcessing(false);
-      // Don't clear input here - it's handled in handleSendMessage
-      // Reset conversation creation state
       createConversationMutation.reset();
     },
     onError: () => {
-      // Clear processing state on error too
       setWizardProcessing(false);
     },
   });
@@ -205,22 +177,18 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
     const messageToSend = messageOverride || inputMessage.trim();
     if (!messageToSend) return;
 
-    // Clear input immediately for better UX
     if (!messageOverride) {
       setInputMessage("");
     }
 
     if (!currentConversation) {
-      // Create new conversation and store message to send after creation
       const agentName = agentTypes.find(a => a.id === selectedAgent)?.name || "Chat";
       createConversationMutation.mutate({
         agentType: selectedAgent,
         title: messageToSend.slice(0, 50) + (messageToSend.length > 50 ? "..." : ""),
       });
-      // Store message to send after conversation creation
       setInputMessage(messageToSend);
     } else {
-      // Send message immediately if conversation exists
       sendMessageMutation.mutate({
         content: messageToSend,
         role: "user",
@@ -228,7 +196,6 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
     }
   };
 
-  // Send message after conversation is created
   useEffect(() => {
     if (currentConversation && inputMessage.trim() && createConversationMutation.isSuccess) {
       const messageContent = inputMessage.trim();
@@ -238,19 +205,6 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
       });
     }
   }, [currentConversation, createConversationMutation.isSuccess]);
-
-  // Handle wizard completion
-  useEffect(() => {
-    if (currentConversation && inputMessage && !showWizard && wizardData.city) {
-      // Clear wizard data after successful submission
-      setWizardData({
-        city: "",
-        state: "",
-        sellerType: "",
-        propertyType: ""
-      });
-    }
-  }, [currentConversation, inputMessage, showWizard]);
 
   const currentAgent = agentTypes.find(agent => agent.id === selectedAgent);
 
@@ -278,116 +232,25 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
     { value: "any", label: "Any Property Type" }
   ];
 
-  const handleWizardNext = () => {
-    if (wizardStep < 4) {
-      setWizardStep(wizardStep + 1);
-    }
-  };
-
-  const handleWizardBack = () => {
-    if (wizardStep > 1) {
-      setWizardStep(wizardStep - 1);
-    }
-  };
-
-  // Buyer wizard handlers
-  const handleBuyerWizardNext = () => {
-    if (buyerWizardStep < 1) { // Only 1 step for now
-      setBuyerWizardStep(buyerWizardStep + 1);
-    }
-  };
-
-  const handleBuyerWizardBack = () => {
-    if (buyerWizardStep > 1) {
-      setBuyerWizardStep(buyerWizardStep - 1);
-    }
-  };
-
-  const handleBuyerWizardSubmit = () => {
-    // Build search query for cash buyers
-    let location = '';
-    
-    // Handle different input formats for city field
-    const cityInput = buyerWizardData.city.trim();
-    
-    // Check if city field contains a ZIP code (5 digits)
-    const zipPattern = /^\d{5}$/;
-    if (zipPattern.test(cityInput)) {
-      // If it's a ZIP code, use it directly
-      location = cityInput;
-    } else if (cityInput.includes(',')) {
-      // If city already contains state/country info, use as-is but ensure our state is included
-      const parts = cityInput.split(',').map(p => p.trim());
-      if (parts.length >= 2 && parts[1].length === 2) {
-        // Already has state, use as-is
-        location = cityInput;
-      } else {
-        // Add our selected state
-        location = `${parts[0]}, ${buyerWizardData.state}`;
-      }
-    } else {
-      // Single or multi-word city name - add state
-      location = `${cityInput}, ${buyerWizardData.state}`;
-    }
-    
-    console.log('💰 Buyer Wizard location built:', location);
-    
-    let searchQuery = `Find cash buyers in ${location}`;
-    
-    // Show processing state
-    setBuyerWizardProcessing(true);
-    
-    // Set the message and close wizard
-    setInputMessage(searchQuery);
-    setShowBuyerWizard(false);
-    setBuyerWizardStep(1);
-    
-    // Create conversation if needed and send message
-    if (!currentConversation) {
-      createConversationMutation.mutate({
-        agentType: selectedAgent,
-        title: `Cash Buyer Search: ${buyerWizardData.city}, ${buyerWizardData.state}`,
-      });
-    } else {
-      sendMessageMutation.mutate({
-        content: searchQuery,
-        role: "user",
-      });
-    }
-  };
-
   const handleWizardSubmit = () => {
-    // Build search query from wizard data with proper location handling
     let location = '';
-    
-    // Handle different input formats for city field
     const cityInput = wizardData.city.trim();
-    
-    // Check if city field contains a ZIP code (5 digits)
     const zipPattern = /^\d{5}$/;
+    
     if (zipPattern.test(cityInput)) {
-      // If it's a ZIP code, use it directly
       location = cityInput;
     } else if (cityInput.includes(',')) {
-      // If city already contains state/country info, use as-is but ensure our state is included
       const parts = cityInput.split(',').map(p => p.trim());
       if (parts.length >= 2 && parts[1].length === 2) {
-        // Already has state, use as-is
         location = cityInput;
       } else {
-        // Add our selected state
         location = `${parts[0]}, ${wizardData.state}`;
       }
     } else {
-      // Single or multi-word city name - add state
       location = `${cityInput}, ${wizardData.state}`;
     }
     
-    console.log('🏠 Wizard location built:', location);
-    
     let searchQuery = "Find";
-
-    // Add property type first if specified
     if (wizardData.propertyType !== "any") {
       const propertyTypeLabel = propertyTypes.find(p => p.value === wizardData.propertyType)?.label;
       searchQuery += ` ${propertyTypeLabel?.toLowerCase()}`;
@@ -410,15 +273,11 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
       searchQuery += ` under $${wizardData.maxPrice.toLocaleString()}`;
     }
 
-    // Show processing state
     setWizardProcessing(true);
-
-    // Set the message and close wizard
     setInputMessage(searchQuery);
     setShowWizard(false);
     setWizardStep(1);
 
-    // Create conversation if needed and send message
     if (!currentConversation) {
       createConversationMutation.mutate({
         agentType: selectedAgent,
@@ -430,698 +289,6 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
         role: "user",
       });
     }
-  };
-
-  const handleSaveLead = async (propertyData: any) => {
-    try {
-      // Validate required fields
-      if (!propertyData.address || !propertyData.city || !propertyData.state) {
-        throw new Error("Missing required property information");
-      }
-
-      // Clean and validate the data
-      const cleanPropertyData = {
-        address: propertyData.address,
-        city: propertyData.city,
-        state: propertyData.state,
-        zipCode: propertyData.zipCode || '',
-        bedrooms: propertyData.bedrooms ? parseInt(propertyData.bedrooms.toString()) : 0,
-        bathrooms: propertyData.bathrooms ? parseInt(propertyData.bathrooms.toString()) : 0,
-        squareFeet: propertyData.squareFeet ? parseInt(propertyData.squareFeet.toString()) : 0,
-        arv: propertyData.arv ? propertyData.arv.toString() : '0',
-        maxOffer: propertyData.maxOffer ? propertyData.maxOffer.toString() : '0',
-        status: 'new',
-        leadType: propertyData.leadType || 'standard',
-        propertyType: 'single_family',
-        ownerName: propertyData.ownerName || '',
-        ownerPhone: propertyData.ownerPhone || '',
-        ownerEmail: propertyData.ownerEmail || '',
-        equityPercentage: propertyData.equityPercentage ? parseInt(propertyData.equityPercentage.toString()) : 0,
-        motivationScore: propertyData.motivationScore ? parseInt(propertyData.motivationScore.toString()) : 0,
-        distressedIndicator: propertyData.distressedIndicator || '',
-        ownerMailingAddress: propertyData.ownerMailingAddress || '',
-        ownerStatus: propertyData.ownerStatus || ''
-      };
-
-      await savePropertyMutation.mutateAsync(cleanPropertyData);
-
-      // Invalidate the properties query to refresh the CRM data
-      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
-
-    } catch (error) {
-      console.error('Error saving lead:', error);
-      // You might want to show a toast error message here
-    }
-  };
-
-  const renderWizard = () => {
-    if (!showWizard) return null;
-
-    return (
-      <Card className="mb-4 border-2 border-blue-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5 text-blue-600" />
-            Seller Lead Wizard - Step {wizardStep} of 4
-          </CardTitle>
-          <p className="text-sm text-gray-600 mt-1">Find distressed properties and motivated sellers • First of 3 Lead Finder wizards</p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {wizardStep === 1 && (
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg">Where are you looking for properties?</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="city">City or ZIP Code</Label>
-                  <Input
-                    id="city"
-                    placeholder="e.g., Valley Forge, Philadelphia, 19481"
-                    value={wizardData.city}
-                    onChange={(e) => setWizardData({...wizardData, city: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="state">State</Label>
-                  <Select value={wizardData.state} onValueChange={(value) => setWizardData({...wizardData, state: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select state" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {states.map((state) => (
-                        <SelectItem key={state} value={state}>{state}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {wizardStep === 2 && (
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg">What type of sellers are you targeting?</h3>
-              <div className="grid grid-cols-1 gap-2">
-                {sellerTypes.map((type) => (
-                  <button
-                    key={type.value}
-                    className={`p-3 text-left rounded-lg border transition-colors ${
-                      wizardData.sellerType === type.value
-                        ? 'border-blue-500 bg-blue-50 text-blue-900'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => setWizardData({...wizardData, sellerType: type.value})}
-                  >
-                    <div className="font-medium">{type.label}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {wizardStep === 3 && (
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg">What property type are you interested in?</h3>
-              <div className="grid grid-cols-1 gap-2">
-                {propertyTypes.map((type) => (
-                  <button
-                    key={type.value}
-                    className={`p-3 text-left rounded-lg border transition-colors ${
-                      wizardData.propertyType === type.value
-                        ? 'border-blue-500 bg-blue-50 text-blue-900'
-                        : 'border-gray-200 hover:border-gray-300'
-                    }`}
-                    onClick={() => setWizardData({...wizardData, propertyType: type.value})}
-                  >
-                    <div className="font-medium">{type.label}</div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {wizardStep === 4 && (
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg">Additional filters (optional)</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="minBedrooms">Minimum Bedrooms</Label>
-                  <Select value={wizardData.minBedrooms?.toString() || ""} onValueChange={(value) => setWizardData({...wizardData, minBedrooms: value ? parseInt(value) : undefined})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Any" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1+</SelectItem>
-                      <SelectItem value="2">2+</SelectItem>
-                      <SelectItem value="3">3+</SelectItem>
-                      <SelectItem value="4">4+</SelectItem>
-                      <SelectItem value="5">5+</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label htmlFor="maxPrice">Maximum Price</Label>
-                  <Select value={wizardData.maxPrice?.toString() || ""} onValueChange={(value) => setWizardData({...wizardData, maxPrice: value ? parseInt(value) : undefined})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Any" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="100000">Under $100k</SelectItem>
-                      <SelectItem value="200000">Under $200k</SelectItem>
-                      <SelectItem value="300000">Under $300k</SelectItem>
-                      <SelectItem value="500000">Under $500k</SelectItem>
-                      <SelectItem value="750000">Under $750k</SelectItem>
-                      <SelectItem value="1000000">Under $1M</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <h4 className="font-medium mb-2">Search Summary:</h4>
-                <p className="text-sm text-gray-700">
-                  Looking for {sellerTypes.find(s => s.value === wizardData.sellerType)?.label.toLowerCase()}
-                  {" in "}{/^\d{5}$/.test(wizardData.city) ? wizardData.city : `${wizardData.city}, ${wizardData.state}`}</p>
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-between pt-4">
-            <Button
-              variant="outline"
-              onClick={handleWizardBack}
-              disabled={wizardStep === 1}
-              className="flex items-center gap-2"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Back
-            </Button>
-
-            <div className="flex gap-2">
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setShowWizard(false);
-                  setWizardStep(1);
-                }}
-              >
-                Cancel
-              </Button>
-
-              {wizardStep < 4 ? (
-                <Button
-                  onClick={handleWizardNext}
-                  disabled={
-                    (wizardStep === 1 && (!wizardData.city || !wizardData.state)) ||
-                    (wizardStep === 2 && !wizardData.sellerType) ||
-                    (wizardStep === 3 && !wizardData.propertyType)
-                  }
-                  className="flex items-center gap-2"
-                >
-                  Next
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              ) : (
-                <Button
-                  onClick={handleWizardSubmit}
-                  className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-                >
-                  <Search className="h-4 w-4" />
-                  Find Properties
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
-  const renderBuyerWizard = () => {
-    if (!showBuyerWizard) return null;
-
-    return (
-      <Card className="mb-4 border-2 border-green-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-green-600" />
-            Cash Buyer Wizard - Step {buyerWizardStep} of 1
-          </CardTitle>
-          <p className="text-sm text-gray-600 mt-1">Find active cash buyers and real estate investors • Second of 3 Lead Finder wizards</p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {buyerWizardStep === 1 && (
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg">Where are you looking for cash buyers?</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="buyer-city">City or ZIP Code</Label>
-                  <Input
-                    id="buyer-city"
-                    placeholder="e.g., Valley Forge, Philadelphia, 19481"
-                    value={buyerWizardData.city}
-                    onChange={(e) => setBuyerWizardData({...buyerWizardData, city: e.target.value})}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="buyer-state">State</Label>
-                  <Select value={buyerWizardData.state} onValueChange={(value) => setBuyerWizardData({...buyerWizardData, state: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select state" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {states.map((state) => (
-                        <SelectItem key={state} value={state}>{state}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-between pt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setShowBuyerWizard(false);
-                setBuyerWizardStep(1);
-                setBuyerWizardData({ city: "", state: "" });
-              }}
-            >
-              Cancel
-            </Button>
-
-            <Button
-              onClick={handleBuyerWizardSubmit}
-              disabled={!buyerWizardData.city || !buyerWizardData.state}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-            >
-              <TrendingUp className="h-4 w-4" />
-              Find Cash Buyers
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
-  const renderMultipleProperties = (content: string) => {
-    // Enhanced property detection - only process comprehensive BatchLeads format
-    console.log('Checking content for properties:', content.substring(0, 300));
-    
-    // Only process comprehensive **PROPERTY DETAILS:** format from BatchLeads
-    const hasComprehensiveFormat = content.includes("**PROPERTY DETAILS:**") &&
-                                   content.includes("**OWNER INFORMATION:**") &&
-                                   content.includes("**FINANCIAL ANALYSIS:**");
-    
-    // Exclude instructional or incomplete content
-    const isInstructional = content.includes('you can use') ||
-                            content.includes('search term') ||
-                            content.includes('try a different') ||
-                            content.includes('To find') ||
-                            content.includes('Searched') ||
-                            content.startsWith('To ');
-    
-    const hasPropertyIndicators = hasComprehensiveFormat && !isInstructional;
-
-    if (hasPropertyIndicators) {
-      console.log('Property indicators found, analyzing content...');
-
-      // Try multiple extraction patterns for different response formats
-      let propertyMatches = [];
-      
-      // Pattern 1: Numbered properties with addresses
-      const numberedRegex = /(\d+)\.\s+([^\n]+(?:\n(?!\d+\.)[^\n]*)*)/g;
-      let match;
-      while ((match = numberedRegex.exec(content)) !== null) {
-        const propertyContent = match[2].trim();
-        if (propertyContent.length > 20) { // Only include substantial content
-          propertyMatches.push({
-            number: match[1],
-            content: propertyContent
-          });
-        }
-      }
-
-      // Pattern 2: Only match content that contains actual property data, not instructions
-      if (propertyMatches.length === 0) {
-        const hasRealPropertyData = content.includes('ARV:') || 
-                                   content.includes('Owner Name:') ||
-                                   content.includes('Equity Percentage:') ||
-                                   content.includes('**PROPERTY DETAILS:**') ||
-                                   (content.includes('Address:') && content.includes('Price:'));
-        
-        // Exclude ALL instructional content completely
-        const isInstructional = content.includes('you can use') ||
-                                content.includes('search term') ||
-                                content.includes('try a different') ||
-                                content.includes('filtered out') ||
-                                content.includes('expand your search') ||
-                                content.includes('This will help') ||
-                                content.includes('ensures you only get') ||
-                                content.includes('To assist you') ||
-                                content.includes('To find') ||
-                                content.includes('you can use the following') ||
-                                content.includes('Searched') ||
-                                content.includes('were filtered out') ||
-                                content.startsWith('To ') ||
-                                content.startsWith('Searched ');
-        
-        if (hasRealPropertyData && !isInstructional) {
-          propertyMatches.push({
-            number: '1',
-            content: content.trim()
-          });
-        }
-      }
-
-      if (propertyMatches.length === 0) {
-        console.log('No property patterns matched, showing as regular text');
-        return null;
-      }
-
-      console.log(`Found ${propertyMatches.length} property entries`);
-
-      return (
-        <div className="mt-3 space-y-4">
-          {propertyMatches.map((propertyMatch, index) => {
-            const propertyText = propertyMatch.content;
-            if (!propertyText.trim()) return null;
-
-            console.log(`Rendering property card ${propertyMatch.number}:`, propertyText.substring(0, 100));
-
-            // Extract key information from each property
-            const lines = propertyText.trim().split('\n');
-            const address = lines[0]?.replace(/^-\s*/, '').trim() || 'Address not found';
-
-            // Extract key details with multiple patterns
-            const extractValue = (text: string | undefined, pattern: RegExp) => {
-              if (!text) return 'N/A';
-              const match = text.match(pattern);
-              return match ? match[1].trim() : 'N/A';
-            };
-
-            // Enhanced data extraction specifically for comprehensive BatchLeads format
-            const price = extractValue(propertyText, /Est\. Value \(ARV\):\s*\$?([^\n]+)/i) || 'N/A';
-            const maxOffer = extractValue(propertyText, /Max Offer \(70% Rule\):\s*\$?([^\n]+)/i) || 
-                            extractValue(propertyText, /Max Offer[^:]*:\s*\$?([^\n]+)/i) || 'Calculate 70% ARV';
-            const bedBath = extractValue(propertyText, /Building:\s*([^\n]+)/i) ||
-                          extractValue(propertyText, /(\d+BR\/\d+BA[^\n]*)/i) ||
-                          extractValue(propertyText, /(\d+\s*bed[^\n]*\d+\s*bath[^\n]*)/i) || 'Building details available via skip trace';
-            const yearBuilt = extractValue(propertyText, /Year Built:\s*([^\n]+)/i) || 'Not available';
-            const propertyType = extractValue(propertyText, /Property Type:\s*([^\n]+)/i) || 'Single Family';
-            
-            const owner = extractValue(propertyText, /Owner Name:\s*([^\n]+)/i) || 
-                         extractValue(propertyText, /Owner:\s*([^\n]+)/i) || 'Available via skip trace';
-            const ownerPhone = extractValue(propertyText, /Owner Phone:\s*([^\n]+)/i) || 'Available via skip trace';
-            const ownerEmail = extractValue(propertyText, /Owner Email:\s*([^\n]+)/i) || 'Available via skip trace';
-            const mailingAddress = extractValue(propertyText, /Mailing Address:\s*([^\n]+)/i) || 'Same as property address';
-            
-            const equity = extractValue(propertyText, /Equity Percentage:\s*([^\n]+)/i) || 
-                          extractValue(propertyText, /Equity[^:]*:\s*([^\n]+)/i) || '0%';
-            const motivation = extractValue(propertyText, /Motivation Score:\s*([^\n]+)/i) || 'Unknown/100';
-            const leadType = extractValue(propertyText, /Lead Type:\s*([^\n]+)/i) || 'STANDARD';
-            const distressedIndicator = extractValue(propertyText, /Distressed Indicator:\s*([^\n]+)/i) || 'Standard opportunity';
-            
-            const lastSaleDate = extractValue(propertyText, /Last Sale Date:\s*([^\n]+)/i) || 'No recent sales';
-            const lastSalePrice = extractValue(propertyText, /Last Sale Price:\s*\$?([^\n]+)/i) || 'Not available';
-            const status = extractValue(propertyText, /Status:\s*([^\n]+)/i) || 'New';
-
-            // Property data extracted successfully
-
-            const propertyData = {
-                number: propertyMatch.number,
-                address,
-                price,
-                bedBath,
-                owner,
-                motivation,
-                equity,
-                leadType,
-                lastSaleDate,
-                lastSalePrice
-              };
-
-            return (
-              <Card key={`property-${propertyData.number}`} className="border-green-200 bg-green-50">
-                <CardContent className="p-4">
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                        <h4 className="font-medium text-green-800">Live Property Lead #{propertyData.number}</h4>
-                      </div>
-                      <Badge variant="secondary" className="bg-green-100 text-green-700">Live Data</Badge>
-                    </div>
-
-                    <div className="bg-white p-3 rounded border">
-                      <h5 className="font-semibold text-gray-800 mb-3">🏠 {address}</h5>
-
-                      {/* Property Details Section */}
-                      <div className="mb-3 p-2 bg-green-50 rounded">
-                        <h6 className="font-medium text-green-800 mb-1">🏠 Property Details</h6>
-                        <div className="text-sm text-green-700 space-y-1">
-                          <div><strong>Est. Value (ARV):</strong> {price !== 'N/A' ? `$${parseInt(price.replace(/[$,]/g, '')).toLocaleString()}` : 'Available in full report'}</div>
-                          <div><strong>Max Offer (70%):</strong> {maxOffer !== 'Calculate 70% ARV' ? `$${parseInt(maxOffer.replace(/[$,]/g, '')).toLocaleString()}` : (price !== 'N/A' ? `$${Math.floor(parseInt(price.replace(/[$,]/g, '')) * 0.7).toLocaleString()}` : 'Calculate from ARV')}</div>
-                          <div><strong>Building:</strong> {bedBath}</div>
-                          <div><strong>Year Built:</strong> {yearBuilt}</div>
-                          <div><strong>Property Type:</strong> {propertyType}</div>
-                        </div>
-                      </div>
-
-                      {/* Owner Information Section */}
-                      <div className="mb-3 p-2 bg-blue-50 rounded">
-                        <h6 className="font-medium text-blue-800 mb-1">👤 Owner Information</h6>
-                        <div className="text-sm text-blue-700 space-y-1">
-                          <div><strong>Name:</strong> {owner}</div>
-                          <div><strong>Phone:</strong> {ownerPhone}</div>
-                          <div><strong>Email:</strong> {ownerEmail}</div>
-                          <div><strong>Mailing:</strong> {mailingAddress}</div>
-                          <div><strong>Status:</strong> {leadType.includes('ABSENTEE') ? 'Absentee Owner' : leadType.includes('OUT-OF-STATE') ? 'Out-of-State Owner' : 'Investment Property'}</div>
-                        </div>
-                      </div>
-
-                      {/* Financial Analysis Section */}
-                      <div className="mb-3 p-2 bg-purple-50 rounded">
-                        <h6 className="font-medium text-purple-800 mb-1">📈 Financial Analysis</h6>
-                        <div className="text-sm text-purple-700 space-y-1">
-                          <div><strong>Equity Percentage:</strong> {equity}</div>
-                          <div><strong>Motivation Score:</strong> {motivation}</div>
-                          <div><strong>Lead Type:</strong> {leadType}</div>
-                          <div><strong>Distressed Indicator:</strong> {distressedIndicator}</div>
-                          <div><strong>Status:</strong> {status}</div>
-                        </div>
-                      </div>
-                    </div>
-
-                      {/* Sales History Section */}
-                      <div className="mb-3 p-2 bg-orange-50 rounded">
-                        <h6 className="font-medium text-orange-800 mb-1">📈 Sales History</h6>
-                        <div className="text-sm text-orange-700 space-y-1">
-                          <div><strong>Last Sale Date:</strong> {lastSaleDate}</div>
-                          <div><strong>Last Sale Price:</strong> {lastSalePrice !== 'Not available' ? (lastSalePrice.includes('$') ? lastSalePrice : `$${parseInt(lastSalePrice.replace(/[$,]/g, '')).toLocaleString()}`) : lastSalePrice}</div>
-                        </div>
-                      </div>
-
-                    <div className="pt-2 border-t border-green-200 flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          const propertyData = {
-                            address: address,
-                            city: extractValue(address, /([^,]+),\s*[A-Z]{2}/i) || '',
-                            state: extractValue(address, /,\s*([A-Z]{2})/i) || '',
-                            zipCode: '',
-                            arv: price.replace(/[$,]/g, '') || '0',
-                            maxOffer: (parseInt(price.replace(/[$,]/g, '') || '0') * 0.7).toString(),
-                            ownerName: owner,
-                            ownerPhone: 'Available via skip trace',
-                            ownerEmail: 'Available via skip trace',
-                            ownerMailingAddress: 'Same as property address',
-                            ownerStatus: 'Owner Occupied',
-                            motivationScore: motivation.replace(/\/100/, '') || '50',
-                            equityPercentage: equity.replace(/%/, '') || '0',
-                            leadType: leadType.toLowerCase().replace(/\s+/g, '_') || 'standard'
-                          };
-
-                          handleSaveLead(propertyData);
-                        }}
-                        disabled={savePropertyMutation.isPending}
-                      >
-                        {savePropertyMutation.isPending ? 'Saving...' : 'Save Lead'}
-                      </Button>
-                      <Button size="sm" variant="outline">Analyze Deal</Button>
-                      <Button size="sm" variant="outline">Contact Owner</Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-
-          <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-700 text-center">
-              💡 These are LIVE properties with verified owner information and equity calculations!
-            </p>
-          </div>
-        </div>
-      );
-    }
-
-    return null;
-  };
-
-  const renderPropertyCard = (content: string) => {
-    // Check if this is a property response with structured data from BatchData API
-    if (content.includes("**PROPERTY DETAILS:**") ||
-        content.includes("**FINANCIAL ANALYSIS:**") ||
-        content.includes("**OWNER INFORMATION:**") ||
-        content.includes("**PROPERTY OVERVIEW:**") ||
-        content.includes("**CONTACT INFORMATION:**") ||
-        content.includes("**MOTIVATION SCORE:**") ||
-        content.includes("BatchData API integration") ||
-        content.includes("🚨 FORECLOSURE DETAILS") ||
-        (content.includes("Address:") && content.includes("ARV:")) ||
-        (content.includes("**") && (content.includes("Property") || content.includes("Owner")))) {
-
-      console.log('Property card detected. Content:', content);
-
-      // Parse sections using line-by-line approach for better accuracy
-      const lines = content.split('\n');
-      const parsedSections: any = {};
-      let currentSection = '';
-
-      lines.forEach(line => {
-        const trimmedLine = line.trim();
-
-        // Detect section headers
-        if (trimmedLine.includes('**PROPERTY DETAILS:**') || trimmedLine.includes('**PROPERTY OVERVIEW:**')) {
-          currentSection = 'property';
-          return;
-        } else if (trimmedLine.includes('**FINANCIAL ANALYSIS:**')) {
-          currentSection = 'financial';
-          return;
-        } else if (trimmedLine.includes('**OWNER INFORMATION:**')) {
-          currentSection = 'owner';
-          return;
-        } else if (trimmedLine.includes('**CONTACT INFORMATION:**')) {
-          currentSection = 'contact';
-          return;
-        } else if (trimmedLine.includes('**OWNER PORTFOLIO:**') || trimmedLine.includes('**PORTFOLIO:**')) {
-          currentSection = 'portfolio';
-          return;
-        } else if (trimmedLine.includes('**MOTIVATION SCORE:**')) {
-          currentSection = 'motivation';
-          return;
-        } else if (trimmedLine.includes('🚨 FORECLOSURE DETAILS')) {
-          currentSection = 'foreclosure';
-          return;
-        }
-
-        // Add content to current section, skip empty lines and section headers
-        if (currentSection && trimmedLine && !trimmedLine.startsWith('**') && !trimmedLine.startsWith('🚨')) {
-          if (parsedSections[currentSection]) {
-            parsedSections[currentSection] += '\n' + trimmedLine;
-          } else {
-            parsedSections[currentSection] = trimmedLine;
-          }
-        }
-      });
-
-      console.log('Parsed sections:', parsedSections);
-
-      // Extract property details for tracking
-      const extractValue = (text: string | undefined, label: string) => {
-        if (!text) return '';
-        const match = text.match(new RegExp(`${label}:?\\s*([^\\n]+)`, 'i'));
-        return match ? match[1].trim() : '';
-      };
-
-      const extractMultipleValues = (text: string | undefined, labels: string[]) => {
-        if (!text) return '';
-        for (const label of labels) {
-          const value = extractValue(text, label);
-          if (value) return value;
-        }
-        return '';
-      };
-
-      const propertyAddress = extractMultipleValues(parsedSections.property || content, ['Address', '🏠', 'Property Address']);
-      const ownerName = extractMultipleValues(parsedSections.owner || parsedSections.contact || content, ['Owner Name', 'Owner', 'Full Name', 'Name', '👤']);
-      const ownerPhone = extractMultipleValues(parsedSections.contact || parsedSections.owner || content, ['Owner Phone', 'Phone', 'Contact Phone', '📞', '☎️']);
-      const ownerEmail = extractMultipleValues(parsedSections.contact || parsedSections.owner || content, ['Owner Email', 'Email', 'Contact Email', '📧', '✉️']);
-      const ownerMailingAddress = extractMultipleValues(parsedSections.owner || content, ['Mailing Address', 'Mailing']) || 'Same as property address';
-      const ownerStatus = extractMultipleValues(parsedSections.owner || content, ['Owner Status', 'Status']) || 'Owner Occupied';
-
-      const propertyId = `${propertyAddress}_${ownerName}`; // Simple unique ID
-
-      // Track this property as shown and store search criteria
-      if (!shownPropertyIds.has(propertyId)) {
-        setShownPropertyIds(prev => new Set([...Array.from(prev), propertyId]));
-      }
-
-      // This logic assumes the content itself is a single property search result
-      // and stores the criteria that led to it.
-      // For now, we'll assume any direct property card render implies a search.
-      setLastSearchCriteria({ query: content }); // Storing the content as criteria for now
-
-      return (
-        <Card className="mt-3 border-green-200 bg-green-50">
-          <CardContent className="p-4">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                  <h4 className="font-medium text-green-800">Live Property Lead</h4>
-                </div>
-                <Badge variant="secondary" className="bg-green-100 text-green-700">BatchData API</Badge>
-              </div>
-
-              <div className="bg-white p-3 rounded border">
-                <h5 className="font-semibold text-gray-800 mb-2">📋 Property Information</h5>
-                <div className="text-sm text-gray-700 max-h-64 overflow-y-auto whitespace-pre-wrap">
-                  {content}
-                </div>
-              </div>
-
-              <div className="pt-2 border-t border-green-200 flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const propertyData = {
-                      address: extractMultipleValues(parsedSections.property || content, ['Address', '🏠', 'Property Address']),
-                      city: extractMultipleValues(parsedSections.property || content, ['City']),
-                      state: extractMultipleValues(parsedSections.property || content, ['State']),
-                      zipCode: extractMultipleValues(parsedSections.property || content, ['ZIP', 'Zip Code']),
-                      arv: (extractMultipleValues(parsedSections.financial || content, ['Est. Value', 'Estimated Value', 'ARV', 'Value']) || '0').replace(/[$,]/g, ''),
-                      maxOffer: (extractMultipleValues(parsedSections.financial || content, ['Max Offer', 'Offer']) || '0').replace(/[$,]/g, ''),
-                      ownerName: ownerName,
-                      ownerPhone: ownerPhone,
-                      ownerEmail: ownerEmail,
-                      ownerMailingAddress: ownerMailingAddress,
-                      ownerStatus: ownerStatus,
-                      motivationScore: (extractMultipleValues(parsedSections.motivation || content, ['Score', 'Motivation', '⭐']) || '50').replace(/\/100/, ''),
-                      equityPercentage: (extractMultipleValues(parsedSections.financial || content, ['Equity', 'Equity Percentage', '📈']) || '0').replace(/%/, ''),
-                      leadType: content.toLowerCase().includes('foreclosure') ? 'preforeclosure' : 'standard'
-                    };
-
-                    handleSaveLead(propertyData);
-                  }}
-                  disabled={savePropertyMutation.isPending}
-                >
-                  {savePropertyMutation.isPending ? 'Saving...' : 'Save Lead'}
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1">Analyze Deal</Button>
-                <Button size="sm" variant="outline">Contact Owner</Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
-    return null;
   };
 
   return (
@@ -1151,9 +318,6 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {renderWizard()}
-        {renderBuyerWizard()}
-
         {/* Processing indicator */}
         {(wizardProcessing || buyerWizardProcessing || sendMessageMutation.isPending) && (
           <Card className="border-2 border-blue-200 bg-blue-50">
@@ -1180,7 +344,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
 
         {messages.length === 0 && !currentConversation && !showWizard && !showBuyerWizard && !wizardProcessing && !buyerWizardProcessing && (
           <div className="space-y-4">
-            {/* Seller Lead Finder Card */}
+            {/* Agent Introduction */}
             <div className="flex items-start space-x-3">
               <Avatar>
                 <AvatarImage />
@@ -1192,7 +356,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                 <Card>
                   <CardContent className="p-4">
                     <p className="text-sm text-slate-900">
-                      {selectedAgent === "lead-finder" && "Hello! I'm your Seller Lead Finder. I can help you discover off-market properties, distressed sales, and motivated sellers. Use the wizard below to get started!"}
+                      {selectedAgent === "lead-finder" && "Hello! I'm your Lead Finder Agent. I can help you discover off-market properties, distressed sales, and motivated sellers. Use the wizard below to get started!"}
                       {selectedAgent === "deal-analyzer" && "Hi! I'm your Deal Analyzer Agent. I can help you analyze property deals, calculate ARV, estimate repair costs, and determine maximum allowable offers. Share a property address to get started!"}
                       {selectedAgent === "negotiation" && "Hello! I'm your Negotiation Agent. I can help you craft compelling offers, write follow-up messages, and develop negotiation strategies for your deals. What property are you working on?"}
                       {selectedAgent === "closing" && "Hi! I'm your Closing Agent. I can help you prepare contracts, coordinate closings, and manage documents. What deal are you looking to close?"}
@@ -1206,63 +370,9 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                           className="flex items-center gap-2 mb-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
                         >
                           <Search className="h-4 w-4" />
-                          Use Seller Lead Wizard
+                          Use Lead Finder Wizard
                         </Button>
                       )}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </div>
-            
-            {/* Cash Buyer Wizard Card */}
-            {selectedAgent === "lead-finder" && (
-              <div className="flex items-start space-x-3">
-                <Avatar>
-                  <AvatarImage />
-                  <AvatarFallback>
-                    <Search className="h-4 w-4" />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <Card>
-                    <CardContent className="p-4">
-                      <p className="text-sm text-slate-900">
-                        Hello! I'm your Cash Buyer Finder. I can help you discover active real estate investors, cash buyers, and portfolio managers. Use the wizard below to get started!
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowBuyerWizard(true)}
-                          className="flex items-center gap-2 mb-2 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-                        >
-                          <Search className="h-4 w-4" />
-                          Use Cash Buyer Wizard
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            )}
-            
-            <div className="flex items-start space-x-3">
-              <Avatar>
-                <AvatarImage />
-                <AvatarFallback>
-                  {currentAgent && <currentAgent.icon className="h-4 w-4" />}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1">
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-sm text-slate-900">
-                      {selectedAgent === "deal-analyzer" && "Hi! I'm your Deal Analyzer Agent. I can help you analyze property deals, calculate ARV, estimate repair costs, and determine maximum allowable offers. Share a property address to get started!"}
-                      {selectedAgent === "negotiation" && "Hello! I'm your Negotiation Agent. I can help you craft compelling offers, write follow-up messages, and develop negotiation strategies for your deals. What property are you working on?"}
-                      {selectedAgent === "closing" && "Hi! I'm your Closing Agent. I can help you prepare contracts, coordinate closings, and manage documents. What deal are you looking to close?"}
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
                       {selectedAgent === "deal-analyzer" && (
                         <>
                           <Badge variant="secondary" className="cursor-pointer hover:bg-slate-200">Calculate ARV</Badge>
@@ -1285,57 +395,112 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                         </>
                       )}
                     </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
         )}
 
-        {messages.map((message, messageIndex) => {
-          // Skip duplicate property search responses - only show the most recent one
-          const isPropertyResponse = message.role === "assistant" && message.content.includes("**PROPERTY DETAILS:**");
-          if (isPropertyResponse) {
-            const hasNewerPropertyResponse = messages.slice(messageIndex + 1).some(laterMessage => 
-              laterMessage.role === "assistant" && laterMessage.content.includes("**PROPERTY DETAILS:**")
-            );
-            if (hasNewerPropertyResponse) {
-              return null; // Skip older property responses to prevent duplicates
-            }
-          }
+        {/* Wizard */}
+        {showWizard && (
+          <Card className="mb-4 border-2 border-blue-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Search className="h-5 w-5 text-blue-600" />
+                Lead Finder Wizard - Step {wizardStep} of 4
+              </CardTitle>
+              <p className="text-sm text-gray-600 mt-1">Find distressed properties and motivated sellers</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {wizardStep === 1 && (
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg">Where are you looking for properties?</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="city">City or ZIP Code</Label>
+                      <Input
+                        id="city"
+                        placeholder="e.g., Valley Forge, Philadelphia, 19481"
+                        value={wizardData.city}
+                        onChange={(e) => setWizardData({...wizardData, city: e.target.value})}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="state">State</Label>
+                      <Select value={wizardData.state} onValueChange={(value) => setWizardData({...wizardData, state: value})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select state" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {states.map((state) => (
+                            <SelectItem key={state} value={state}>{state}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-          return (
-            <div key={message.id} className={`flex items-start space-x-3 ${message.role === "user" ? "justify-end" : ""}`}>
-              {message.role === "assistant" && (
-                <Avatar>
-                  <AvatarImage />
-                  <AvatarFallback>
-                    {currentAgent && <currentAgent.icon className="h-4 w-4" />}
-                  </AvatarFallback>
-                </Avatar>
-              )}
-              <div className={`flex-1 ${message.role === "user" ? "max-w-xs sm:max-w-md" : ""}`}>
-                <Card className={message.role === "user" ? "bg-primary text-primary-foreground" : ""}>
-                  <CardContent className="p-4">
-                    {message.role === "assistant" ? (
+              <div className="flex justify-between pt-4">
+                <Button variant="outline" onClick={() => setShowWizard(false)}>
+                  Cancel
+                </Button>
+                <div className="flex gap-2">
+                  {wizardStep > 1 && (
+                    <Button variant="outline" onClick={() => setWizardStep(wizardStep - 1)}>
+                      <ArrowLeft className="h-4 w-4 mr-1" />
+                      Back
+                    </Button>
+                  )}
+                  <Button 
+                    onClick={() => {
+                      if (wizardStep < 4) {
+                        setWizardStep(wizardStep + 1);
+                      } else {
+                        handleWizardSubmit();
+                      }
+                    }}
+                    disabled={!wizardData.city || !wizardData.state}
+                  >
+                    {wizardStep === 4 ? 'Find Properties' : (
                       <>
-                        {renderMultipleProperties(message.content) || renderPropertyCard(message.content) || (
-                          <p className="text-sm">{message.content}</p>
-                        )}
+                        Next
+                        <ArrowRight className="h-4 w-4 ml-1" />
                       </>
-                    ) : (
-                      <p className="text-sm">{message.content}</p>
                     )}
-                  </CardContent>
-                </Card>
+                  </Button>
+                </div>
               </div>
-              {message.role === "user" && (
-                <Avatar>
-                  <AvatarFallback>U</AvatarFallback>
-                </Avatar>
-              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {messages.map((message) => (
+          <div key={message.id} className={`flex items-start space-x-3 ${message.role === "user" ? "justify-end" : ""}`}>
+            {message.role === "assistant" && (
+              <Avatar>
+                <AvatarImage />
+                <AvatarFallback>
+                  {currentAgent && <currentAgent.icon className="h-4 w-4" />}
+                </AvatarFallback>
+              </Avatar>
+            )}
+            <div className={`flex-1 ${message.role === "user" ? "max-w-xs sm:max-w-md" : ""}`}>
+              <Card className={message.role === "user" ? "bg-primary text-primary-foreground" : ""}>
+                <CardContent className="p-4">
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                </CardContent>
+              </Card>
             </div>
-          );
-        })}
+            {message.role === "user" && (
+              <Avatar>
+                <AvatarFallback>U</AvatarFallback>
+              </Avatar>
+            )}
+          </div>
+        ))}
         <div ref={messagesEndRef} />
       </div>
 
