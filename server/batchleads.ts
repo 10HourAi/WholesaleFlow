@@ -801,17 +801,30 @@ class BatchLeadsService {
       // Log all buyer names found for debugging
       console.log(`💰 ALL BUYERS FOUND:`, allBuyers.map(b => `${b.owner?.fullName} (${b.propertyOwnerProfile?.propertiesCount || 0} properties)`));
       
-      // Filter to only include cash buyers with at least 3 properties
+      // Filter to only include cash buyers with at least 3 properties AND recent sale activity
       const filteredBuyers = allBuyers.filter((buyer: any) => {
         const propertyCount = buyer.propertyOwnerProfile?.propertiesCount;
         const hasMinProperties = propertyCount && propertyCount >= 3;
         
-        console.log(`💰 BUYER FILTER: ${buyer.owner?.fullName} - Properties: ${propertyCount}, Qualifies: ${hasMinProperties}`);
+        // Check for last sale date within 12 months
+        const lastSaleDate = buyer.salesHistory?.lastSaleDate || buyer.lastSaleDate || buyer.deed?.recordingDate;
+        let hasRecentSale = false;
         
-        return hasMinProperties;
+        if (lastSaleDate) {
+          const saleDate = new Date(lastSaleDate);
+          const twelveMonthsAgo = new Date();
+          twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
+          hasRecentSale = saleDate >= twelveMonthsAgo;
+        }
+        
+        const qualifies = hasMinProperties && hasRecentSale;
+        
+        console.log(`💰 BUYER FILTER: ${buyer.owner?.fullName} - Properties: ${propertyCount}, Last Sale: ${lastSaleDate}, Recent Sale: ${hasRecentSale}, Qualifies: ${qualifies}`);
+        
+        return qualifies;
       });
       
-      console.log(`💰 BUYERS AFTER MIN 3 PROPERTIES FILTER:`, filteredBuyers.length);
+      console.log(`💰 BUYERS AFTER FILTERING (3+ properties AND recent sale):`, filteredBuyers.length);
       
       // Take only the requested limit from filtered results
       const buyers = filteredBuyers.slice(0, limit);
