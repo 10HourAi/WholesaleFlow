@@ -81,12 +81,18 @@ export default function ChatInterface() {
       const pendingResponse = localStorage.getItem('pendingCashBuyerResponse');
       if (pendingResponse) {
         localStorage.removeItem('pendingCashBuyerResponse');
-        // Send the pending response as a message after conversation state is updated
-        setTimeout(() => {
-          sendMessageMutation.mutate({
-            content: pendingResponse,
-            role: "assistant",
-          });
+        // Send the pending response directly to the new conversation
+        setTimeout(async () => {
+          try {
+            await apiRequest("POST", `/api/conversations/${conversation.id}/messages`, {
+              content: pendingResponse,
+              role: "assistant",
+              isAiGenerated: true
+            });
+            queryClient.invalidateQueries({ queryKey: ["/api/conversations", conversation.id, "messages"] });
+          } catch (error) {
+            console.error('Failed to send pending cash buyer response:', error);
+          }
         }, 200);
       }
     },
