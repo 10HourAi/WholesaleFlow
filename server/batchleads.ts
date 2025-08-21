@@ -757,6 +757,182 @@ class BatchLeadsService {
     if (quickLists.freeAndClear) return 'free_and_clear';
     return 'standard';
   }
+
+  // Search for cash buyers using BatchLeads quicklists.cashbuyer API
+  async searchCashBuyers(criteria: { location: string }, limit = 5): Promise<{
+    data: any[];
+    totalChecked: number;
+    filtered: number;
+    hasMore: boolean;
+  }> {
+    console.log(`💰 Starting Cash Buyer search for: "${criteria.location}"`);
+    
+    const requestBody: any = {
+      searchCriteria: {
+        query: criteria.location,
+        quickLists: ["cashbuyer"] // Use the quicklists.cashbuyer endpoint
+      },
+      options: {
+        skip: 0,
+        take: Math.min(limit * 2, 100), // Get more than needed in case some are filtered
+        skipTrace: false,
+        includeBuilding: true,
+        includePropertyDetails: true,
+        includeAssessment: true
+      }
+    };
+
+    console.log(`💰 Cash Buyer request body:`, JSON.stringify(requestBody, null, 2));
+
+    try {
+      const response = await this.makeRequest('/api/v1/property/search', requestBody);
+      
+      console.log(`💰 Cash Buyer API response:`, {
+        propertiesFound: response.results?.properties?.length || 0,
+        totalResults: response.meta?.totalResults || 0
+      });
+      
+      // Log complete API response for debugging
+      console.log(`💰 COMPLETE CASH BUYER API RESPONSE:`, JSON.stringify(response, null, 2));
+      
+      // Log first buyer for debugging
+      if (response.results?.properties?.length > 0) {
+        const firstBuyer = response.results.properties[0];
+        console.log(`💰 FIRST CASH BUYER RAW DATA:`, JSON.stringify(firstBuyer, null, 2));
+      }
+
+      const buyers = (response.results?.properties || []).slice(0, limit).map((buyer: any, index: number) => {
+        return this.convertToCashBuyer(buyer, index + 1);
+      });
+
+      return {
+        data: buyers,
+        totalChecked: response.results?.properties?.length || 0,
+        filtered: Math.max(0, (response.results?.properties?.length || 0) - buyers.length),
+        hasMore: (response.results?.properties?.length || 0) > limit
+      };
+    } catch (error) {
+      console.error(`💰 Cash Buyer search error:`, error);
+      throw error;
+    }
+  }
+
+  // Convert BatchLeads cash buyer data to standardized format
+  private convertToCashBuyer(buyerData: any, index: number): any {
+    console.log(`💰 Converting cash buyer ${index}:`, JSON.stringify(buyerData, null, 2));
+    
+    // Extract address information
+    const address = buyerData.address || {};
+    const fullAddress = `${address.houseNumber || ''} ${address.street || ''}`.trim();
+    
+    // Extract owner information
+    const owner = buyerData.owner || {};
+    const ownerName = owner.fullName || owner.name || 'Unknown Owner';
+    
+    // Extract financial information
+    const valuation = buyerData.valuation || {};
+    const estimatedValue = valuation.estimatedValue || valuation.value || 0;
+    
+    // Extract property details
+    const building = buyerData.building || {};
+    const propertyDetails = buyerData.propertyDetails || {};
+    
+    // Calculate buyer metrics
+    const equityPercent = valuation.equityPercent || valuation.equity || 0;
+    const buyerScore = this.calculateBuyerScore(buyerData);
+    
+    const convertedBuyer = {
+      id: buyerData._id || `buyer-${index}`,
+      name: ownerName,
+      address: fullAddress,
+      city: address.city || 'N/A',
+      state: address.state || 'N/A',
+      zipCode: address.zip || address.zipCode || 'N/A',
+      
+      // Contact Information
+      phone: buyerData.phone || 'Available via skip trace',
+      email: buyerData.email || 'Available via skip trace',
+      mailingAddress: owner.mailingAddress ? 
+        `${owner.mailingAddress.street || ''}, ${owner.mailingAddress.city || ''}, ${owner.mailingAddress.state || ''}`.trim() :
+        'Same as property address',
+      
+      // Property Portfolio Information
+      estimatedValue: estimatedValue,
+      propertyCount: buyerData.propertyCount || 1,
+      totalPortfolioValue: buyerData.totalPortfolioValue || estimatedValue,
+      
+      // Property Details
+      propertyType: building.propertyType || propertyDetails.propertyType || 'Single Family',
+      bedrooms: building.bedrooms || building.bedroomCount || null,
+      bathrooms: building.bathrooms || building.bathroomCount || null,
+      squareFeet: building.livingArea || building.totalBuildingAreaSquareFeet || null,
+      yearBuilt: building.yearBuilt || building.effectiveYearBuilt || null,
+      
+      // Financial Metrics
+      equityPercentage: Math.round(equityPercent * 100) / 100,
+      buyerScore: buyerScore,
+      investmentType: this.determineBuyerType(buyerData),
+      
+      // Activity Indicators
+      lastTransactionDate: buyerData.sale?.lastSaleDate || null,
+      lastTransactionPrice: buyerData.sale?.lastSalePrice || null,
+      activeInvestor: buyerScore > 70,
+      cashBuyer: true, // Since we're searching specifically for cash buyers
+      
+      // Additional Flags
+      outOfStateOwner: this.isOutOfStateOwner(address, owner.mailingAddress),
+      portfolioInvestor: (buyerData.propertyCount || 1) > 1,
+      
+      // Raw data for debugging
+      rawData: buyerData
+    };
+    
+    console.log(`💰 Converted buyer ${index}:`, JSON.stringify(convertedBuyer, null, 2));
+    return convertedBuyer;
+  }
+  
+  private calculateBuyerScore(buyerData: any): number {
+    let score = 50; // Base score
+    
+    // Increase score for cash transactions
+    if (buyerData.quickLists?.cashbuyer) score += 30;
+    
+    // Increase score for multiple properties
+    const propertyCount = buyerData.propertyCount || 1;
+    if (propertyCount > 1) score += Math.min(20, propertyCount * 5);
+    
+    // Increase score for recent transactions
+    const lastSaleDate = buyerData.sale?.lastSaleDate;
+    if (lastSaleDate) {
+      const saleYear = new Date(lastSaleDate).getFullYear();
+      const currentYear = new Date().getFullYear();
+      if (currentYear - saleYear <= 2) score += 15;
+    }
+    
+    // Increase score for high-value properties
+    const estimatedValue = buyerData.valuation?.estimatedValue || 0;
+    if (estimatedValue > 500000) score += 10;
+    if (estimatedValue > 1000000) score += 10;
+    
+    return Math.min(100, Math.max(0, score));
+  }
+  
+  private determineBuyerType(buyerData: any): string {
+    const propertyCount = buyerData.propertyCount || 1;
+    const estimatedValue = buyerData.valuation?.estimatedValue || 0;
+    
+    if (propertyCount > 5) return 'Portfolio Investor';
+    if (propertyCount > 1) return 'Small Investor';
+    if (estimatedValue > 1000000) return 'High-End Investor';
+    if (buyerData.quickLists?.cashbuyer) return 'Cash Buyer';
+    
+    return 'Individual Investor';
+  }
+  
+  private isOutOfStateOwner(propertyAddress: any, mailingAddress: any): boolean {
+    if (!propertyAddress?.state || !mailingAddress?.state) return false;
+    return propertyAddress.state !== mailingAddress.state;
+  }
 }
 
 export const batchLeadsService = new BatchLeadsService();

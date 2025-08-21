@@ -29,19 +29,31 @@ interface WizardData {
   maxPrice?: number;
 }
 
+interface BuyerWizardData {
+  city: string;
+  state: string;
+}
+
 export default function ChatInterface() {
   const [selectedAgent, setSelectedAgent] = useState("lead-finder");
   const [currentConversation, setCurrentConversation] = useState<string | null>(null);
   const [inputMessage, setInputMessage] = useState("");
   const [showWizard, setShowWizard] = useState(false);
+  const [showBuyerWizard, setShowBuyerWizard] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
+  const [buyerWizardStep, setBuyerWizardStep] = useState(1);
   const [wizardData, setWizardData] = useState<WizardData>({
     city: "",
     state: "",
     sellerType: "",
     propertyType: ""
   });
+  const [buyerWizardData, setBuyerWizardData] = useState<BuyerWizardData>({
+    city: "",
+    state: ""
+  });
   const [wizardProcessing, setWizardProcessing] = useState(false);
+  const [buyerWizardProcessing, setBuyerWizardProcessing] = useState(false);
   const [sessionState, setSessionState] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
@@ -275,6 +287,72 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
   const handleWizardBack = () => {
     if (wizardStep > 1) {
       setWizardStep(wizardStep - 1);
+    }
+  };
+
+  // Buyer wizard handlers
+  const handleBuyerWizardNext = () => {
+    if (buyerWizardStep < 1) { // Only 1 step for now
+      setBuyerWizardStep(buyerWizardStep + 1);
+    }
+  };
+
+  const handleBuyerWizardBack = () => {
+    if (buyerWizardStep > 1) {
+      setBuyerWizardStep(buyerWizardStep - 1);
+    }
+  };
+
+  const handleBuyerWizardSubmit = () => {
+    // Build search query for cash buyers
+    let location = '';
+    
+    // Handle different input formats for city field
+    const cityInput = buyerWizardData.city.trim();
+    
+    // Check if city field contains a ZIP code (5 digits)
+    const zipPattern = /^\d{5}$/;
+    if (zipPattern.test(cityInput)) {
+      // If it's a ZIP code, use it directly
+      location = cityInput;
+    } else if (cityInput.includes(',')) {
+      // If city already contains state/country info, use as-is but ensure our state is included
+      const parts = cityInput.split(',').map(p => p.trim());
+      if (parts.length >= 2 && parts[1].length === 2) {
+        // Already has state, use as-is
+        location = cityInput;
+      } else {
+        // Add our selected state
+        location = `${parts[0]}, ${buyerWizardData.state}`;
+      }
+    } else {
+      // Single or multi-word city name - add state
+      location = `${cityInput}, ${buyerWizardData.state}`;
+    }
+    
+    console.log('💰 Buyer Wizard location built:', location);
+    
+    let searchQuery = `Find cash buyers in ${location}`;
+    
+    // Show processing state
+    setBuyerWizardProcessing(true);
+    
+    // Set the message and close wizard
+    setInputMessage(searchQuery);
+    setShowBuyerWizard(false);
+    setBuyerWizardStep(1);
+    
+    // Create conversation if needed and send message
+    if (!currentConversation) {
+      createConversationMutation.mutate({
+        agentType: selectedAgent,
+        title: `Cash Buyer Search: ${buyerWizardData.city}, ${buyerWizardData.state}`,
+      });
+    } else {
+      sendMessageMutation.mutate({
+        content: searchQuery,
+        role: "user",
+      });
     }
   };
 
@@ -572,6 +650,75 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                 </Button>
               )}
             </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
+  const renderBuyerWizard = () => {
+    if (!showBuyerWizard) return null;
+
+    return (
+      <Card className="mb-4 border-2 border-green-200">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-green-600" />
+            Cash Buyer Wizard - Step {buyerWizardStep} of 1
+          </CardTitle>
+          <p className="text-sm text-gray-600 mt-1">Find active cash buyers and real estate investors • Second of 3 Lead Finder wizards</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {buyerWizardStep === 1 && (
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg">Where are you looking for cash buyers?</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="buyer-city">City or ZIP Code</Label>
+                  <Input
+                    id="buyer-city"
+                    placeholder="e.g., Valley Forge, Philadelphia, 19481"
+                    value={buyerWizardData.city}
+                    onChange={(e) => setBuyerWizardData({...buyerWizardData, city: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="buyer-state">State</Label>
+                  <Select value={buyerWizardData.state} onValueChange={(value) => setBuyerWizardData({...buyerWizardData, state: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {states.map((state) => (
+                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-between pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowBuyerWizard(false);
+                setBuyerWizardStep(1);
+                setBuyerWizardData({ city: "", state: "" });
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              onClick={handleBuyerWizardSubmit}
+              disabled={!buyerWizardData.city || !buyerWizardData.state}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+            >
+              <TrendingUp className="h-4 w-4" />
+              Find Cash Buyers
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -1005,6 +1152,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {renderWizard()}
+        {renderBuyerWizard()}
 
         {/* Processing indicator */}
         {(wizardProcessing || sendMessageMutation.isPending) && (
@@ -1030,7 +1178,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
           </Card>
         )}
 
-        {messages.length === 0 && !currentConversation && !showWizard && !wizardProcessing && (
+        {messages.length === 0 && !currentConversation && !showWizard && !showBuyerWizard && !wizardProcessing && !buyerWizardProcessing && (
           <div className="flex items-start space-x-3">
             <Avatar>
               <AvatarImage />
@@ -1058,6 +1206,15 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                         >
                           <Search className="h-4 w-4" />
                           Use Seller Lead Wizard
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowBuyerWizard(true)}
+                          className="flex items-center gap-2 mb-2 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                        >
+                          <TrendingUp className="h-4 w-4" />
+                          Use Cash Buyer Wizard
                         </Button>
                       </>
                     )}
