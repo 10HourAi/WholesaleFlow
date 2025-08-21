@@ -431,13 +431,13 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
           
           cardContent += `👤\n`;
           cardContent += `**${owner.fullName || 'ACTIVE CASH INVESTOR'}**\n`;
-          cardContent += `<BR>🏢 Property Owner Profile\n`;
+          cardContent += `\n🏢 Property Owner Profile\n`;
           cardContent += `**Total Portfolio Value**\t$${ownerProfile.propertiesTotalEstimatedValue ? parseInt(ownerProfile.propertiesTotalEstimatedValue).toLocaleString() + '.00' : 'N/A'}\n`;
           cardContent += `**Properties Count**\t${ownerProfile.propertiesCount || 'N/A'}\n`;
           cardContent += `**Average Purchase Price**\t$${ownerProfile.averagePurchasePrice ? parseInt(ownerProfile.averagePurchasePrice).toLocaleString() + '.00' : 'N/A'}\n`;
           cardContent += `**Last Sale Date**\t${lastSaleDate}\n`;
           
-          cardContent += `<BR>🏠 Last Property Purchased\n`;
+          cardContent += `\n🏠 Last Property Purchased\n`;
           cardContent += `**Property Address**\t${address.street}, ${address.city}, ${address.state} ${address.zip}\n`;
           cardContent += `**Total Area**\t${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() + ' sqft' : 'N/A'}\n`;
           cardContent += `**Bedrooms**\t${building.bedrooms || 'N/A'}\n`;
@@ -446,7 +446,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
           cardContent += `**Last Sale Date**\t${lastSaleDate}\n`;
           cardContent += `**Last Sale Price**\t$${sale.lastSalePrice ? parseInt(sale.lastSalePrice).toLocaleString() + '.00' : valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() + '.00' : 'N/A'}\n`;
           
-          cardContent += `<BR>📞 Contact Information\n`;
+          cardContent += `\n📞 Contact Information\n`;
           cardContent += `**Mailing Address**\t${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}\n`;
           cardContent += `**Email(s)**\t${emailList}\n`;
           
