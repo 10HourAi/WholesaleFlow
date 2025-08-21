@@ -425,17 +425,34 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
         localStorage.setItem('pendingCashBuyerResponse', errorMessage);
       }
       
-      // Create conversation or send message
+      // Create conversation or send messages directly
       if (!currentConversation) {
         createConversationMutation.mutate({
           agentType: selectedAgent,
           title: `Cash Buyers: ${location}`,
         });
       } else {
+        // If conversation exists, send intro message and then individual cards
+        const introMessage = `Great! I found 5 active cash buyers in **${location}**. Here are qualified investors ready to purchase:`;
         sendMessageMutation.mutate({
-          content: formattedResponse,
+          content: introMessage,
           role: "assistant",
         });
+        
+        // Send individual buyer cards
+        const pendingCards = localStorage.getItem('pendingCashBuyerCards');
+        if (pendingCards) {
+          const buyerCards = JSON.parse(pendingCards);
+          buyerCards.forEach((card: string, index: number) => {
+            setTimeout(() => {
+              sendMessageMutation.mutate({
+                content: card,
+                role: "assistant",
+              });
+            }, (index + 1) * 300);
+          });
+          localStorage.removeItem('pendingCashBuyerCards');
+        }
       }
       
     } catch (error: any) {
