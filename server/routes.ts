@@ -574,6 +574,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dedicated Cash Buyer API endpoint - returns raw data
+  app.post("/api/cash-buyers/search", async (req, res) => {
+    try {
+      const { location = "harrisburg, PA", limit = 5 } = req.body;
+      console.log(`💰 CASH BUYER API: Starting search for location: ${location}, limit: ${limit}`);
+      
+      const { batchLeadsService } = await import("./batchleads");
+      const results = await batchLeadsService.searchCashBuyersRaw({ location, limit });
+      
+      res.json({
+        success: true,
+        location: location,
+        totalFound: results.totalFound,
+        returned: results.buyers.length,
+        buyers: results.buyers
+      });
+    } catch (error: any) {
+      console.error("💰 Cash buyer search error:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: error.message || "Failed to search cash buyers" 
+      });
+    }
+  });
+
   // Public demo endpoints (no auth required for testing)
   app.get('/api/demo/batchleads/:location?', async (req, res) => {
     try {

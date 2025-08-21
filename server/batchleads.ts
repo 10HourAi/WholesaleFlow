@@ -758,6 +758,62 @@ class BatchLeadsService {
     return 'standard';
   }
 
+  // NEW: Simple raw cash buyer search - returns all data as-is from BatchData API
+  async searchCashBuyersRaw(criteria: { location: string; limit?: number }): Promise<{
+    buyers: any[];
+    totalFound: number;
+    location: string;
+  }> {
+    const limit = criteria.limit || 5;
+    console.log(`💰 RAW SEARCH: Starting for location: ${criteria.location}, limit: ${limit}`);
+    
+    const requestBody = {
+      searchCriteria: {
+        query: criteria.location,
+        quickLists: ["cash-buyer"]
+      },
+      options: {
+        skip: 0,
+        take: limit,
+        skipTrace: true, // Get contact info
+        includeBuilding: true,
+        includePropertyDetails: true,
+        includeAssessment: true,
+        images: false
+      }
+    };
+
+    console.log(`💰 RAW REQUEST:`, JSON.stringify(requestBody, null, 2));
+
+    try {
+      const response = await this.makeRequest('/api/v1/property/search', requestBody);
+      
+      console.log(`💰 RAW RESPONSE SUMMARY:`, {
+        propertiesFound: response.results?.properties?.length || 0,
+        totalResults: response.meta?.totalResults || 0
+      });
+      
+      // Return completely raw data - no processing
+      const buyers = response.results?.properties || [];
+      
+      console.log(`💰 RETURNING RAW BUYERS:`, buyers.length);
+      
+      // Log first buyer for debugging
+      if (buyers.length > 0) {
+        console.log(`💰 FIRST RAW BUYER:`, JSON.stringify(buyers[0], null, 2));
+      }
+
+      return {
+        buyers: buyers,
+        totalFound: response.meta?.totalResults || 0,
+        location: criteria.location
+      };
+    } catch (error) {
+      console.error(`💰 RAW SEARCH ERROR:`, error);
+      throw error;
+    }
+  }
+
   // Search for cash buyers using BatchLeads quicklists.cashbuyer API
   async searchCashBuyers(criteria: { location: string }, limit = 5): Promise<{
     data: any[];
