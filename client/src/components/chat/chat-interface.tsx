@@ -77,11 +77,15 @@ export default function ChatInterface() {
       setCurrentConversation(conversation.id);
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
       
-      // Check for and send pending cash buyer response
+      // Check for and send pending cash buyer response and individual cards
       const pendingResponse = localStorage.getItem('pendingCashBuyerResponse');
+      const pendingCards = localStorage.getItem('pendingCashBuyerCards');
+      
       if (pendingResponse) {
         localStorage.removeItem('pendingCashBuyerResponse');
-        // Send the pending response directly to the new conversation
+        localStorage.removeItem('pendingCashBuyerCards');
+        
+        // Send the intro message first
         setTimeout(async () => {
           try {
             await apiRequest("POST", `/api/conversations/${conversation.id}/messages`, {
@@ -89,6 +93,20 @@ export default function ChatInterface() {
               role: "assistant",
               isAiGenerated: true
             });
+            
+            // If we have individual buyer cards, send each as a separate message
+            if (pendingCards) {
+              const buyerCards = JSON.parse(pendingCards);
+              for (let i = 0; i < buyerCards.length; i++) {
+                await new Promise(resolve => setTimeout(resolve, 300)); // Small delay between cards
+                await apiRequest("POST", `/api/conversations/${conversation.id}/messages`, {
+                  content: buyerCards[i],
+                  role: "assistant",
+                  isAiGenerated: true
+                });
+              }
+            }
+            
             queryClient.invalidateQueries({ queryKey: ["/api/conversations", conversation.id, "messages"] });
           } catch (error) {
             console.error('Failed to send pending cash buyer response:', error);
@@ -354,14 +372,17 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
         throw new Error(cashBuyerData.error || 'Failed to fetch cash buyers');
       }
       
-      // Format cash buyer results to match seller lead card format
-      let formattedResponse = `Great! I found 5 active cash buyers in **${location}**. Here are qualified investors ready to purchase:\n\n`;
-      
+      // Store individual cash buyer cards to be sent as separate messages
       if (cashBuyerData.buyers && cashBuyerData.buyers.length > 0) {
         // Limit to exactly 5 buyers
         const buyersToShow = cashBuyerData.buyers.slice(0, 5);
         
-        buyersToShow.forEach((buyer: any, index: number) => {
+        // Store intro message
+        const introMessage = `Great! I found 5 active cash buyers in **${location}**. Here are qualified investors ready to purchase:`;
+        localStorage.setItem('pendingCashBuyerResponse', introMessage);
+        
+        // Store individual buyer cards
+        const buyerCards = buyersToShow.map((buyer: any, index: number) => {
           const address = buyer.address || {};
           const owner = buyer.owner || {};
           const valuation = buyer.valuation || {};
@@ -374,37 +395,35 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
             'Available via skip trace';
           const bestEmail = owner.emails && owner.emails[0] ? owner.emails[0] : 'Available via skip trace';
           
-          // Create individual card for each cash buyer
-          formattedResponse += `<div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 8px 0;">\n\n`;
-          formattedResponse += `**💰 CASH BUYER ${index + 1}**\n\n`;
+          // Create individual card content
+          let cardContent = `**💰 CASH BUYER ${index + 1}**\n\n`;
           
-          formattedResponse += `**PROPERTY DETAILS:**\n`;
-          formattedResponse += `📍 Address: ${address.street}, ${address.city}, ${address.state} ${address.zip}\n`;
-          formattedResponse += `💰 Property Value: $${valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : 'N/A'}\n`;
-          formattedResponse += `🏠 Building: ${building.bedrooms || 'N/A'}BR/${building.bathrooms || 'N/A'}BA, ${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() : 'N/A'} sq ft\n`;
-          formattedResponse += `🗓️ Year Built: ${building.yearBuilt || 'N/A'}\n`;
+          cardContent += `**PROPERTY DETAILS:**\n`;
+          cardContent += `📍 Address: ${address.street}, ${address.city}, ${address.state} ${address.zip}\n`;
+          cardContent += `💰 Property Value: $${valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : 'N/A'}\n`;
+          cardContent += `🏠 Building: ${building.bedrooms || 'N/A'}BR/${building.bathrooms || 'N/A'}BA, ${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() : 'N/A'} sq ft\n`;
+          cardContent += `🗓️ Year Built: ${building.yearBuilt || 'N/A'}\n`;
           
-          formattedResponse += `\n**OWNER INFORMATION:**\n`;
-          formattedResponse += `👤 Owner Name: ${owner.fullName || 'Active Investor'}\n`;
-          formattedResponse += `📞 Owner Phone: ${bestPhone}\n`;
-          formattedResponse += `📧 Owner Email: ${bestEmail}\n`;
-          formattedResponse += `📮 Mailing Address: ${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}\n`;
+          cardContent += `\n**OWNER INFORMATION:**\n`;
+          cardContent += `👤 Owner Name: ${owner.fullName || 'Active Investor'}\n`;
+          cardContent += `📞 Owner Phone: ${bestPhone}\n`;
+          cardContent += `📧 Owner Email: ${bestEmail}\n`;
+          cardContent += `📮 Mailing Address: ${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}\n`;
           
-          formattedResponse += `\n**FINANCIAL ANALYSIS:**\n`;
-          formattedResponse += `📊 Equity Percentage: ${valuation.equityPercent ? `${Math.round(valuation.equityPercent)}%` : '100%'}\n`;
-          formattedResponse += `⭐ Investment Score: ${quickLists.cashBuyer ? '95/100' : '85/100'}\n`;
-          formattedResponse += `🏷️ Buyer Type: ${quickLists.fixAndFlip ? 'Fix & Flip' : quickLists.corporateOwned ? 'Corporate Investor' : 'Cash Buyer'}\n`;
-          formattedResponse += `✅ Investment Status: ${quickLists.cashBuyer ? 'Verified Cash Buyer' : 'Active Investor'}\n\n`;
-          formattedResponse += `</div>\n\n`;
+          cardContent += `\n**FINANCIAL ANALYSIS:**\n`;
+          cardContent += `📊 Equity Percentage: ${valuation.equityPercent ? `${Math.round(valuation.equityPercent)}%` : '100%'}\n`;
+          cardContent += `⭐ Investment Score: ${quickLists.cashBuyer ? '95/100' : '85/100'}\n`;
+          cardContent += `🏷️ Buyer Type: ${quickLists.fixAndFlip ? 'Fix & Flip' : quickLists.corporateOwned ? 'Corporate Investor' : 'Cash Buyer'}\n`;
+          cardContent += `✅ Investment Status: ${quickLists.cashBuyer ? 'Verified Cash Buyer' : 'Active Investor'}`;
+          
+          return cardContent;
         });
         
-        formattedResponse += `*These are verified active cash buyers in ${location}. All contact information is current and validated.*`;
+        localStorage.setItem('pendingCashBuyerCards', JSON.stringify(buyerCards));
       } else {
-        formattedResponse += `No active cash buyers found in ${location}. Try expanding your search area.`;
+        const errorMessage = `No active cash buyers found in ${location}. Try expanding your search area.`;
+        localStorage.setItem('pendingCashBuyerResponse', errorMessage);
       }
-      
-      // Store the formatted response to be sent
-      localStorage.setItem('pendingCashBuyerResponse', formattedResponse);
       
       // Create conversation or send message
       if (!currentConversation) {
