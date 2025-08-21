@@ -770,7 +770,7 @@ class BatchLeadsService {
     const requestBody: any = {
       searchCriteria: {
         query: criteria.location,
-        quickLists: ["cashbuyer"] // Use the quicklists.cashbuyer endpoint
+        quickLists: ["cash-buyer"] // Use the quicklists.cash-buyer endpoint
       },
       options: {
         skip: 0,
