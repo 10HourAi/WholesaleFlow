@@ -356,7 +356,6 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
     
     try {
       // Call the dedicated cash buyer API endpoint directly with cache-busting
-      console.log('🔥 FRONTEND: Calling dedicated cash buyer API with location:', location);
       
       const cacheBustingTimestamp = Date.now();
       const response = await fetch(`/api/cash-buyers/search?t=${cacheBustingTimestamp}`, {
@@ -376,10 +375,6 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
       });
       
       const cashBuyerData = await response.json();
-      console.log('🔥 FRONTEND: Cash buyer API response:', cashBuyerData);
-      console.log('🔥 FRONTEND: Response timestamp:', cashBuyerData.timestamp);
-      console.log('🔥 FRONTEND: Total found:', cashBuyerData.totalFound);
-      console.log('🔥 FRONTEND: Buyers returned:', cashBuyerData.returned);
       
       if (!cashBuyerData.success) {
         throw new Error(cashBuyerData.error || 'Failed to fetch cash buyers');

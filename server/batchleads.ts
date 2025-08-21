@@ -183,8 +183,7 @@ class BatchLeadsService {
       requestBody.searchCriteria.valuation.estimatedValue = {
         max: criteria.maxPrice
       };
-      console.log(`💰 Added price filter: max $${criteria.maxPrice.toLocaleString()}`);
-    }
+      }
 
     console.log(`📋 Full request body:`, JSON.stringify(requestBody, null, 2));
 
@@ -765,7 +764,6 @@ class BatchLeadsService {
     location: string;
   }> {
     const limit = criteria.limit || 5;
-    console.log(`💰 RAW SEARCH: Starting for location: ${criteria.location}, limit: ${limit}`);
     
     const requestBody = {
       searchCriteria: {
@@ -783,7 +781,6 @@ class BatchLeadsService {
       }
     };
 
-    console.log(`💰 RAW REQUEST:`, JSON.stringify(requestBody, null, 2));
 
     try {
       const response = await this.makeRequest('/api/v1/property/search', requestBody);
@@ -796,10 +793,7 @@ class BatchLeadsService {
       // Filter buyers to only include those with at least 3 properties
       const allBuyers = response.results?.properties || [];
       
-      console.log(`💰 RAW BUYERS BEFORE FILTERING:`, allBuyers.length);
       
-      // Log all buyer names found for debugging
-      console.log(`💰 ALL BUYERS FOUND:`, allBuyers.map(b => `${b.owner?.fullName} (${b.propertyOwnerProfile?.propertiesCount || 0} properties)`));
       
       // Filter to only include cash buyers with at least 3 properties AND recent sale activity
       const filteredBuyers = allBuyers.filter((buyer: any) => {
@@ -829,17 +823,14 @@ class BatchLeadsService {
         
         const qualifies = hasMinProperties && hasRecentSale;
         
-        console.log(`💰 BUYER FILTER: ${buyer.owner?.fullName} - Properties: ${propertyCount}, Last Sale: ${lastSaleDate}, Recent Sale: ${hasRecentSale}, Qualifies: ${qualifies}`);
         
         return qualifies;
       });
       
-      console.log(`💰 BUYERS AFTER FILTERING (3+ properties AND recent sale):`, filteredBuyers.length);
       
       // Take only the requested limit from filtered results
       const buyers = filteredBuyers.slice(0, limit);
       
-      console.log(`💰 RETURNING FILTERED BUYERS:`, buyers.length);
       
 
       return {
@@ -860,8 +851,7 @@ class BatchLeadsService {
     filtered: number;
     hasMore: boolean;
   }> {
-    console.log(`💰 Starting Cash Buyer search for: "${criteria.location}"`);
-    
+      
     const requestBody: any = {
       searchCriteria: {
         query: criteria.location,
@@ -877,8 +867,7 @@ class BatchLeadsService {
       }
     };
 
-    console.log(`💰 Cash Buyer request body:`, JSON.stringify(requestBody, null, 2));
-
+  
     try {
       const response = await this.makeRequest('/api/v1/property/search', requestBody);
       
@@ -887,13 +876,10 @@ class BatchLeadsService {
         totalResults: response.meta?.totalResults || 0
       });
       
-      // Log complete API response for debugging
-      console.log(`💰 COMPLETE CASH BUYER API RESPONSE:`, JSON.stringify(response, null, 2));
       
       // Log first buyer for debugging
       if (response.results?.properties?.length > 0) {
         const firstBuyer = response.results.properties[0];
-        console.log(`💰 FIRST CASH BUYER RAW DATA:`, JSON.stringify(firstBuyer, null, 2));
       }
 
       const buyers = (response.results?.properties || []).slice(0, limit).map((buyer: any, index: number) => {
@@ -980,7 +966,6 @@ class BatchLeadsService {
       rawDataAvailable: true
     };
     
-    console.log(`💰 Converted buyer ${index}:`, JSON.stringify(convertedBuyer, null, 2));
     return convertedBuyer;
   }
   
