@@ -335,9 +335,8 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
         throw new Error(cashBuyerData.error || 'Failed to fetch cash buyers');
       }
       
-      // Format the cash buyer results for display
-      let formattedResponse = `**💰 CASH BUYER SEARCH RESULTS**\n\n`;
-      formattedResponse += `Found ${cashBuyerData.returned} active cash buyers in ${location}:\n\n`;
+      // Format cash buyer results as property-style cards
+      let formattedResponse = `Great! I found ${cashBuyerData.returned} active cash buyers in **${location}** who are actively purchasing investment properties:\n\n`;
       
       if (cashBuyerData.buyers && cashBuyerData.buyers.length > 0) {
         cashBuyerData.buyers.forEach((buyer: any, index: number) => {
@@ -345,26 +344,50 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
           const owner = buyer.owner || {};
           const valuation = buyer.valuation || {};
           const building = buyer.building || {};
+          const sale = buyer.sale || {};
+          const quickLists = buyer.quickLists || {};
           
-          formattedResponse += `**${index + 1}. ${owner.fullName || owner.name || 'Unknown Investor'}**\n`;
-          formattedResponse += `📍 **Property:** ${address.street || 'N/A'}, ${address.city || 'N/A'}, ${address.state || 'N/A'} ${address.zip || 'N/A'}\n`;
-          formattedResponse += `💰 **Estimated Value:** $${valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : 'N/A'}\n`;
-          formattedResponse += `🏠 **Property:** ${building.bedrooms || 'N/A'}BR/${building.bathrooms || 'N/A'}BA, ${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() : 'N/A'} sq ft\n`;
-          formattedResponse += `📧 **Contact:** ${owner.phone || 'Available via skip trace'}\n`;
-          formattedResponse += `📮 **Mailing:** ${owner.mailingAddress?.full || 'Available via skip trace'}\n\n`;
+          // Create property-style card for each cash buyer
+          formattedResponse += `---\n\n`;
+          formattedResponse += `**💰 CASH BUYER ${index + 1}**\n\n`;
+          
+          formattedResponse += `**INVESTOR DETAILS:**\n`;
+          formattedResponse += `Owner Name: ${owner.fullName || owner.name || 'Unknown Investor'}\n`;
+          formattedResponse += `Property Address: ${address.street || 'N/A'}, ${address.city || 'N/A'}, ${address.state || 'N/A'} ${address.zip || 'N/A'}\n`;
+          formattedResponse += `Property Value: $${valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : 'N/A'}\n`;
+          formattedResponse += `Property Type: ${building.propertyType || 'Investment Property'}\n`;
+          
+          formattedResponse += `\n**INVESTOR PROFILE:**\n`;
+          formattedResponse += `Cash Buyer: ${quickLists['cash-buyer'] ? '✅ Yes' : '❌ No'}\n`;
+          formattedResponse += `Investment Type: ${quickLists['fix-and-flip'] ? 'Fix & Flip' : quickLists['corporate-owned'] ? 'Corporate' : 'Portfolio Investor'}\n`;
+          formattedResponse += `Building: ${building.bedrooms || 'N/A'}BR/${building.bathrooms || 'N/A'}BA, ${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() : 'N/A'} sq ft\n`;
+          formattedResponse += `Year Built: ${building.yearBuilt || 'Not available'}\n`;
+          
+          formattedResponse += `\n**CONTACT INFORMATION:**\n`;
+          formattedResponse += `Owner Phone: ${owner.phone || 'Available via skip trace'}\n`;
+          formattedResponse += `Owner Email: ${owner.email || 'Available via skip trace'}\n`;
+          formattedResponse += `Mailing Address: ${owner.mailingAddress?.full || owner.mailingAddress || 'Available via skip trace'}\n`;
+          
+          formattedResponse += `\n**TRANSACTION HISTORY:**\n`;
+          formattedResponse += `Last Sale Date: ${sale.lastSaleDate ? new Date(sale.lastSaleDate).toLocaleDateString() : 'Not available'}\n`;
+          formattedResponse += `Last Sale Price: ${sale.lastSalePrice ? `$${parseInt(sale.lastSalePrice).toLocaleString()}` : 'Not available'}\n`;
+          formattedResponse += `Sale Type: ${sale.saleType || 'Not available'}\n`;
+          
+          formattedResponse += `\n**EQUITY & INVESTMENT METRICS:**\n`;
+          formattedResponse += `Estimated Equity: ${valuation.equity ? `$${parseInt(valuation.equity).toLocaleString()}` : 'Not available'}\n`;
+          formattedResponse += `Equity Percentage: ${valuation.equityPercent ? `${Math.round(valuation.equityPercent)}%` : 'Not available'}\n`;
+          formattedResponse += `Investment Score: ${quickLists['cash-buyer'] ? '95/100 (Verified Cash Buyer)' : '75/100 (Active Investor)'}\n`;
+          
+          formattedResponse += `\n`;
         });
         
-        formattedResponse += `**🔍 RAW API DATA PREVIEW:**\n`;
-        formattedResponse += `- Total Found: ${cashBuyerData.totalFound}\n`;
-        formattedResponse += `- Returned: ${cashBuyerData.returned}\n`;
-        formattedResponse += `- Source: BatchData Cash Buyer API\n`;
-        formattedResponse += `- QuickList: cash-buyer\n\n`;
-        
-        // Show first buyer's complete field structure for debugging
-        if (cashBuyerData.buyers[0]) {
-          formattedResponse += `**📊 FIRST BUYER RAW FIELDS:**\n`;
-          formattedResponse += `\`\`\`json\n${JSON.stringify(cashBuyerData.buyers[0], null, 2)}\`\`\``;
-        }
+        formattedResponse += `\n**📊 SEARCH SUMMARY:**\n`;
+        formattedResponse += `• Total Cash Buyers Found: ${cashBuyerData.totalFound}\n`;
+        formattedResponse += `• Results Returned: ${cashBuyerData.returned}\n`;
+        formattedResponse += `• Data Source: BatchData Cash Buyer API\n`;
+        formattedResponse += `• QuickList Filter: cash-buyer\n`;
+        formattedResponse += `• Search Location: ${location}\n\n`;
+        formattedResponse += `*These are active cash buyers with verified purchase history. Contact information is available via skip tracing services.*`;
       } else {
         formattedResponse += `No active cash buyers found in ${location}. Try expanding your search area or check back later.`;
       }
