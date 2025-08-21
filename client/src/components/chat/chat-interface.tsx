@@ -425,45 +425,44 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
           const regularPhones = phoneNumbers.filter(p => !p.dnc);
           const dncPhones = phoneNumbers.filter(p => p.dnc);
           
-          // Create card content matching the exact format with numbering
-          let cardContent = `🎉 Cash Buyer Lead Found #${index + 1}!\n`;
-          cardContent += `📍 Location: ${address.city}, ${address.state}\n\n`;
+          // Create modern, sleek card design
+          let cardContent = `🎯 QUALIFIED CASH BUYER #${index + 1}\n`;
+          cardContent += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
           
-          cardContent += `👤\n`;
+          cardContent += `👤 INVESTOR PROFILE\n`;
           cardContent += `${owner.fullName || 'ACTIVE CASH INVESTOR'}\n`;
-          cardContent += `\n🏢 Property Owner Profile\n`;
-          cardContent += `Total Portfolio Value\t$${ownerProfile.propertiesTotalEstimatedValue ? parseInt(ownerProfile.propertiesTotalEstimatedValue).toLocaleString() + '.00' : 'N/A'}\n`;
-          cardContent += `Properties Count\t${ownerProfile.propertiesCount || 'N/A'}\n`;
-          cardContent += `Average Purchase Price\t$${ownerProfile.averagePurchasePrice ? parseInt(ownerProfile.averagePurchasePrice).toLocaleString() + '.00' : 'N/A'}\n`;
-          cardContent += `Last Sale Date\t${lastSaleDate}\n`;
+          cardContent += `📍 Based in ${address.city}, ${address.state}\n\n`;
           
-          cardContent += `\n🏠 Last Property Purchased\n`;
-          cardContent += `Property Address      ${address.street}, ${address.city}, ${address.state} ${address.zip}\n`;
-          cardContent += `░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░\n`;
-          cardContent += `Total Area            ${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() + ' sqft' : 'N/A'}\n`;
-          cardContent += `Bedrooms              ${building.bedrooms || 'N/A'}\n`;
-          cardContent += `░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░\n`;
-          cardContent += `Bathrooms             ${building.bathrooms || 'N/A'}\n`;
-          cardContent += `Property Type         ${building.propertyType || 'Single Family'}\n`;
-          cardContent += `░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░\n`;
-          cardContent += `Last Sale Date        ${lastSaleDate}\n`;
-          cardContent += `Last Sale Price       $${sale.lastSalePrice ? parseInt(sale.lastSalePrice).toLocaleString() + '.00' : valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() + '.00' : 'N/A'}\n`;
+          cardContent += `💰 PORTFOLIO OVERVIEW\n`;
+          cardContent += `• Total Portfolio Value: $${ownerProfile.propertiesTotalEstimatedValue ? parseInt(ownerProfile.propertiesTotalEstimatedValue).toLocaleString() + '.00' : 'N/A'}\n`;
+          cardContent += `• Properties Owned: ${ownerProfile.propertiesCount || 'N/A'} properties\n`;
+          cardContent += `• Avg Purchase Price: $${ownerProfile.averagePurchasePrice ? parseInt(ownerProfile.averagePurchasePrice).toLocaleString() + '.00' : 'N/A'}\n`;
+          cardContent += `• Last Activity: ${lastSaleDate}\n\n`;
           
-          cardContent += `\n📞 Contact Information\n`;
-          cardContent += `Mailing Address\t${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}\n`;
-          cardContent += `Email(s)\t${emailList}\n`;
+          cardContent += `🏠 RECENT PURCHASE\n`;
+          cardContent += `📍 ${address.street}\n`;
+          cardContent += `    ${address.city}, ${address.state} ${address.zip}\n`;
+          cardContent += `🏘️ ${building.propertyType || 'Single Family'} • ${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() + ' sqft' : 'N/A'}\n`;
+          cardContent += `🛏️ ${building.bedrooms || 'N/A'} bed • 🛁 ${building.bathrooms || 'N/A'} bath\n`;
+          cardContent += `💵 Last Sale: $${sale.lastSalePrice ? parseInt(sale.lastSalePrice).toLocaleString() + '.00' : valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() + '.00' : 'N/A'}\n\n`;
+          
+          cardContent += `📞 CONTACT DETAILS\n`;
+          cardContent += `📧 ${emailList}\n`;
+          cardContent += `📮 ${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}\n`;
           
           if (regularPhones.length > 0) {
-            cardContent += `Phone(s)\t${formatPhoneNumbers(regularPhones)}\n`;
+            cardContent += `📱 ${formatPhoneNumbers(regularPhones)}\n`;
           }
           
           if (dncPhones.length > 0) {
-            cardContent += `DNC Phone(s)\t${formatPhoneNumbers(dncPhones)}\n`;
+            cardContent += `🚫 DNC: ${formatPhoneNumbers(dncPhones)}\n`;
           }
           
           if (regularPhones.length === 0 && dncPhones.length === 0) {
-            cardContent += `Phone(s)\tAvailable via skip trace\n`;
+            cardContent += `📱 Available via skip trace\n`;
           }
+          
+          cardContent += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
           
           return cardContent;
         });
