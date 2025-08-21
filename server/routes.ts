@@ -143,7 +143,88 @@ export async function registerRoutes(app: Express): Promise<Server> {
                                      validatedData.content.toLowerCase().includes('properties in') ||
                                      validatedData.content.match(/\d+\s+properties/i);
             
-            if (isPropertySearch) {
+            // Check if this is a cash buyer search request from Cash Buyer Wizard
+            const isCashBuyerSearch = validatedData.content.toLowerCase().match(/(find|search|show|get)\s+(cash\s+buyers?|buyers?)/i) ||
+                                      validatedData.content.toLowerCase().includes('cash buyers in');
+            
+            if (isCashBuyerSearch) {
+              // Route directly to BatchLeads Cash Buyer API, bypass OpenAI
+              const { batchLeadsService } = await import("./batchleads");
+              
+              // Extract location from message
+              let location = 'Orlando, FL'; // Default
+              const locationMatch = validatedData.content.match(/in\s+([^,\n]+(?:,\s*[A-Z]{2})?)/i);
+              if (locationMatch) {
+                location = locationMatch[1].trim();
+              }
+              
+              console.log(`💰 ROUTES: About to call BatchLeads Cash Buyer API with location:`, location);
+              const results = await batchLeadsService.searchCashBuyers({ location }, 5);
+              console.log(`💰 ROUTES: Cash Buyer API returned:`, JSON.stringify(results, null, 2));
+              
+              if (results.data.length === 0) {
+                aiResponse = `I couldn't find any cash buyers in ${location}. Try a different location or check back later as new buyers enter the market regularly.`;
+              } else {
+                // Format response with comprehensive cash buyer data
+                let response = `**💰 COMPLETE CASH BUYER API RESPONSE ANALYSIS:**\n\n`;
+                
+                // Show first buyer's complete field structure
+                if (results.data.length > 0) {
+                  const firstBuyer = results.data[0];
+                  response += `**📊 BUYER 1 - COMPLETE FIELD BREAKDOWN:**\n`;
+                  response += `Name: ${firstBuyer.name}\n`;
+                  response += `**All Available Fields and Values:**\n`;
+                  
+                  Object.entries(firstBuyer).forEach(([key, value]) => {
+                    if (key === 'rawData') return; // Skip raw data in display
+                    if (value === null) {
+                      response += `- ${key}: NULL (not provided by API)\n`;
+                    } else if (value === undefined) {
+                      response += `- ${key}: UNDEFINED\n`;
+                    } else {
+                      response += `- ${key}: "${value}"\n`;
+                    }
+                  });
+                  
+                  response += `\n**📈 DATA SUMMARY:**\n`;
+                  response += `- Total Cash Buyers: ${results.data.length}\n`;
+                  response += `- Active Investors: ${results.data.filter(b => b.activeInvestor).length}\n`;
+                  response += `- Portfolio Investors: ${results.data.filter(b => b.portfolioInvestor).length}\n`;
+                  response += `- Data Source: BatchLeads Cash Buyer Quicklists\n\n`;
+                  response += `---\n\n`;
+                }
+                
+                // Format response with comprehensive cash buyer data
+                response += `**💰 CASH BUYER DETAILS:**\n\n`;
+                response += `Great! I found ${results.data.length} active cash buyers in "${location}" who are actively purchasing investment properties:\n\n`;
+                
+                results.data.forEach((buyer, index) => {
+                  response += `${index + 1}. **${buyer.name}**\n`;
+                  response += `   📍 **Location:** ${buyer.address}, ${buyer.city}, ${buyer.state} ${buyer.zipCode}\n`;
+                  response += `   💰 **Investment Profile:**\n`;
+                  response += `   - Investment Type: ${buyer.investmentType}\n`;
+                  response += `   - Buyer Score: ${buyer.buyerScore}/100\n`;
+                  response += `   - Portfolio Value: $${buyer.totalPortfolioValue ? parseInt(buyer.totalPortfolioValue).toLocaleString() : 'N/A'}\n`;
+                  response += `   - Property Count: ${buyer.propertyCount} ${buyer.propertyCount === 1 ? 'property' : 'properties'}\n`;
+                  response += `   📞 **Contact Information:**\n`;
+                  response += `   - Phone: ${buyer.phone}\n`;
+                  response += `   - Email: ${buyer.email}\n`;
+                  response += `   - Mailing Address: ${buyer.mailingAddress}\n`;
+                  response += `   🏠 **Property Details:**\n`;
+                  response += `   - Property Type: ${buyer.propertyType}\n`;
+                  response += `   - Building: ${buyer.bedrooms || 'Unknown'}BR/${buyer.bathrooms || 'Unknown'}BA, ${buyer.squareFeet?.toLocaleString() || 'Unknown'} sq ft\n`;
+                  response += `   - Year Built: ${buyer.yearBuilt || 'Not available'}\n`;
+                  response += `   📊 **Investor Activity:**\n`;
+                  response += `   - Active Investor: ${buyer.activeInvestor ? '✅ Yes' : '❌ No'}\n`;
+                  response += `   - Portfolio Investor: ${buyer.portfolioInvestor ? '✅ Yes' : '❌ No'}\n`;
+                  response += `   - Out of State: ${buyer.outOfStateOwner ? '✅ Yes' : '❌ No'}\n`;
+                  response += `   - Last Transaction: ${buyer.lastTransactionDate ? new Date(buyer.lastTransactionDate).toLocaleDateString() : 'Not available'}\n`;
+                  response += `   - Last Purchase Price: ${buyer.lastTransactionPrice ? `$${parseInt(buyer.lastTransactionPrice).toLocaleString()}` : 'Not available'}\n\n`;
+                });
+                
+                aiResponse = response;
+              }
+            } else if (isPropertySearch) {
               // Route directly to BatchLeads API, bypass OpenAI
               const { batchLeadsService } = await import("./batchleads");
               
