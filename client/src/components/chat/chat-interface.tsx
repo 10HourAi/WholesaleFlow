@@ -354,8 +354,8 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
         throw new Error(cashBuyerData.error || 'Failed to fetch cash buyers');
       }
       
-      // Format exactly 5 cash buyer results as individual cards  
-      let formattedResponse = `Great! I found active cash buyers in **${location}**. Here are 5 qualified investors:\n\n`;
+      // Format cash buyer results to match seller lead card format
+      let formattedResponse = `Great! I found 5 active cash buyers in **${location}**. Here are qualified investors ready to purchase:\n\n`;
       
       if (cashBuyerData.buyers && cashBuyerData.buyers.length > 0) {
         // Limit to exactly 5 buyers
@@ -374,37 +374,30 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
             'Available via skip trace';
           const bestEmail = owner.emails && owner.emails[0] ? owner.emails[0] : 'Available via skip trace';
           
-          formattedResponse += `---\n\n`;
           formattedResponse += `**💰 CASH BUYER ${index + 1}**\n\n`;
           
-          formattedResponse += `**BUYER DETAILS:**\n`;
-          formattedResponse += `Investor Name: ${owner.fullName || 'Active Investor'}\n`;
-          formattedResponse += `Property Address: ${address.street}, ${address.city}, ${address.state} ${address.zip}\n`;
+          formattedResponse += `**PROPERTY DETAILS:**\n`;
+          formattedResponse += `Address: ${address.street}, ${address.city}, ${address.state} ${address.zip}\n`;
           formattedResponse += `Property Value: $${valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : 'N/A'}\n`;
-          formattedResponse += `Investment Type: ${quickLists.cashBuyer ? 'Verified Cash Buyer' : 'Active Investor'}\n`;
-          
-          formattedResponse += `\n**PROPERTY PORTFOLIO:**\n`;
           formattedResponse += `Building: ${building.bedrooms || 'N/A'}BR/${building.bathrooms || 'N/A'}BA, ${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() : 'N/A'} sq ft\n`;
           formattedResponse += `Year Built: ${building.yearBuilt || 'N/A'}\n`;
-          formattedResponse += `Property Status: ${quickLists.ownerOccupied ? 'Owner Occupied' : quickLists.absenteeOwner ? 'Investment Property' : 'Investment'}\n`;
-          formattedResponse += `Equity Position: ${valuation.equityPercent ? `${Math.round(valuation.equityPercent)}%` : 'High Equity'}\n`;
           
-          formattedResponse += `\n**CONTACT INFORMATION:**\n`;
-          formattedResponse += `Primary Phone: ${bestPhone}\n`;
-          formattedResponse += `Email Address: ${bestEmail}\n`;
+          formattedResponse += `\n**OWNER INFORMATION:**\n`;
+          formattedResponse += `Owner Name: ${owner.fullName || 'Active Investor'}\n`;
+          formattedResponse += `Owner Phone: ${bestPhone}\n`;
+          formattedResponse += `Owner Email: ${bestEmail}\n`;
           formattedResponse += `Mailing Address: ${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}\n`;
           
-          formattedResponse += `\n**INVESTMENT PROFILE:**\n`;
-          formattedResponse += `Portfolio Value: $${valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : 'N/A'}\n`;
-          formattedResponse += `Buyer Type: ${quickLists.fixAndFlip ? 'Fix & Flip' : quickLists.corporateOwned ? 'Corporate' : 'Cash Investor'}\n`;
-          formattedResponse += `Investment Score: ${quickLists.cashBuyer ? '95/100 (Active Cash Buyer)' : '85/100 (Qualified Investor)'}\n`;
-          
-          formattedResponse += `\n`;
+          formattedResponse += `\n**FINANCIAL ANALYSIS:**\n`;
+          formattedResponse += `Equity Percentage: ${valuation.equityPercent ? `${Math.round(valuation.equityPercent)}%` : '100%'}\n`;
+          formattedResponse += `Investment Score: ${quickLists.cashBuyer ? '95/100' : '85/100'}\n`;
+          formattedResponse += `Buyer Type: ${quickLists.fixAndFlip ? 'Fix & Flip' : quickLists.corporateOwned ? 'Corporate Investor' : 'Cash Buyer'}\n`;
+          formattedResponse += `Investment Status: ${quickLists.cashBuyer ? 'Verified Cash Buyer' : 'Active Investor'}\n\n`;
         });
         
-        formattedResponse += `**These are verified cash buyers actively investing in ${location}. All contact information is current and verified through BatchData.**`;
+        formattedResponse += `*These are verified active cash buyers in ${location}. All contact information is current and validated.*`;
       } else {
-        formattedResponse += `No active cash buyers found in ${location}. Try expanding your search area or check back later.`;
+        formattedResponse += `No active cash buyers found in ${location}. Try expanding your search area.`;
       }
       
       // Store the formatted response to be sent
