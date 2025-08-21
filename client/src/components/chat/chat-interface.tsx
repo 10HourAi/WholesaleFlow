@@ -430,36 +430,36 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
           cardContent += `📍 Location: ${address.city}, ${address.state}\n\n`;
           
           cardContent += `👤\n`;
-          cardContent += `**${owner.fullName || 'ACTIVE CASH INVESTOR'}**\n`;
+          cardContent += `${owner.fullName || 'ACTIVE CASH INVESTOR'}\n`;
           cardContent += `\n🏢 Property Owner Profile\n`;
-          cardContent += `**Total Portfolio Value**\t$${ownerProfile.propertiesTotalEstimatedValue ? parseInt(ownerProfile.propertiesTotalEstimatedValue).toLocaleString() + '.00' : 'N/A'}\n`;
-          cardContent += `**Properties Count**\t${ownerProfile.propertiesCount || 'N/A'}\n`;
-          cardContent += `**Average Purchase Price**\t$${ownerProfile.averagePurchasePrice ? parseInt(ownerProfile.averagePurchasePrice).toLocaleString() + '.00' : 'N/A'}\n`;
-          cardContent += `**Last Sale Date**\t${lastSaleDate}\n`;
+          cardContent += `Total Portfolio Value\t$${ownerProfile.propertiesTotalEstimatedValue ? parseInt(ownerProfile.propertiesTotalEstimatedValue).toLocaleString() + '.00' : 'N/A'}\n`;
+          cardContent += `Properties Count\t${ownerProfile.propertiesCount || 'N/A'}\n`;
+          cardContent += `Average Purchase Price\t$${ownerProfile.averagePurchasePrice ? parseInt(ownerProfile.averagePurchasePrice).toLocaleString() + '.00' : 'N/A'}\n`;
+          cardContent += `Last Sale Date\t${lastSaleDate}\n`;
           
           cardContent += `\n🏠 Last Property Purchased\n`;
-          cardContent += `**Property Address**\t${address.street}, ${address.city}, ${address.state} ${address.zip}\n`;
-          cardContent += `**Total Area**\t${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() + ' sqft' : 'N/A'}\n`;
-          cardContent += `**Bedrooms**\t${building.bedrooms || 'N/A'}\n`;
-          cardContent += `**Bathrooms**\t${building.bathrooms || 'N/A'}\n`;
-          cardContent += `**Property Type**\t${building.propertyType || 'Single Family'}\n`;
-          cardContent += `**Last Sale Date**\t${lastSaleDate}\n`;
-          cardContent += `**Last Sale Price**\t$${sale.lastSalePrice ? parseInt(sale.lastSalePrice).toLocaleString() + '.00' : valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() + '.00' : 'N/A'}\n`;
+          cardContent += `Property Address\t${address.street}, ${address.city}, ${address.state} ${address.zip}\n`;
+          cardContent += `Total Area\t${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() + ' sqft' : 'N/A'}\n`;
+          cardContent += `Bedrooms\t${building.bedrooms || 'N/A'}\n`;
+          cardContent += `Bathrooms\t${building.bathrooms || 'N/A'}\n`;
+          cardContent += `Property Type\t${building.propertyType || 'Single Family'}\n`;
+          cardContent += `Last Sale Date\t${lastSaleDate}\n`;
+          cardContent += `Last Sale Price\t$${sale.lastSalePrice ? parseInt(sale.lastSalePrice).toLocaleString() + '.00' : valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() + '.00' : 'N/A'}\n`;
           
           cardContent += `\n📞 Contact Information\n`;
-          cardContent += `**Mailing Address**\t${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}\n`;
-          cardContent += `**Email(s)**\t${emailList}\n`;
+          cardContent += `Mailing Address\t${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}\n`;
+          cardContent += `Email(s)\t${emailList}\n`;
           
           if (regularPhones.length > 0) {
-            cardContent += `**Phone(s)**\t${formatPhoneNumbers(regularPhones)}\n`;
+            cardContent += `Phone(s)\t${formatPhoneNumbers(regularPhones)}\n`;
           }
           
           if (dncPhones.length > 0) {
-            cardContent += `**DNC Phone(s)**\t${formatPhoneNumbers(dncPhones)}\n`;
+            cardContent += `DNC Phone(s)\t${formatPhoneNumbers(dncPhones)}\n`;
           }
           
           if (regularPhones.length === 0 && dncPhones.length === 0) {
-            cardContent += `**Phone(s)**\tAvailable via skip trace\n`;
+            cardContent += `Phone(s)\tAvailable via skip trace\n`;
           }
           
           return cardContent;
