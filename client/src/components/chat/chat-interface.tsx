@@ -76,6 +76,19 @@ export default function ChatInterface() {
     onSuccess: (conversation: Conversation) => {
       setCurrentConversation(conversation.id);
       queryClient.invalidateQueries({ queryKey: ["/api/conversations"] });
+      
+      // Check for and send pending cash buyer response
+      const pendingResponse = localStorage.getItem('pendingCashBuyerResponse');
+      if (pendingResponse) {
+        localStorage.removeItem('pendingCashBuyerResponse');
+        // Send the pending response as a message after conversation state is updated
+        setTimeout(() => {
+          sendMessageMutation.mutate({
+            content: pendingResponse,
+            role: "assistant",
+          });
+        }, 200);
+      }
     },
   });
 
@@ -392,23 +405,16 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
         formattedResponse += `No active cash buyers found in ${location}. Try expanding your search area or check back later.`;
       }
       
-      // Create conversation and add message
+      // Store the formatted response to be sent
+      localStorage.setItem('pendingCashBuyerResponse', formattedResponse);
+      
+      // Create conversation or send message
       if (!currentConversation) {
         createConversationMutation.mutate({
           agentType: selectedAgent,
           title: `Cash Buyers: ${location}`,
-        }, {
-          onSuccess: (newConversation) => {
-            // Send the formatted response as a message after conversation is created
-            sendMessageMutation.mutate({
-              conversationId: newConversation.id,
-              content: formattedResponse,
-              role: "assistant",
-            });
-          }
         });
       } else {
-        // Send message immediately if conversation already exists
         sendMessageMutation.mutate({
           content: formattedResponse,
           role: "assistant",
@@ -421,18 +427,13 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
       // Show error message
       const errorMessage = `❌ **Cash Buyer Search Failed**\n\nError: ${error.message}\n\nPlease try again or contact support if the issue persists.`;
       
+      // Store error message to be sent
+      localStorage.setItem('pendingCashBuyerResponse', errorMessage);
+      
       if (!currentConversation) {
         createConversationMutation.mutate({
           agentType: selectedAgent,
           title: `Cash Buyer Error: ${location}`,
-        }, {
-          onSuccess: (newConversation) => {
-            sendMessageMutation.mutate({
-              conversationId: newConversation.id,
-              content: errorMessage,
-              role: "assistant",
-            });
-          }
         });
       } else {
         sendMessageMutation.mutate({
