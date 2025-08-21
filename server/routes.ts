@@ -521,18 +521,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dedicated Cash Buyer API endpoint - returns raw data
   app.post("/api/cash-buyers/search", async (req, res) => {
     try {
-      const { location = "harrisburg, PA", limit = 5 } = req.body;
-      console.log(`💰 CASH BUYER API: Starting search for location: ${location}, limit: ${limit}`);
+      const { location = "harrisburg, PA", limit = 5, timestamp } = req.body;
+      console.log(`💰 CASH BUYER API: Starting search for location: ${location}, limit: ${limit}, timestamp: ${timestamp}`);
+      
+      // Set no-cache headers
+      res.set({
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
       
       const { batchLeadsService } = await import("./batchleads");
       const results = await batchLeadsService.searchCashBuyersRaw({ location, limit });
+      
+      console.log(`💰 CASH BUYER API: Returning ${results.buyers.length} buyers from ${results.totalFound} qualified`);
       
       res.json({
         success: true,
         location: location,
         totalFound: results.totalFound,
         returned: results.buyers.length,
-        buyers: results.buyers
+        buyers: results.buyers,
+        timestamp: Date.now() // Fresh timestamp
       });
     } catch (error: any) {
       console.error("💰 Cash buyer search error:", error);

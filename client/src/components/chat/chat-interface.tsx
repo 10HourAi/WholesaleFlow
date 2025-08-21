@@ -351,22 +351,29 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
     setBuyerWizardStep(1);
     
     try {
-      // Call the dedicated cash buyer API endpoint directly
+      // Call the dedicated cash buyer API endpoint directly with cache-busting
       console.log('🔥 FRONTEND: Calling dedicated cash buyer API with location:', location);
       
       const response = await fetch('/api/cash-buyers/search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
         },
         body: JSON.stringify({
           location: location,
-          limit: 5
+          limit: 5,
+          timestamp: Date.now() // Cache-busting timestamp
         })
       });
       
       const cashBuyerData = await response.json();
       console.log('🔥 FRONTEND: Cash buyer API response:', cashBuyerData);
+      console.log('🔥 FRONTEND: Response timestamp:', cashBuyerData.timestamp);
+      console.log('🔥 FRONTEND: Total found:', cashBuyerData.totalFound);
+      console.log('🔥 FRONTEND: Buyers returned:', cashBuyerData.returned);
       
       if (!cashBuyerData.success) {
         throw new Error(cashBuyerData.error || 'Failed to fetch cash buyers');
