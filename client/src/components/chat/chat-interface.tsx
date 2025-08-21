@@ -291,6 +291,111 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
     }
   };
 
+  const handleBuyerWizardSubmit = () => {
+    let location = '';
+    const cityInput = buyerWizardData.city.trim();
+    const zipPattern = /^\d{5}$/;
+    
+    if (zipPattern.test(cityInput)) {
+      location = cityInput;
+    } else if (cityInput.includes(',')) {
+      const parts = cityInput.split(',').map(p => p.trim());
+      if (parts.length >= 2 && parts[1].length === 2) {
+        location = cityInput;
+      } else {
+        location = `${parts[0]}, ${buyerWizardData.state}`;
+      }
+    } else {
+      location = `${cityInput}, ${buyerWizardData.state}`;
+    }
+    
+    let searchQuery = `Find cash buyers in ${location}`;
+    
+    setBuyerWizardProcessing(true);
+    setInputMessage(searchQuery);
+    setShowBuyerWizard(false);
+    setBuyerWizardStep(1);
+    
+    if (!currentConversation) {
+      createConversationMutation.mutate({
+        agentType: selectedAgent,
+        title: `Cash Buyer Search: ${buyerWizardData.city}, ${buyerWizardData.state}`,
+      });
+    } else {
+      sendMessageMutation.mutate({
+        content: searchQuery,
+        role: "user",
+      });
+    }
+  };
+
+  const renderBuyerWizard = () => {
+    if (!showBuyerWizard) return null;
+
+    return (
+      <Card className="mb-4 border-2 border-green-200">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-green-600" />
+            Cash Buyer Wizard - Step {buyerWizardStep} of 1
+          </CardTitle>
+          <p className="text-sm text-gray-600 mt-1">Find active real estate investors and cash buyers</p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg">Where are you looking for cash buyers?</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="buyer-city">City or ZIP Code</Label>
+                <Input
+                  id="buyer-city"
+                  placeholder="e.g., Valley Forge, Philadelphia, 19481"
+                  value={buyerWizardData.city}
+                  onChange={(e) => setBuyerWizardData({...buyerWizardData, city: e.target.value})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="buyer-state">State</Label>
+                <Select value={buyerWizardData.state} onValueChange={(value) => setBuyerWizardData({...buyerWizardData, state: value})}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select state" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {states.map((state) => (
+                      <SelectItem key={state} value={state}>{state}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-between pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowBuyerWizard(false);
+                setBuyerWizardStep(1);
+                setBuyerWizardData({ city: "", state: "" });
+              }}
+            >
+              Cancel
+            </Button>
+
+            <Button
+              onClick={handleBuyerWizardSubmit}
+              disabled={!buyerWizardData.city || !buyerWizardData.state}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+            >
+              <TrendingUp className="h-4 w-4" />
+              Find Cash Buyers
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -318,6 +423,8 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {renderBuyerWizard()}
+        
         {/* Processing indicator */}
         {(wizardProcessing || buyerWizardProcessing || sendMessageMutation.isPending) && (
           <Card className="border-2 border-blue-200 bg-blue-50">
@@ -344,7 +451,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
 
         {messages.length === 0 && !currentConversation && !showWizard && !showBuyerWizard && !wizardProcessing && !buyerWizardProcessing && (
           <div className="space-y-4">
-            {/* Agent Introduction */}
+            {/* Seller Lead Finder Card */}
             <div className="flex items-start space-x-3">
               <Avatar>
                 <AvatarImage />
@@ -356,7 +463,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                 <Card>
                   <CardContent className="p-4">
                     <p className="text-sm text-slate-900">
-                      {selectedAgent === "lead-finder" && "Hello! I'm your Lead Finder Agent. I can help you discover off-market properties, distressed sales, and motivated sellers. Use the wizard below to get started!"}
+                      {selectedAgent === "lead-finder" && "Hello! I'm your Seller Lead Finder. I can help you discover off-market properties, distressed sales, and motivated sellers. Use the wizard below to get started!"}
                       {selectedAgent === "deal-analyzer" && "Hi! I'm your Deal Analyzer Agent. I can help you analyze property deals, calculate ARV, estimate repair costs, and determine maximum allowable offers. Share a property address to get started!"}
                       {selectedAgent === "negotiation" && "Hello! I'm your Negotiation Agent. I can help you craft compelling offers, write follow-up messages, and develop negotiation strategies for your deals. What property are you working on?"}
                       {selectedAgent === "closing" && "Hi! I'm your Closing Agent. I can help you prepare contracts, coordinate closings, and manage documents. What deal are you looking to close?"}
@@ -370,7 +477,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                           className="flex items-center gap-2 mb-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
                         >
                           <Search className="h-4 w-4" />
-                          Use Lead Finder Wizard
+                          Use Seller Lead Wizard
                         </Button>
                       )}
                       {selectedAgent === "deal-analyzer" && (
@@ -399,6 +506,38 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                 </Card>
               </div>
             </div>
+            
+            {/* Cash Buyer Wizard Card - Only for Lead Finder */}
+            {selectedAgent === "lead-finder" && (
+              <div className="flex items-start space-x-3">
+                <Avatar>
+                  <AvatarImage />
+                  <AvatarFallback>
+                    <Search className="h-4 w-4" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <Card>
+                    <CardContent className="p-4">
+                      <p className="text-sm text-slate-900">
+                        Hello! I'm your Cash Buyer Finder. I can help you discover active real estate investors, cash buyers, and portfolio managers. Use the wizard below to get started!
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowBuyerWizard(true)}
+                          className="flex items-center gap-2 mb-2 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                        >
+                          <TrendingUp className="h-4 w-4" />
+                          Use Cash Buyer Wizard
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -408,9 +547,9 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Search className="h-5 w-5 text-blue-600" />
-                Lead Finder Wizard - Step {wizardStep} of 4
+                Seller Lead Wizard - Step {wizardStep} of 4
               </CardTitle>
-              <p className="text-sm text-gray-600 mt-1">Find distressed properties and motivated sellers</p>
+              <p className="text-sm text-gray-600 mt-1">Find distressed properties and motivated sellers • First of 3 Lead Finder wizards</p>
             </CardHeader>
             <CardContent className="space-y-4">
               {wizardStep === 1 && (
@@ -443,6 +582,87 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                 </div>
               )}
 
+              {wizardStep === 2 && (
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg">What type of sellers are you targeting?</h3>
+                  <div className="grid grid-cols-1 gap-2">
+                    {sellerTypes.map((type) => (
+                      <button
+                        key={type.value}
+                        className={`p-3 text-left rounded-lg border transition-colors ${
+                          wizardData.sellerType === type.value
+                            ? 'border-blue-500 bg-blue-50 text-blue-900'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => setWizardData({...wizardData, sellerType: type.value})}
+                      >
+                        <div className="font-medium">{type.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {wizardStep === 3 && (
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg">What property type are you interested in?</h3>
+                  <div className="grid grid-cols-1 gap-2">
+                    {propertyTypes.map((type) => (
+                      <button
+                        key={type.value}
+                        className={`p-3 text-left rounded-lg border transition-colors ${
+                          wizardData.propertyType === type.value
+                            ? 'border-blue-500 bg-blue-50 text-blue-900'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => setWizardData({...wizardData, propertyType: type.value})}
+                      >
+                        <div className="font-medium">{type.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {wizardStep === 4 && (
+                <div className="space-y-4">
+                  <h3 className="font-semibold text-lg">Additional filters (optional)</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="minBedrooms">Minimum Bedrooms</Label>
+                      <Select value={wizardData.minBedrooms?.toString() || ""} onValueChange={(value) => setWizardData({...wizardData, minBedrooms: value ? parseInt(value) : undefined})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Any" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="1">1+</SelectItem>
+                          <SelectItem value="2">2+</SelectItem>
+                          <SelectItem value="3">3+</SelectItem>
+                          <SelectItem value="4">4+</SelectItem>
+                          <SelectItem value="5">5+</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="maxPrice">Maximum Price</Label>
+                      <Select value={wizardData.maxPrice?.toString() || ""} onValueChange={(value) => setWizardData({...wizardData, maxPrice: value ? parseInt(value) : undefined})}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Any" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="100000">Under $100k</SelectItem>
+                          <SelectItem value="200000">Under $200k</SelectItem>
+                          <SelectItem value="300000">Under $300k</SelectItem>
+                          <SelectItem value="500000">Under $500k</SelectItem>
+                          <SelectItem value="750000">Under $750k</SelectItem>
+                          <SelectItem value="1000000">Under $1M</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-between pt-4">
                 <Button variant="outline" onClick={() => setShowWizard(false)}>
                   Cancel
@@ -462,9 +682,16 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
                         handleWizardSubmit();
                       }
                     }}
-                    disabled={!wizardData.city || !wizardData.state}
+                    disabled={wizardStep === 1 && (!wizardData.city || !wizardData.state) ||
+                              wizardStep === 2 && !wizardData.sellerType ||
+                              wizardStep === 3 && !wizardData.propertyType}
                   >
-                    {wizardStep === 4 ? 'Find Properties' : (
+                    {wizardStep === 4 ? (
+                      <>
+                        <Search className="h-4 w-4 mr-1" />
+                        Find Properties
+                      </>
+                    ) : (
                       <>
                         Next
                         <ArrowRight className="h-4 w-4 ml-1" />
