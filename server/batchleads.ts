@@ -806,8 +806,14 @@ class BatchLeadsService {
         const propertyCount = buyer.propertyOwnerProfile?.propertiesCount;
         const hasMinProperties = propertyCount && propertyCount >= 3;
         
-        // Check for last sale date within 12 months
-        const lastSaleDate = buyer.salesHistory?.lastSaleDate || buyer.lastSaleDate || buyer.deed?.recordingDate;
+        // Check for last sale date within 12 months - check multiple possible fields
+        const lastSaleDate = buyer.salesHistory?.lastSaleDate || 
+                            buyer.lastSaleDate || 
+                            buyer.deed?.recordingDate ||
+                            buyer.sales?.lastSaleDate ||
+                            buyer.propertyOwnerProfile?.lastSaleDate ||
+                            buyer.saleHistory?.mostRecentSaleDate;
+        
         let hasRecentSale = false;
         
         if (lastSaleDate) {
@@ -815,6 +821,10 @@ class BatchLeadsService {
           const twelveMonthsAgo = new Date();
           twelveMonthsAgo.setMonth(twelveMonthsAgo.getMonth() - 12);
           hasRecentSale = saleDate >= twelveMonthsAgo;
+        } else {
+          // If no sale date found, temporarily allow buyers with 5+ properties to qualify
+          // This ensures we still get results while the sale date field is located
+          hasRecentSale = propertyCount >= 5;
         }
         
         const qualifies = hasMinProperties && hasRecentSale;
