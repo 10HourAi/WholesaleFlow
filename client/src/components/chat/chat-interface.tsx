@@ -395,8 +395,20 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
             'Available via skip trace';
           const bestEmail = owner.emails && owner.emails[0] ? owner.emails[0] : 'Available via skip trace';
           
-          // Create individual card content
-          let cardContent = `**💰 CASH BUYER ${index + 1}**\n\n`;
+          // Get property owner profile data
+          const ownerProfile = buyer.propertyOwnerProfile || {};
+          
+          // Create individual card content with celebration title and blue divider
+          let cardContent = `**🎉 CASH BUYER LEAD FOUND!**\n\n`;
+          cardContent += `<div style="height: 3px; background-color: #3b82f6; margin: 8px 0;"></div>\n\n`;
+          
+          cardContent += `**💰 ${owner.fullName || 'Active Cash Investor'}**\n\n`;
+          
+          cardContent += `**PROPERTY OWNER PROFILE:**\n`;
+          cardContent += `🏘️ Total Portfolio Value: $${ownerProfile.propertiesTotalEstimatedValue ? parseInt(ownerProfile.propertiesTotalEstimatedValue).toLocaleString() : 'N/A'}\n`;
+          cardContent += `🏠 Properties Owned: ${ownerProfile.propertiesCount || 'N/A'} properties\n`;
+          cardContent += `💵 Average Property Value: $${ownerProfile.averagePurchasePrice ? parseInt(ownerProfile.averagePurchasePrice).toLocaleString() : 'N/A'}\n`;
+          cardContent += `📊 Total Equity: $${ownerProfile.propertiesTotalEquity ? parseInt(ownerProfile.propertiesTotalEquity).toLocaleString() : 'N/A'}\n\n`;
           
           cardContent += `**PROPERTY DETAILS:**\n`;
           cardContent += `📍 Address: ${address.street}, ${address.city}, ${address.state} ${address.zip}\n`;
@@ -404,13 +416,12 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
           cardContent += `🏠 Building: ${building.bedrooms || 'N/A'}BR/${building.bathrooms || 'N/A'}BA, ${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() : 'N/A'} sq ft\n`;
           cardContent += `🗓️ Year Built: ${building.yearBuilt || 'N/A'}\n`;
           
-          cardContent += `\n**OWNER INFORMATION:**\n`;
-          cardContent += `👤 Owner Name: ${owner.fullName || 'Active Investor'}\n`;
+          cardContent += `\n**CONTACT INFORMATION:**\n`;
           cardContent += `📞 Owner Phone: ${bestPhone}\n`;
           cardContent += `📧 Owner Email: ${bestEmail}\n`;
           cardContent += `📮 Mailing Address: ${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}\n`;
           
-          cardContent += `\n**FINANCIAL ANALYSIS:**\n`;
+          cardContent += `\n**INVESTMENT ANALYSIS:**\n`;
           cardContent += `📊 Equity Percentage: ${valuation.equityPercent ? `${Math.round(valuation.equityPercent)}%` : '100%'}\n`;
           cardContent += `⭐ Investment Score: ${quickLists.cashBuyer ? '95/100' : '85/100'}\n`;
           cardContent += `🏷️ Buyer Type: ${quickLists.fixAndFlip ? 'Fix & Flip' : quickLists.corporateOwned ? 'Corporate Investor' : 'Cash Buyer'}\n`;
