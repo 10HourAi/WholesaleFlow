@@ -397,35 +397,61 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
           
           // Get property owner profile data
           const ownerProfile = buyer.propertyOwnerProfile || {};
+          const sale = buyer.sale || {};
           
-          // Create individual card content with celebration title and blue divider
-          let cardContent = `**🎉 CASH BUYER LEAD FOUND!**\n\n`;
-          cardContent += `<div style="height: 3px; background-color: #3b82f6; margin: 8px 0;"></div>\n\n`;
+          // Format last sale date
+          const lastSaleDate = sale.lastSaleDate ? new Date(sale.lastSaleDate).toLocaleDateString() : 'N/A';
           
-          cardContent += `**💰 ${owner.fullName || 'Active Cash Investor'}**\n\n`;
+          // Format phone numbers with types
+          const formatPhoneNumbers = (phones: any[]) => {
+            if (!phones || phones.length === 0) return 'Available via skip trace';
+            return phones.map(phone => `${phone.number} (${phone.type})`).join(', ');
+          };
           
-          cardContent += `**PROPERTY OWNER PROFILE:**\n`;
-          cardContent += `🏘️ Total Portfolio Value: $${ownerProfile.propertiesTotalEstimatedValue ? parseInt(ownerProfile.propertiesTotalEstimatedValue).toLocaleString() : 'N/A'}\n`;
-          cardContent += `🏠 Properties Owned: ${ownerProfile.propertiesCount || 'N/A'} properties\n`;
-          cardContent += `💵 Average Property Value: $${ownerProfile.averagePurchasePrice ? parseInt(ownerProfile.averagePurchasePrice).toLocaleString() : 'N/A'}\n`;
-          cardContent += `📊 Total Equity: $${ownerProfile.propertiesTotalEquity ? parseInt(ownerProfile.propertiesTotalEquity).toLocaleString() : 'N/A'}\n\n`;
+          // Get emails
+          const emailList = owner.emails && owner.emails.length > 0 ? owner.emails.join(', ') : 'Available via skip trace';
           
-          cardContent += `**PROPERTY DETAILS:**\n`;
-          cardContent += `📍 Address: ${address.street}, ${address.city}, ${address.state} ${address.zip}\n`;
-          cardContent += `💰 Property Value: $${valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : 'N/A'}\n`;
-          cardContent += `🏠 Building: ${building.bedrooms || 'N/A'}BR/${building.bathrooms || 'N/A'}BA, ${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() : 'N/A'} sq ft\n`;
-          cardContent += `🗓️ Year Built: ${building.yearBuilt || 'N/A'}\n`;
+          // Get phone numbers (separate regular and DNC)
+          const phoneNumbers = owner.phoneNumbers || [];
+          const regularPhones = phoneNumbers.filter(p => !p.dnc);
+          const dncPhones = phoneNumbers.filter(p => p.dnc);
           
-          cardContent += `\n**CONTACT INFORMATION:**\n`;
-          cardContent += `📞 Owner Phone: ${bestPhone}\n`;
-          cardContent += `📧 Owner Email: ${bestEmail}\n`;
-          cardContent += `📮 Mailing Address: ${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}\n`;
+          // Create card content matching the exact format
+          let cardContent = `🎉 Cash Buyer Lead Found!\n`;
+          cardContent += `📍 Location: ${address.city}, ${address.state}\n\n`;
           
-          cardContent += `\n**INVESTMENT ANALYSIS:**\n`;
-          cardContent += `📊 Equity Percentage: ${valuation.equityPercent ? `${Math.round(valuation.equityPercent)}%` : '100%'}\n`;
-          cardContent += `⭐ Investment Score: ${quickLists.cashBuyer ? '95/100' : '85/100'}\n`;
-          cardContent += `🏷️ Buyer Type: ${quickLists.fixAndFlip ? 'Fix & Flip' : quickLists.corporateOwned ? 'Corporate Investor' : 'Cash Buyer'}\n`;
-          cardContent += `✅ Investment Status: ${quickLists.cashBuyer ? 'Verified Cash Buyer' : 'Active Investor'}`;
+          cardContent += `👤\n`;
+          cardContent += `**${owner.fullName || 'ACTIVE CASH INVESTOR'}**\n`;
+          cardContent += `🏢 Property Owner Profile\n`;
+          cardContent += `Total Portfolio Value\t$${ownerProfile.propertiesTotalEstimatedValue ? parseInt(ownerProfile.propertiesTotalEstimatedValue).toLocaleString() + '.00' : 'N/A'}\n`;
+          cardContent += `Properties Count\t${ownerProfile.propertiesCount || 'N/A'}\n`;
+          cardContent += `Average Purchase Price\t$${ownerProfile.averagePurchasePrice ? parseInt(ownerProfile.averagePurchasePrice).toLocaleString() + '.00' : 'N/A'}\n`;
+          cardContent += `Last Sale Date\t${lastSaleDate}\n`;
+          
+          cardContent += `🏠 Last Property Purchased\n`;
+          cardContent += `Property Address\t${address.street}, ${address.city}, ${address.state} ${address.zip}\n`;
+          cardContent += `Total Area\t${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() + ' sqft' : 'N/A'}\n`;
+          cardContent += `Bedrooms\t${building.bedrooms || 'N/A'}\n`;
+          cardContent += `Bathrooms\t${building.bathrooms || 'N/A'}\n`;
+          cardContent += `Property Type\t${building.propertyType || 'Single Family'}\n`;
+          cardContent += `Last Sale Date\t${lastSaleDate}\n`;
+          cardContent += `Last Sale Price\t$${sale.lastSalePrice ? parseInt(sale.lastSalePrice).toLocaleString() + '.00' : valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() + '.00' : 'N/A'}\n`;
+          
+          cardContent += `📞 Contact Information\n`;
+          cardContent += `Mailing Address\t${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}\n`;
+          cardContent += `Email(s)\t${emailList}\n`;
+          
+          if (regularPhones.length > 0) {
+            cardContent += `Phone(s)\t${formatPhoneNumbers(regularPhones)}\n`;
+          }
+          
+          if (dncPhones.length > 0) {
+            cardContent += `DNC Phone(s)\t${formatPhoneNumbers(dncPhones)}\n`;
+          }
+          
+          if (regularPhones.length === 0 && dncPhones.length === 0) {
+            cardContent += `Phone(s)\tAvailable via skip trace\n`;
+          }
           
           return cardContent;
         });
