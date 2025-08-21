@@ -392,23 +392,28 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
         formattedResponse += `No active cash buyers found in ${location}. Try expanding your search area or check back later.`;
       }
       
-      // Create conversation with results
+      // Create conversation and add message
       if (!currentConversation) {
         createConversationMutation.mutate({
           agentType: selectedAgent,
           title: `Cash Buyers: ${location}`,
+        }, {
+          onSuccess: (newConversation) => {
+            // Send the formatted response as a message after conversation is created
+            sendMessageMutation.mutate({
+              conversationId: newConversation.id,
+              content: formattedResponse,
+              role: "assistant",
+            });
+          }
+        });
+      } else {
+        // Send message immediately if conversation already exists
+        sendMessageMutation.mutate({
+          content: formattedResponse,
+          role: "assistant",
         });
       }
-      
-      // Add the formatted response as a message
-      setTimeout(() => {
-        if (currentConversation) {
-          sendMessageMutation.mutate({
-            content: formattedResponse,
-            role: "assistant",
-          });
-        }
-      }, 500);
       
     } catch (error: any) {
       console.error('🔥 FRONTEND: Cash buyer search failed:', error);
@@ -420,17 +425,21 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
         createConversationMutation.mutate({
           agentType: selectedAgent,
           title: `Cash Buyer Error: ${location}`,
+        }, {
+          onSuccess: (newConversation) => {
+            sendMessageMutation.mutate({
+              conversationId: newConversation.id,
+              content: errorMessage,
+              role: "assistant",
+            });
+          }
+        });
+      } else {
+        sendMessageMutation.mutate({
+          content: errorMessage,
+          role: "assistant",
         });
       }
-      
-      setTimeout(() => {
-        if (currentConversation) {
-          sendMessageMutation.mutate({
-            content: errorMessage,
-            role: "assistant",
-          });
-        }
-      }, 500);
     } finally {
       setBuyerWizardProcessing(false);
     }
