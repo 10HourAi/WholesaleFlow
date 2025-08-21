@@ -841,10 +841,6 @@ class BatchLeadsService {
       
       console.log(`💰 RETURNING FILTERED BUYERS:`, buyers.length);
       
-      // Log first buyer for debugging
-      if (buyers.length > 0) {
-        console.log(`💰 FIRST FILTERED BUYER:`, JSON.stringify(buyers[0], null, 2));
-      }
 
       return {
         buyers: buyers,
@@ -918,8 +914,6 @@ class BatchLeadsService {
 
   // Convert BatchLeads cash buyer data to standardized format
   private convertToCashBuyer(buyerData: any, index: number): any {
-    console.log(`💰 Converting cash buyer ${index}:`, JSON.stringify(buyerData, null, 2));
-    
     // Extract address information
     const address = buyerData.address || {};
     const fullAddress = `${address.houseNumber || ''} ${address.street || ''}`.trim();
@@ -982,8 +976,8 @@ class BatchLeadsService {
       outOfStateOwner: this.isOutOfStateOwner(address, owner.mailingAddress),
       portfolioInvestor: (buyerData.propertyCount || 1) > 1,
       
-      // Raw data for debugging
-      rawData: buyerData
+      // Additional buyer context
+      rawDataAvailable: true
     };
     
     console.log(`💰 Converted buyer ${index}:`, JSON.stringify(convertedBuyer, null, 2));
