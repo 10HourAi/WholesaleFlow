@@ -793,19 +793,36 @@ class BatchLeadsService {
         totalResults: response.meta?.totalResults || 0
       });
       
-      // Return completely raw data - no processing
-      const buyers = response.results?.properties || [];
+      // Filter buyers to only include those with at least 3 properties
+      const allBuyers = response.results?.properties || [];
       
-      console.log(`💰 RETURNING RAW BUYERS:`, buyers.length);
+      console.log(`💰 RAW BUYERS BEFORE FILTERING:`, allBuyers.length);
+      
+      // Filter to only include cash buyers with at least 3 properties
+      const filteredBuyers = allBuyers.filter((buyer: any) => {
+        const propertyCount = buyer.propertyOwnerProfile?.propertiesCount;
+        const hasMinProperties = propertyCount && propertyCount >= 3;
+        
+        console.log(`💰 BUYER FILTER: ${buyer.owner?.fullName} - Properties: ${propertyCount}, Qualifies: ${hasMinProperties}`);
+        
+        return hasMinProperties;
+      });
+      
+      console.log(`💰 BUYERS AFTER MIN 3 PROPERTIES FILTER:`, filteredBuyers.length);
+      
+      // Take only the requested limit from filtered results
+      const buyers = filteredBuyers.slice(0, limit);
+      
+      console.log(`💰 RETURNING FILTERED BUYERS:`, buyers.length);
       
       // Log first buyer for debugging
       if (buyers.length > 0) {
-        console.log(`💰 FIRST RAW BUYER:`, JSON.stringify(buyers[0], null, 2));
+        console.log(`💰 FIRST FILTERED BUYER:`, JSON.stringify(buyers[0], null, 2));
       }
 
       return {
         buyers: buyers,
-        totalFound: response.meta?.totalResults || 0,
+        totalFound: filteredBuyers.length, // Return count of qualified buyers, not total raw results
         location: criteria.location
       };
     } catch (error) {
