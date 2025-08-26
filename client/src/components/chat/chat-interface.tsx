@@ -1034,31 +1034,32 @@ export default function ChatInterface() {
       if (!currentConversation) {
         createConversationMutation.mutate({
           agentType: selectedAgent,
-          title: `Cash Buyers: ${location}`,
+          title: `Cash Buyers: ${location} (${buyerWizardData.buyerType.replace(/_/g, ' ')})`,
         });
       } else {
-        // If conversation exists, send intro message and then individual cards
-        const pendingResponse = localStorage.getItem('pendingCashBuyerResponse');
-        const introMessage = pendingResponse || `Great! I found qualified cash buyers in **${location}**. Here are your leads:`;
-        sendMessageMutation.mutate({
+        // Send intro message immediately
+        const introMessage = `🎯 **CASH BUYER SEARCH COMPLETE**\n\nFound **5 qualified ${buyerWizardData.buyerType.replace(/_/g, ' ')}** in **${location}**!\n\nHere are your investor leads:`;
+        
+        await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
           content: introMessage,
           role: "assistant",
+          isAiGenerated: true
         });
         
-        // Send individual buyer cards
-        const pendingCards = localStorage.getItem('pendingCashBuyerCards');
-        if (pendingCards) {
-          const buyerCards = JSON.parse(pendingCards);
-          buyerCards.forEach((card: string, index: number) => {
-            setTimeout(() => {
-              sendMessageMutation.mutate({
-                content: card,
-                role: "assistant",
-              });
-            }, (index + 1) * 300);
-          });
-          localStorage.removeItem('pendingCashBuyerCards');
-        }
+        // Send individual buyer cards with a small delay
+        setTimeout(async () => {
+          for (let i = 0; i < buyerCards.length; i++) {
+            await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
+              content: buyerCards[i],
+              role: "assistant",
+              isAiGenerated: true
+            });
+          }
+          
+          queryClient.invalidateQueries({ queryKey: ["/api/conversations", currentConversation, "messages"] });
+        }, 500);
+        
+        queryClient.invalidateQueries({ queryKey: ["/api/conversations", currentConversation, "messages"] });
       }
       
     } catch (error: any) {
@@ -1083,6 +1084,7 @@ export default function ChatInterface() {
       }
     } finally {
       setBuyerWizardProcessing(false);
+      setBuyerWizardData({ city: "", state: "", buyerType: "" });
     }
   };
 
