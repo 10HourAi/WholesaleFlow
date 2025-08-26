@@ -77,3 +77,24 @@ export async function generatePropertyLeads(location: string, criteria: string):
   // Using dummy response while API is paused
   return { properties: [] };
 }
+
+// OpenAI service for Terry chat
+export const openaiService = {
+  async getChatCompletion(messages: Array<{role: string, content: string}>): Promise<string> {
+    try {
+      const openaiClient = getOpenAI();
+      
+      const response = await openaiClient.chat.completions.create({
+        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        messages: messages as any,
+        max_tokens: 500,
+        temperature: 0.7
+      });
+
+      return response.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
+    } catch (error) {
+      console.error("OpenAI API error:", error);
+      throw new Error("Failed to get response from OpenAI");
+    }
+  }
+};
