@@ -514,6 +514,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // Terry - Target Market Finder Chat API
+  app.post("/api/terry/chat", isAuthenticated, async (req: any, res) => {
+    try {
+      const { message, history } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+
+      const { openaiService } = await import("./openai");
+      
+      // Create system prompt for Terry
+      const systemPrompt = `You are Terry, a specialized Target Market Finder AI agent for real estate investing. You help investors identify the best markets and areas for real estate investment opportunities.
+
+Your expertise includes:
+- Market analysis and research
+- Identifying high-growth areas and emerging markets
+- Cash flow analysis for different neighborhoods
+- Rental yield calculations and projections
+- Market trend analysis and forecasting
+- Demographics and economic indicators
+- Property value appreciation patterns
+- Risk assessment for different markets
+
+You should be helpful, knowledgeable, and focused on providing actionable market insights. Keep responses conversational but informative. Always ask clarifying questions when you need more information about their investment goals, budget, or preferred market criteria.
+
+When users ask about market research, provide specific, data-driven insights. If they're looking for investment opportunities, help them understand key metrics like cap rates, cash-on-cash returns, and market fundamentals.`;
+
+      // Prepare messages for OpenAI
+      const messages = [
+        { role: "system", content: systemPrompt },
+        ...history.map((msg: any) => ({
+          role: msg.role,
+          content: msg.content
+        }))
+      ];
+
+      const response = await openaiService.getChatCompletion(messages);
+      
+      res.json({ response });
+    } catch (error: any) {
+      console.error("Terry chat error:", error);
+      res.status(500).json({ 
+        error: "Sorry, I'm having trouble processing your request right now. Please try again." 
+      });
+    }
+  });
+
   // Public demo endpoints (no auth required for testing)
   app.get('/api/demo/batchleads/:location?', async (req, res) => {
     try {

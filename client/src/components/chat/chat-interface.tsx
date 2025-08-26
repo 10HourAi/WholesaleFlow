@@ -144,6 +144,55 @@ export default function ChatInterface() {
   const [showWizard, setShowWizard] = useState(false);
   const [showBuyerWizard, setShowBuyerWizard] = useState(false);
   const [showTargetMarketFinder, setShowTargetMarketFinder] = useState(false);
+  const [terryMessages, setTerryMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
+  const [terryInput, setTerryInput] = useState('');
+  const [terryLoading, setTerryLoading] = useState(false);
+
+  const handleTerrySuggestedQuestion = (question: string) => {
+    setTerryInput(question);
+    handleTerrySendMessage(question);
+  };
+
+  const handleTerrySendMessage = async (customMessage?: string) => {
+    const messageToSend = customMessage || terryInput.trim();
+    if (!messageToSend || terryLoading) return;
+
+    // Add user message
+    const newMessages = [...terryMessages, { role: 'user' as const, content: messageToSend }];
+    setTerryMessages(newMessages);
+    setTerryInput('');
+    setTerryLoading(true);
+
+    try {
+      const response = await fetch('/api/terry/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: messageToSend,
+          history: newMessages
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get response from Terry');
+      }
+
+      const data = await response.json();
+      
+      // Add Terry's response
+      setTerryMessages([...newMessages, { role: 'assistant' as const, content: data.response }]);
+    } catch (error) {
+      console.error('Terry chat error:', error);
+      setTerryMessages([...newMessages, { 
+        role: 'assistant' as const, 
+        content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment." 
+      }]);
+    } finally {
+      setTerryLoading(false);
+    }
+  };
   const [wizardStep, setWizardStep] = useState(1);
   const [buyerWizardStep, setBuyerWizardStep] = useState(1);
   const [wizardData, setWizardData] = useState<WizardData>({
@@ -1228,42 +1277,159 @@ export default function ChatInterface() {
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {renderBuyerWizard()}
         
-        {/* Target Market Finder Output */}
+        {/* Target Market Finder - Terry Chat Interface */}
         {showTargetMarketFinder && (
-          <Card className="mb-4 border-2 border-purple-200">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lightbulb className="h-5 w-5 text-purple-600" />
-                Target Market Finder - Interactive Analysis Tool
+          <Card className="mb-4 border-2 border-gray-200">
+            <CardHeader className="bg-white border-b border-gray-200">
+              <CardTitle className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-200 to-amber-400 flex items-center justify-center">
+                    <div className="w-6 h-6 text-amber-700">
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.89 1 3 1.89 3 3V21C3 22.11 3.89 23 5 23H19C20.11 23 21 22.11 21 21V9M19 21H5V3H13V9H19Z"/>
+                      </svg>
+                    </div>
+                  </div>
+                  <span className="text-xl font-bold text-gray-900">Terry - Your Target Market Finder</span>
+                </div>
               </CardTitle>
-              <p className="text-sm text-gray-600 mt-1">Analyze market opportunities and identify ideal investment areas</p>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="w-full h-[600px] border rounded-lg overflow-hidden">
-                <iframe
-                  src="data:text/html;charset=utf-8,%3C!DOCTYPE%20html%3E%3Chtml%20lang%3D%22en%22%20class%3D%22scroll-smooth%22%3E%3Chead%3E%3Cmeta%20charSet%3D%22utf-8%22/%3E%3Cmeta%20name%3D%22viewport%22%20content%3D%22width%3Ddevice-width%22/%3E%3Cmeta%20name%3D%22next-head-count%22%20content%3D%222%22/%3E%3Clink%20rel%3D%22preload%22%20href%3D%22/axe/_next/static/media/fecba37eb4cf0fd6-s.p.ttf%22%20as%3D%22font%22%20type%3D%22font/ttf%22%20crossorigin%3D%22anonymous%22%20data-next-font%3D%22size-adjust%22/%3E%3C/head%3E%3Cbody%3E%3Cdiv%20style%3D%22padding%3A%2020px%3B%20text-align%3A%20center%3B%20font-family%3A%20Arial%2C%20sans-serif%3B%22%3E%3Ch1%3ETarget%20Market%20Analysis%20Tool%3C/h1%3E%3Cp%3EInteractive%20market%20analysis%20and%20research%20tool%20will%20be%20embedded%20here.%3C/p%3E%3Cp%3EThis%20tool%20helps%20identify%20ideal%20investment%20markets%20based%20on%20various%20criteria.%3C/p%3E%3C/div%3E%3C/body%3E%3C/html%3E"
-                  width="100%"
-                  height="100%"
-                  style={{ border: 'none' }}
-                  title="Target Market Finder Tool"
-                />
-              </div>
-              
-              <div className="flex justify-between pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowTargetMarketFinder(false)}
-                >
-                  Close Tool
-                </Button>
+            <CardContent className="p-0">
+              <div className="h-[600px] flex flex-col">
+                {/* Chat Messages Area */}
+                <div className="flex-1 overflow-y-auto p-6 bg-gray-50">
+                  {/* Initial Welcome Message */}
+                  {terryMessages.length === 0 && (
+                    <div className="flex items-start gap-3 mb-6">
+                      <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center flex-shrink-0">
+                        <div className="w-4 h-4 text-white">
+                          <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12,2A2,2 0 0,1 14,4A2,2 0 0,1 12,6A2,2 0 0,1 10,4A2,2 0 0,1 12,2M21,9V7L15,1H5A2,2 0 0,0 3,3V21A2,2 0 0,0 5,23H19A2,2 0 0,0 21,21V9M19,21H5V3H13V9H19Z"/>
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-2xl p-4 shadow-sm max-w-md">
+                        <p className="text-gray-900 font-medium">Hey! I'm your new Target Market Finder Agent! I can help find the best market in your area.</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Chat Messages */}
+                  {terryMessages.map((message, index) => (
+                    <div key={index} className={`flex items-start gap-3 mb-6 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        message.role === 'user' 
+                          ? 'bg-blue-600' 
+                          : 'bg-gray-800'
+                      }`}>
+                        <div className="w-4 h-4 text-white">
+                          {message.role === 'user' ? (
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12,4A4,4 0 0,1 16,8A4,4 0 0,1 12,12A4,4 0 0,1 8,8A4,4 0 0,1 12,4M12,14C16.42,14 20,15.79 20,18V20H4V18C4,15.79 7.58,14 12,14Z"/>
+                            </svg>
+                          ) : (
+                            <svg viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M12,2A2,2 0 0,1 14,4A2,2 0 0,1 12,6A2,2 0 0,1 10,4A2,2 0 0,1 12,2M21,9V7L15,1H5A2,2 0 0,0 3,3V21A2,2 0 0,0 5,23H19A2,2 0 0,0 21,21V9M19,21H5V3H13V9H19Z"/>
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+                      <div className={`rounded-2xl p-4 shadow-sm max-w-md ${
+                        message.role === 'user' 
+                          ? 'bg-blue-600 text-white' 
+                          : 'bg-white text-gray-900'
+                      }`}>
+                        <p>{message.content}</p>
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {/* Loading Indicator */}
+                  {terryLoading && (
+                    <div className="flex items-start gap-3 mb-6">
+                      <div className="w-8 h-8 rounded-full bg-gray-800 flex items-center justify-center flex-shrink-0">
+                        <div className="w-4 h-4 text-white">
+                          <svg viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12,2A2,2 0 0,1 14,4A2,2 0 0,1 12,6A2,2 0 0,1 10,4A2,2 0 0,1 12,2M21,9V7L15,1H5A2,2 0 0,0 3,3V21A2,2 0 0,0 5,23H19A2,2 0 0,0 21,21V9M19,21H5V3H13V9H19Z"/>
+                          </svg>
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-2xl p-4 shadow-sm max-w-md">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
                 
-                <Button
-                  variant="outline"
-                  onClick={() => window.open('data:text/html;charset=utf-8,%3C!DOCTYPE%20html%3E%3Chtml%20lang%3D%22en%22%20class%3D%22scroll-smooth%22%3E%3Chead%3E%3Cmeta%20charSet%3D%22utf-8%22/%3E%3Cmeta%20name%3D%22viewport%22%20content%3D%22width%3Ddevice-width%22/%3E%3Cmeta%20name%3D%22next-head-count%22%20content%3D%222%22/%3E%3Clink%20rel%3D%22preload%22%20href%3D%22/axe/_next/static/media/fecba37eb4cf0fd6-s.p.ttf%22%20as%3D%22font%22%20type%3D%22font/ttf%22%20crossorigin%3D%22anonymous%22%20data-next-font%3D%22size-adjust%22/%3E%3C/head%3E%3Cbody%3E%3Cdiv%20style%3D%22padding%3A%2020px%3B%20text-align%3A%20center%3B%20font-family%3A%20Arial%2C%20sans-serif%3B%22%3E%3Ch1%3ETarget%20Market%20Analysis%20Tool%3C/h1%3E%3Cp%3EInteractive%20market%20analysis%20and%20research%20tool%20will%20be%20embedded%20here.%3C/p%3E%3Cp%3EThis%20tool%20helps%20identify%20ideal%20investment%20markets%20based%20on%20various%20criteria.%3C/p%3E%3C/div%3E%3C/body%3E%3C/html%3E', '_blank')}
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                >
-                  Open in New Tab
-                </Button>
+                {/* Suggested Questions (only show initially) */}
+                {terryMessages.length === 0 && (
+                  <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-4">
+                      <button
+                        onClick={() => handleTerrySuggestedQuestion("Terry, can you tell me what you do and how you can help me become more successful with real estate investing?")}
+                        className="text-left p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-sm text-gray-700"
+                      >
+                        Terry, can you tell me what you do and how you can help me become more successful with...
+                      </button>
+                      <button
+                        onClick={() => handleTerrySuggestedQuestion("Terry, can you do market research in my area?")}
+                        className="text-left p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-sm text-gray-700"
+                      >
+                        Terry, can you do market research in my area?
+                      </button>
+                      <button
+                        onClick={() => handleTerrySuggestedQuestion("Hey Terry, find me the best niche markets with the highest cash landlord purchase activity")}
+                        className="text-left p-3 bg-white rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors text-sm text-gray-700"
+                      >
+                        Hey Terry, find me the best niche markets with the highest cash landlord purchase...
+                      </button>
+                    </div>
+                  </div>
+                )}
+                
+                {/* Input Area */}
+                <div className="px-6 py-4 bg-white border-t border-gray-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 text-gray-400">
+                      <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z"/>
+                      </svg>
+                    </div>
+                    <input
+                      type="text"
+                      value={terryInput}
+                      onChange={(e) => setTerryInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleTerrySendMessage()}
+                      placeholder="Let's Get Started! Type Anything You Need Help With"
+                      className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      disabled={terryLoading}
+                    />
+                    <button
+                      onClick={handleTerrySendMessage}
+                      disabled={!terryInput.trim() || terryLoading}
+                      className="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2,21L23,12L2,3V10L17,12L2,14V21Z"/>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+                
+                {/* Close Button */}
+                <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowTargetMarketFinder(false)}
+                    className="w-full"
+                  >
+                    Close Target Market Finder
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
