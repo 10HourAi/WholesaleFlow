@@ -355,26 +355,205 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
     localStorage.removeItem('pendingCashBuyerCards');
     
     try {
-      // Call the dedicated cash buyer API endpoint directly with cache-busting
-      
-      const cacheBustingTimestamp = Date.now();
-      const response = await fetch(`/api/cash-buyers/search?t=${cacheBustingTimestamp}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          'Pragma': 'no-cache',
-          'Expires': '0'
-        },
-        body: JSON.stringify({
-          location: location,
-          limit: 5,
-          timestamp: cacheBustingTimestamp,
-          fresh: true // Force fresh data
-        })
-      });
-      
-      const cashBuyerData = await response.json();
+      // Using dummy data for UI testing while API is paused
+      const cashBuyerData = {
+        success: true,
+        location: location,
+        totalFound: 5,
+        returned: 5,
+        buyers: [
+          {
+            _id: "dummy1",
+            address: {
+              street: "123 Investment Dr",
+              city: location.split(',')[0].trim(),
+              state: buyerWizardData.state,
+              zip: "12345"
+            },
+            building: {
+              propertyType: "Single Family",
+              squareFeet: "2400",
+              bedrooms: 4,
+              bathrooms: 2
+            },
+            owner: {
+              fullName: "John Smith Properties LLC",
+              emails: ["john@smithproperties.com"],
+              phoneNumbers: [{number: "(555) 123-4567", type: "mobile", dnc: false}],
+              mailingAddress: {
+                street: "456 Business Ave",
+                city: location.split(',')[0].trim(),
+                state: buyerWizardData.state,
+                zip: "12346"
+              }
+            },
+            propertyOwnerProfile: {
+              propertiesCount: 8,
+              propertiesTotalEstimatedValue: "2400000",
+              averagePurchasePrice: "300000"
+            },
+            sale: {
+              lastSaleDate: "2024-03-15T00:00:00.000Z",
+              lastSalePrice: "285000"
+            },
+            valuation: {
+              estimatedValue: "320000"
+            }
+          },
+          {
+            _id: "dummy2",
+            address: {
+              street: "789 Portfolio Ln",
+              city: location.split(',')[0].trim(),
+              state: buyerWizardData.state,
+              zip: "12347"
+            },
+            building: {
+              propertyType: "Single Family",
+              squareFeet: "1800",
+              bedrooms: 3,
+              bathrooms: 2
+            },
+            owner: {
+              fullName: "ABC Real Estate Investments",
+              emails: ["info@abcrei.com"],
+              phoneNumbers: [{number: "(555) 987-6543", type: "business", dnc: false}],
+              mailingAddress: {
+                street: "321 Commercial St",
+                city: location.split(',')[0].trim(),
+                state: buyerWizardData.state,
+                zip: "12348"
+              }
+            },
+            propertyOwnerProfile: {
+              propertiesCount: 12,
+              propertiesTotalEstimatedValue: "3600000",
+              averagePurchasePrice: "250000"
+            },
+            sale: {
+              lastSaleDate: "2024-01-22T00:00:00.000Z",
+              lastSalePrice: "195000"
+            },
+            valuation: {
+              estimatedValue: "245000"
+            }
+          },
+          {
+            _id: "dummy3",
+            address: {
+              street: "456 Capital Blvd",
+              city: location.split(',')[0].trim(),
+              state: buyerWizardData.state,
+              zip: "12349"
+            },
+            building: {
+              propertyType: "Single Family",
+              squareFeet: "2100",
+              bedrooms: 3,
+              bathrooms: 2
+            },
+            owner: {
+              fullName: "Maria Rodriguez Investment Group",
+              emails: ["maria@mrig.com"],
+              phoneNumbers: [{number: "(555) 456-7890", type: "mobile", dnc: false}],
+              mailingAddress: {
+                street: "654 Executive Way",
+                city: location.split(',')[0].trim(),
+                state: buyerWizardData.state,
+                zip: "12350"
+              }
+            },
+            propertyOwnerProfile: {
+              propertiesCount: 6,
+              propertiesTotalEstimatedValue: "1800000",
+              averagePurchasePrice: "275000"
+            },
+            sale: {
+              lastSaleDate: "2024-02-10T00:00:00.000Z",
+              lastSalePrice: "265000"
+            },
+            valuation: {
+              estimatedValue: "295000"
+            }
+          },
+          {
+            _id: "dummy4",
+            address: {
+              street: "987 Investor Ct",
+              city: location.split(',')[0].trim(),
+              state: buyerWizardData.state,
+              zip: "12351"
+            },
+            building: {
+              propertyType: "Single Family",
+              squareFeet: "2800",
+              bedrooms: 4,
+              bathrooms: 3
+            },
+            owner: {
+              fullName: "Diamond Property Holdings",
+              emails: ["contact@diamondph.com"],
+              phoneNumbers: [{number: "(555) 321-0987", type: "office", dnc: false}],
+              mailingAddress: {
+                street: "111 Finance Plaza",
+                city: location.split(',')[0].trim(),
+                state: buyerWizardData.state,
+                zip: "12352"
+              }
+            },
+            propertyOwnerProfile: {
+              propertiesCount: 15,
+              propertiesTotalEstimatedValue: "4500000",
+              averagePurchasePrice: "320000"
+            },
+            sale: {
+              lastSaleDate: "2024-04-05T00:00:00.000Z",
+              lastSalePrice: "315000"
+            },
+            valuation: {
+              estimatedValue: "355000"
+            }
+          },
+          {
+            _id: "dummy5",
+            address: {
+              street: "555 Wealth St",
+              city: location.split(',')[0].trim(),
+              state: buyerWizardData.state,
+              zip: "12353"
+            },
+            building: {
+              propertyType: "Single Family",
+              squareFeet: "2200",
+              bedrooms: 3,
+              bathrooms: 2
+            },
+            owner: {
+              fullName: "Elite Realty Partners LLC",
+              emails: ["partners@eliterealty.com"],
+              phoneNumbers: [{number: "(555) 654-3210", type: "mobile", dnc: false}],
+              mailingAddress: {
+                street: "888 Success Rd",
+                city: location.split(',')[0].trim(),
+                state: buyerWizardData.state,
+                zip: "12354"
+              }
+            },
+            propertyOwnerProfile: {
+              propertiesCount: 9,
+              propertiesTotalEstimatedValue: "2700000",
+              averagePurchasePrice: "285000"
+            },
+            sale: {
+              lastSaleDate: "2024-01-30T00:00:00.000Z",
+              lastSalePrice: "275000"
+            },
+            valuation: {
+              estimatedValue: "310000"
+            }
+          }
+        ]
+      };
       
       if (!cashBuyerData.success) {
         throw new Error(cashBuyerData.error || 'Failed to fetch cash buyers');
