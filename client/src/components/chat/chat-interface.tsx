@@ -1357,7 +1357,7 @@ export default function ChatInterface() {
                 <Avatar>
                   <AvatarImage />
                   <AvatarFallback>
-                    <Search className="h-4 w-4" />
+                    <TrendingUp className="h-4 w-4" />
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
