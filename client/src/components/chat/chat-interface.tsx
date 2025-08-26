@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Send, Search, TrendingUp, MessageSquare, FileText, Lightbulb, ArrowRight, ArrowLeft, Plus, BarChart3, PhoneCall } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { Conversation, Message, Property } from "@shared/schema";
 
 const agentTypes = [
@@ -37,19 +38,8 @@ interface BuyerWizardData {
 const PropertyCard = ({ content }: { content: string }) => {
   const { toast } = useToast();
   
-  // Parse the property data from the content
-  const lines = content.split('\n');
-  const getLineValue = (prefix: string) => {
-    const line = lines.find(l => l.trim().startsWith(prefix));
-    return line ? line.split(prefix)[1]?.trim() : '';
-  };
-  
+  // Extract property number safely
   const propertyNumber = content.match(/🏠 SELLER LEAD (\d+)/)?.[1] || '1';
-  const address = getLineValue('📍 LOCATION');
-  const arv = getLineValue('📊 ARV:');
-  const maxOffer = getLineValue('💰 Max Offer:');
-  const ownerName = getLineValue('Owner:');
-  const equity = getLineValue('💎 Equity:');
   
   const handleAddToCRM = () => {
     toast({
@@ -60,7 +50,7 @@ const PropertyCard = ({ content }: { content: string }) => {
   
   const handleAnalyzeDeal = () => {
     toast({
-      title: "Deal Analysis Started",
+      title: "Deal Analysis Started", 
       description: `Analyzing deal for property ${propertyNumber}...`,
     });
   };
@@ -68,15 +58,18 @@ const PropertyCard = ({ content }: { content: string }) => {
   const handleContactOwner = () => {
     toast({
       title: "Contact Owner",
-      description: `Preparing to contact ${ownerName || 'property owner'}...`,
+      description: `Preparing to contact property owner...`,
     });
   };
+  
+  // Remove the actions section from content for display
+  const displayContent = content.replace(/🎯 ACTIONS[\s\S]*?━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━/g, '').trim();
   
   return (
     <div className="space-y-4">
       {/* Display the formatted property content */}
       <div className="text-sm whitespace-pre-wrap font-mono bg-slate-50 p-3 rounded border">
-        {content.replace(/🎯 ACTIONS[\s\S]*?━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━/g, '')}
+        {displayContent}
       </div>
       
       {/* Action buttons */}
