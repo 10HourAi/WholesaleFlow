@@ -1467,7 +1467,7 @@ export default function ChatInterface() {
           </Card>
         )}
 
-        {messages.length === 0 && !currentConversation && !showWizard && !showBuyerWizard && !wizardProcessing && !buyerWizardProcessing && (
+        {messages.length === 0 && !currentConversation && !showWizard && !showBuyerWizard && !targetMarketResults && !wizardProcessing && !buyerWizardProcessing && (
           <div className="space-y-4">
             {/* Seller Lead Finder Card */}
             <div className="flex items-start space-x-3">
