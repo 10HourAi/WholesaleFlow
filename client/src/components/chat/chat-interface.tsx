@@ -138,27 +138,26 @@ export default function ChatInterface() {
                 await new Promise(resolve => setTimeout(resolve, 400)); // Small delay between cards
                 const property = properties[i];
                 
-                const propertyCard = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🏠 **SELLER LEAD ${i + 1}**
+                const propertyCard = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏠 SELLER LEAD ${i + 1}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📍 **LOCATION**
+📍 LOCATION
    ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
 
-💰 **PROPERTY DETAILS**
+💰 PROPERTY DETAILS
    🏠 ${property.bedrooms} bed, ${property.bathrooms} bath | ${property.squareFeet.toLocaleString()} sq ft
    🏗️ Built: ${property.yearBuilt}
    📊 ARV: $${parseInt(property.arv).toLocaleString()}
    💰 Max Offer: $${parseInt(property.maxOffer).toLocaleString()}
 
-👤 **OWNER INFO**
+👤 OWNER INFO
    Owner: ${property.ownerName}
    📱 Phone: ${property.ownerPhone}
    ✉️ Email: ${property.ownerEmail}
    📬 Mailing: ${property.ownerMailingAddress}
 
-🎯 **MOTIVATION ANALYSIS**
+🎯 MOTIVATION ANALYSIS
    💎 Equity: ${property.equityPercentage}%
    🎯 Motivation Score: ${property.motivationScore}/100
    🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
@@ -215,27 +214,26 @@ export default function ChatInterface() {
           for (let i = 0; i < properties.length; i++) {
             const property = properties[i];
             
-            const propertyCard = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🏠 **SELLER LEAD ${i + 1}**
+            const propertyCard = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏠 SELLER LEAD ${i + 1}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📍 **LOCATION**
+📍 LOCATION
    ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
 
-💰 **PROPERTY DETAILS**
+💰 PROPERTY DETAILS
    🏠 ${property.bedrooms} bed, ${property.bathrooms} bath | ${property.squareFeet.toLocaleString()} sq ft
    🏗️ Built: ${property.yearBuilt}
    📊 ARV: $${parseInt(property.arv).toLocaleString()}
    💰 Max Offer: $${parseInt(property.maxOffer).toLocaleString()}
 
-👤 **OWNER INFO**
+👤 OWNER INFO
    Owner: ${property.ownerName}
    📱 Phone: ${property.ownerPhone}
    ✉️ Email: ${property.ownerEmail}
    📬 Mailing: ${property.ownerMailingAddress}
 
-🎯 **MOTIVATION ANALYSIS**
+🎯 MOTIVATION ANALYSIS
    💎 Equity: ${property.equityPercentage}%
    🎯 Motivation Score: ${property.motivationScore}/100
    🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
@@ -617,27 +615,26 @@ export default function ChatInterface() {
           await new Promise(resolve => setTimeout(resolve, 400)); // Small delay between cards
           const property = dummyProperties[i];
           
-          const propertyCard = `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🏠 **SELLER LEAD ${i + 1}**
+          const propertyCard = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏠 SELLER LEAD ${i + 1}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📍 **LOCATION**
+📍 LOCATION
    ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
 
-💰 **PROPERTY DETAILS**
+💰 PROPERTY DETAILS
    🏠 ${property.bedrooms} bed, ${property.bathrooms} bath | ${property.squareFeet.toLocaleString()} sq ft
    🏗️ Built: ${property.yearBuilt}
    📊 ARV: $${parseInt(property.arv).toLocaleString()}
    💰 Max Offer: $${parseInt(property.maxOffer).toLocaleString()}
 
-👤 **OWNER INFO**
+👤 OWNER INFO
    Owner: ${property.ownerName}
    📱 Phone: ${property.ownerPhone}
    ✉️ Email: ${property.ownerEmail}
    📬 Mailing: ${property.ownerMailingAddress}
 
-🎯 **MOTIVATION ANALYSIS**
+🎯 MOTIVATION ANALYSIS
    💎 Equity: ${property.equityPercentage}%
    🎯 Motivation Score: ${property.motivationScore}/100
    🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
