@@ -204,6 +204,90 @@ export default function ChatInterface() {
     mutationFn: async (data: { content: string; role: string }) => {
       if (!currentConversation) throw new Error("No conversation selected");
 
+      // Check if we have pending seller lead data - if so, use dummy data instead of API
+      const pendingSellerResponse = localStorage.getItem('pendingSellerResponse');
+      const pendingSellerCards = localStorage.getItem('pendingSellerCards');
+      
+      if (pendingSellerResponse && selectedAgent === "lead-finder") {
+        // Remove from localStorage
+        localStorage.removeItem('pendingSellerResponse');
+        localStorage.removeItem('pendingSellerCards');
+        
+        // Add user message
+        await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
+          content: data.content,
+          role: "user"
+        });
+
+        // Add intro message
+        await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
+          content: pendingSellerResponse,
+          role: "assistant",
+          isAiGenerated: true
+        });
+
+        // Add property cards if available
+        if (pendingSellerCards) {
+          const properties = JSON.parse(pendingSellerCards);
+          for (let i = 0; i < properties.length; i++) {
+            const property = properties[i];
+            
+            const propertyCard = `
+<div style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 16px 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #3b82f6;">
+<div style="font-size: 24px;">🏠</div>
+<div style="font-size: 18px; font-weight: bold; color: #1e293b;">SELLER LEAD ${i + 1}</div>
+</div>
+
+<div style="margin-bottom: 16px;">
+<div style="font-weight: bold; font-size: 16px; color: #1e293b; margin-bottom: 8px;">𝗟𝗢𝗖𝗔𝗧𝗜𝗢𝗡</div>
+<div style="color: #475569; margin-left: 8px;">📍 ${property.address}, ${property.city}, ${property.state} ${property.zipCode}</div>
+</div>
+
+<div style="border-top: 2px solid #3b82f6; padding-top: 12px; margin-bottom: 16px;">
+<div style="font-weight: bold; font-size: 16px; color: #1e293b; margin-bottom: 8px;">𝗣𝗥𝗢𝗣𝗘𝗥𝗧𝗬 𝗗𝗘𝗧𝗔𝗜𝗟𝗦</div>
+<div style="color: #475569; margin-left: 8px; line-height: 1.6;">
+🏠 ${property.bedrooms} bed, ${property.bathrooms} bath | ${property.squareFeet.toLocaleString()} sq ft<br>
+🏗️ Built: ${property.yearBuilt}<br>
+📊 ARV: $${parseInt(property.arv).toLocaleString()}<br>
+💰 Max Offer: $${parseInt(property.maxOffer).toLocaleString()}
+</div>
+</div>
+
+<div style="border-top: 2px solid #3b82f6; padding-top: 12px; margin-bottom: 16px;">
+<div style="font-weight: bold; font-size: 16px; color: #1e293b; margin-bottom: 8px;">𝗢𝗪𝗡𝗘𝗥 𝗜𝗡𝗙𝗢</div>
+<div style="color: #475569; margin-left: 8px; line-height: 1.6;">
+👤 Owner: ${property.ownerName}<br>
+📱 Phone: ${property.ownerPhone}<br>
+✉️ Email: ${property.ownerEmail}<br>
+📬 Mailing: ${property.ownerMailingAddress}
+</div>
+</div>
+
+<div style="border-top: 2px solid #3b82f6; padding-top: 12px;">
+<div style="font-weight: bold; font-size: 16px; color: #1e293b; margin-bottom: 8px;">𝗠𝗢𝗧𝗜𝗩𝗔𝗧𝗜𝗢𝗡 𝗔𝗡𝗔𝗟𝗬𝗦𝗜𝗦</div>
+<div style="color: #475569; margin-left: 8px; line-height: 1.6;">
+💎 Equity: ${property.equityPercentage}%<br>
+🎯 Motivation Score: ${property.motivationScore}/100<br>
+🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}<br>
+📈 Lead Type: ${property.leadType.replace(/_/g, ' ')}
+</div>
+</div>
+
+</div>`;
+
+            await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
+              content: propertyCard,
+              role: "assistant",
+              isAiGenerated: true
+            });
+          }
+        }
+
+        return { response: pendingSellerResponse };
+      }
+
       if (selectedAgent === "lead-finder") {
         const demoResponse = await fetch('/api/demo/chat', {
           method: 'POST',
