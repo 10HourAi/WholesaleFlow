@@ -405,7 +405,7 @@ export default function ChatInterface() {
     { value: "any", label: "Any Property Type" }
   ];
 
-  const handleWizardSubmit = () => {
+  const handleWizardSubmit = async () => {
     let location = '';
     const cityInput = wizardData.city.trim();
     const zipPattern = /^\d{5}$/;
@@ -456,7 +456,7 @@ export default function ChatInterface() {
     localStorage.removeItem('pendingSellerCards');
 
     // Using dummy data for UI testing while API is paused
-    setTimeout(async () => {
+    try {
       const dummyProperties = [
         {
           userId: "demo-user",
@@ -673,7 +673,10 @@ export default function ChatInterface() {
       }
 
       setWizardProcessing(false);
-    }, 1000);
+    } catch (error) {
+      console.error('Error in wizard submit:', error);
+      setWizardProcessing(false);
+    }
   };
 
   const handleBuyerWizardSubmit = async () => {
@@ -1401,11 +1404,11 @@ export default function ChatInterface() {
                     </Button>
                   )}
                   <Button 
-                    onClick={() => {
+                    onClick={async () => {
                       if (wizardStep < 4) {
                         setWizardStep(wizardStep + 1);
                       } else {
-                        handleWizardSubmit();
+                        await handleWizardSubmit();
                       }
                     }}
                     disabled={wizardStep === 1 && (!wizardData.city || !wizardData.state) ||
