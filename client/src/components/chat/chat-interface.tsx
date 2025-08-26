@@ -32,6 +32,7 @@ interface WizardData {
 interface BuyerWizardData {
   city: string;
   state: string;
+  buyerType: string;
 }
 
 // PropertyCard component for rendering property cards with buttons  
@@ -152,7 +153,8 @@ export default function ChatInterface() {
   });
   const [buyerWizardData, setBuyerWizardData] = useState<BuyerWizardData>({
     city: "",
-    state: ""
+    state: "",
+    buyerType: ""
   });
   const [wizardProcessing, setWizardProcessing] = useState(false);
   const [buyerWizardProcessing, setBuyerWizardProcessing] = useState(false);
@@ -1092,59 +1094,102 @@ export default function ChatInterface() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-green-600" />
-            Cash Buyer Wizard - Step {buyerWizardStep} of 1
+            Cash Buyer Wizard - Step {buyerWizardStep} of 2
           </CardTitle>
           <p className="text-sm text-gray-600 mt-1">Find active real estate investors and cash buyers</p>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-4">
-            <h3 className="font-semibold text-lg">Where are you looking for cash buyers?</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="buyer-city">City or ZIP Code</Label>
-                <Input
-                  id="buyer-city"
-                  placeholder="e.g., Valley Forge, Philadelphia, 19481"
-                  value={buyerWizardData.city}
-                  onChange={(e) => setBuyerWizardData({...buyerWizardData, city: e.target.value})}
-                />
-              </div>
-              <div>
-                <Label htmlFor="buyer-state">State</Label>
-                <Select value={buyerWizardData.state} onValueChange={(value) => setBuyerWizardData({...buyerWizardData, state: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select state" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {states.map((state) => (
-                      <SelectItem key={state} value={state}>{state}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+          {buyerWizardStep === 1 && (
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg">Where are you looking for cash buyers?</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="buyer-city">City or ZIP Code</Label>
+                  <Input
+                    id="buyer-city"
+                    placeholder="e.g., Valley Forge, Philadelphia, 19481"
+                    value={buyerWizardData.city}
+                    onChange={(e) => setBuyerWizardData({...buyerWizardData, city: e.target.value})}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="buyer-state">State</Label>
+                  <Select value={buyerWizardData.state} onValueChange={(value) => setBuyerWizardData({...buyerWizardData, state: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {states.map((state) => (
+                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
-          </div>
+          )}
+
+          {buyerWizardStep === 2 && (
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg">What type of cash buyer are you looking for?</h3>
+              <div className="grid grid-cols-1 gap-3">
+                {[
+                  { id: "active_landlord", name: "🏠 Active Landlord Buyers", description: "Investors focused on rental properties and portfolio growth" },
+                  { id: "fix_and_flip", name: "🔨 Fix and Flip Buyers", description: "Investors who buy, renovate, and resell properties" },
+                  { id: "cash_buyers", name: "💰 Cash Buyers", description: "General cash buyers looking for investment opportunities" },
+                  { id: "builders", name: "🏗️ Builders", description: "Construction companies and developers looking for projects" }
+                ].map((type) => (
+                  <div key={type.id} 
+                       className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                         buyerWizardData.buyerType === type.id 
+                           ? 'border-green-500 bg-green-50' 
+                           : 'border-gray-200 hover:border-green-300'
+                       }`}
+                       onClick={() => setBuyerWizardData({...buyerWizardData, buyerType: type.id})}
+                  >
+                    <div className="font-medium text-sm">{type.name}</div>
+                    <div className="text-xs text-gray-600 mt-1">{type.description}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-between pt-4">
             <Button
               variant="outline"
               onClick={() => {
-                setShowBuyerWizard(false);
-                setBuyerWizardStep(1);
-                setBuyerWizardData({ city: "", state: "" });
+                if (buyerWizardStep === 1) {
+                  setShowBuyerWizard(false);
+                  setBuyerWizardStep(1);
+                  setBuyerWizardData({ city: "", state: "", buyerType: "" });
+                } else {
+                  setBuyerWizardStep(1);
+                }
               }}
             >
-              Cancel
+              {buyerWizardStep === 1 ? 'Cancel' : 'Back'}
             </Button>
 
-            <Button
-              onClick={handleBuyerWizardSubmit}
-              disabled={!buyerWizardData.city || !buyerWizardData.state}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
-            >
-              <TrendingUp className="h-4 w-4" />
-              Find Cash Buyers
-            </Button>
+            {buyerWizardStep === 1 ? (
+              <Button
+                onClick={() => setBuyerWizardStep(2)}
+                disabled={!buyerWizardData.city || !buyerWizardData.state}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+              >
+                Next
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleBuyerWizardSubmit}
+                disabled={!buyerWizardData.buyerType}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+              >
+                <TrendingUp className="h-4 w-4" />
+                Find Cash Buyers
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
