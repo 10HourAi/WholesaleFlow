@@ -131,11 +131,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const userMessage = await storage.createMessage(validatedData);
 
-      // Generate AI response based on agent type
+      // Skip AI responses for wizard-generated messages
+      const isWizardMessage = validatedData.content.toLowerCase().includes('find') && 
+                             validatedData.content.toLowerCase().includes('properties') &&
+                             (validatedData.content.toLowerCase().includes('distressed') || 
+                              validatedData.content.toLowerCase().includes('motivated') ||
+                              validatedData.content.toLowerCase().includes('leads'));
+
+      // Generate AI response based on agent type (skip for wizard messages)
       const conversation = await storage.getConversation(req.params.id);
       let aiResponse = "";
 
-      if (conversation) {
+      if (conversation && !isWizardMessage) {
         switch (conversation.agentType) {
           case "lead-finder":
             // Check if this is a property search request from Seller Lead Wizard
