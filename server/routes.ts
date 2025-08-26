@@ -517,12 +517,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Terry - Target Market Finder Chat API
   app.post("/api/terry/chat", isAuthenticated, async (req: any, res) => {
     try {
+      console.log("🤖 Terry chat request received:", req.body);
       const { message, history } = req.body;
       
       if (!message) {
+        console.log("❌ No message provided");
         return res.status(400).json({ error: "Message is required" });
       }
 
+      console.log("🔑 Checking OpenAI API key...");
+      if (!process.env.OPENAI_API_KEY) {
+        console.log("❌ No OpenAI API key found");
+        return res.status(500).json({ 
+          error: "OpenAI API key not configured" 
+        });
+      }
+
+      console.log("📥 Importing OpenAI service...");
       const { openaiService } = await import("./openai");
       
       // Create system prompt for Terry
@@ -551,13 +562,16 @@ When users ask about market research, provide specific, data-driven insights. If
         }))
       ];
 
+      console.log("🚀 Calling OpenAI with", messages.length, "messages");
       const response = await openaiService.getChatCompletion(messages);
+      console.log("✅ OpenAI response received:", response.substring(0, 100) + "...");
       
       res.json({ response });
     } catch (error: any) {
-      console.error("Terry chat error:", error);
+      console.error("❌ Terry chat error:", error);
+      console.error("Error details:", error.message, error.stack);
       res.status(500).json({ 
-        error: "Sorry, I'm having trouble processing your request right now. Please try again." 
+        error: error.message || "Sorry, I'm having trouble processing your request right now. Please try again."
       });
     }
   });
