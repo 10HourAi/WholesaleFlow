@@ -442,38 +442,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get multiple properties at once
+  // Get multiple properties at once - API DISABLED FOR UI TESTING
   app.post("/api/properties/batch", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const { location, maxPrice, minEquity, propertyType, distressedOnly, motivationScore, count = 5 } = req.body;
-      const cappedCount = Math.min(count, 5); // Cap at 5 properties
-
-      const { batchLeadsService } = await import("./batchleads");
-      const results = await batchLeadsService.searchValidProperties({
-        location,
-        maxPrice,
-        minEquity,
-        propertyType,
-        distressedOnly,
-        motivationScore
-      }, cappedCount);
-
-      // Save properties to storage
-      for (const propertyData of results.data) {
-        await storage.createProperty(propertyData);
-      }
-
-      res.json({
-        properties: results.data,
-        total: results.totalChecked,
-        filtered: results.filtered,
-        hasMore: results.hasMore
-      });
-    } catch (error: any) {
-      console.error("Batch properties error:", error);
-      res.status(500).json({ message: error.message });
-    }
+    console.log("🚫 API calls paused - batch properties endpoint disabled for UI testing");
+    res.json({
+      properties: [],
+      total: 0,
+      filtered: 0,
+      hasMore: false,
+      message: "API calls paused for UI testing. Use the Seller Lead Wizard for dummy data."
+    });
   });
 
   // Serve demo page
@@ -524,40 +502,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dedicated Cash Buyer API endpoint - returns raw data
+  // Dedicated Cash Buyer API endpoint - API DISABLED FOR UI TESTING
   app.post("/api/cash-buyers/search", async (req, res) => {
-    try {
-      const { location = "harrisburg, PA", limit = 5, timestamp, fresh } = req.body;
-      console.log(`💰 CASH BUYER API: Starting FRESH search for location: ${location}, limit: ${limit}, timestamp: ${timestamp}, fresh: ${fresh}`);
-      console.log(`💰 BACKEND HIT: This log confirms the backend route is being reached`);
-      
-      // Set no-cache headers
-      res.set({
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-        'Expires': '0'
-      });
-      
-      const { batchLeadsService } = await import("./batchleads");
-      const results = await batchLeadsService.searchCashBuyersRaw({ location, limit });
-      
-      console.log(`💰 CASH BUYER API: Returning ${results.buyers.length} buyers from ${results.totalFound} qualified`);
-      
-      res.json({
-        success: true,
-        location: location,
-        totalFound: results.totalFound,
-        returned: results.buyers.length,
-        buyers: results.buyers,
-        timestamp: Date.now() // Fresh timestamp
-      });
-    } catch (error: any) {
-      console.error("💰 Cash buyer search error:", error);
-      res.status(500).json({ 
-        success: false, 
-        error: error.message || "Failed to search cash buyers" 
-      });
-    }
+    console.log("🚫 API calls paused - cash buyer search endpoint disabled for UI testing");
+    res.json({
+      success: false,
+      error: "API calls paused for UI testing. Use the Cash Buyer Wizard for dummy data.",
+      buyers: [],
+      totalFound: 0,
+      returned: 0
+    });
   });
 
   // Public demo endpoints (no auth required for testing)
