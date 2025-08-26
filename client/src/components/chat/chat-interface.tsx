@@ -289,65 +289,33 @@ export default function ChatInterface() {
       }
 
       if (selectedAgent === "lead-finder") {
-        const demoResponse = await fetch('/api/demo/chat', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            message: data.content,
-            agentType: 'lead_finder',
-            sessionState: sessionState,
-            excludedPropertyIds: Array.from(shownPropertyIds)
-          })
-        });
+        // Skip API call for seller leads - we're using dummy data for UI testing
+        // const demoResponse = await fetch('/api/demo/chat', {
+        //   method: 'POST',
+        //   headers: {
+        //     'Content-Type': 'application/json',
+        //   },
+        //   body: JSON.stringify({
+        //     message: data.content,
+        //     agentType: 'lead_finder',
+        //     sessionState: sessionState,
+        //     excludedPropertyIds: Array.from(shownPropertyIds)
+        //   })
+        // });
 
-        if (!demoResponse.ok) {
-          throw new Error('Failed to get response from demo chat');
-        }
-
-        const demoResult = await demoResponse.json();
-
-        if (demoResult.sessionState) {
-          setSessionState(demoResult.sessionState);
-        }
-
+        // Return dummy result for now
         await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
           content: data.content,
           role: "user"
         });
 
-        let messageContent = demoResult.response;
-        if (demoResult.property) {
-          const prop = demoResult.property;
-          messageContent = `${demoResult.response}
-
-**PROPERTY DETAILS:**
-Address: ${prop.address}, ${prop.city}, ${prop.state} ${prop.zipCode}
-ARV: $${parseInt(prop.arv).toLocaleString()}
-Max Offer: $${parseInt(prop.maxOffer).toLocaleString()}
-Property Type: ${prop.propertyType.replace('_', ' ')}
-
-**OWNER INFORMATION:**
-Owner Name: ${prop.ownerName}
-Owner Phone: ${prop.ownerPhone}
-Owner Email: ${prop.ownerEmail}
-Mailing Address: ${prop.ownerMailingAddress}
-
-**FINANCIAL ANALYSIS:**
-Equity Percentage: ${prop.equityPercentage}%
-Motivation Score: ${prop.motivationScore}/100
-Lead Type: ${prop.leadType.replace('_', ' ')}
-Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
-        }
-
         await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
-          content: messageContent,
+          content: "API calls are currently paused for UI testing. Please use the Seller Lead Wizard for testing the new card format.",
           role: "assistant",
           isAiGenerated: true
         });
 
-        return demoResult;
+        return { response: "API paused for testing" };
       } else {
         const response = await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, data);
         return response.json();
