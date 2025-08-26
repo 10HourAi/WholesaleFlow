@@ -479,30 +479,50 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
           // Send property cards one by one
           dummyProperties.forEach((property, index) => {
             setTimeout(() => {
-              const propertyCard = `**🏠 LEAD ${index + 1}: ${property.address}**
+              const propertyCard = `
+<div style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 16px 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
 
-**𝗟𝗢𝗖𝗔𝗧𝗜𝗢𝗡**
-📍 ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #3b82f6;">
+<div style="font-size: 24px;">🏠</div>
+<div style="font-size: 18px; font-weight: bold; color: #1e293b;">SELLER LEAD ${index + 1}</div>
+</div>
 
-**𝗣𝗥𝗢𝗣𝗘𝗥𝗧𝗬 𝗗𝗘𝗧𝗔𝗜𝗟𝗦**
-🏠 ${property.bedrooms} bed, ${property.bathrooms} bath | ${property.squareFeet.toLocaleString()} sq ft
-🏗️ Built: ${property.yearBuilt}
-📊 ARV: $${parseInt(property.arv).toLocaleString()}
+<div style="margin-bottom: 16px;">
+<div style="font-weight: bold; font-size: 16px; color: #1e293b; margin-bottom: 8px;">𝗟𝗢𝗖𝗔𝗧𝗜𝗢𝗡</div>
+<div style="color: #475569; margin-left: 8px;">📍 ${property.address}, ${property.city}, ${property.state} ${property.zipCode}</div>
+</div>
+
+<div style="border-top: 2px solid #3b82f6; padding-top: 12px; margin-bottom: 16px;">
+<div style="font-weight: bold; font-size: 16px; color: #1e293b; margin-bottom: 8px;">𝗣𝗥𝗢𝗣𝗘𝗥𝗧𝗬 𝗗𝗘𝗧𝗔𝗜𝗟𝗦</div>
+<div style="color: #475569; margin-left: 8px; line-height: 1.6;">
+🏠 ${property.bedrooms} bed, ${property.bathrooms} bath | ${property.squareFeet.toLocaleString()} sq ft<br>
+🏗️ Built: ${property.yearBuilt}<br>
+📊 ARV: $${parseInt(property.arv).toLocaleString()}<br>
 💰 Max Offer: $${parseInt(property.maxOffer).toLocaleString()}
+</div>
+</div>
 
-**𝗢𝗪𝗡𝗘𝗥 𝗜𝗡𝗙𝗢**
-👤 Owner: ${property.ownerName}
-📱 Phone: ${property.ownerPhone}
-✉️ Email: ${property.ownerEmail}
+<div style="border-top: 2px solid #3b82f6; padding-top: 12px; margin-bottom: 16px;">
+<div style="font-weight: bold; font-size: 16px; color: #1e293b; margin-bottom: 8px;">𝗢𝗪𝗡𝗘𝗥 𝗜𝗡𝗙𝗢</div>
+<div style="color: #475569; margin-left: 8px; line-height: 1.6;">
+👤 Owner: ${property.ownerName}<br>
+📱 Phone: ${property.ownerPhone}<br>
+✉️ Email: ${property.ownerEmail}<br>
 📬 Mailing: ${property.ownerMailingAddress}
+</div>
+</div>
 
-**𝗠𝗢𝗧𝗜𝗩𝗔𝗧𝗜𝗢𝗡 𝗔𝗡𝗔𝗟𝗬𝗦𝗜𝗦**
-💎 Equity: ${property.equityPercentage}%
-🎯 Motivation Score: ${property.motivationScore}/100
-🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
+<div style="border-top: 2px solid #3b82f6; padding-top: 12px;">
+<div style="font-weight: bold; font-size: 16px; color: #1e293b; margin-bottom: 8px;">𝗠𝗢𝗧𝗜𝗩𝗔𝗧𝗜𝗢𝗡 𝗔𝗡𝗔𝗟𝗬𝗦𝗜𝗦</div>
+<div style="color: #475569; margin-left: 8px; line-height: 1.6;">
+💎 Equity: ${property.equityPercentage}%<br>
+🎯 Motivation Score: ${property.motivationScore}/100<br>
+🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}<br>
 📈 Lead Type: ${property.leadType.replace(/_/g, ' ')}
+</div>
+</div>
 
-───────────────────────`;
+</div>`;
 
               sendMessageMutation.mutate({
                 content: propertyCard,
