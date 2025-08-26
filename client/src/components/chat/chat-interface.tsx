@@ -588,6 +588,32 @@ export default function ChatInterface() {
           motivationScore: 80,
           distressedIndicator: "high_equity_elderly",
           id: "demo5"
+        },
+        {
+          userId: "demo-user",
+          address: "987 Opportunity St",
+          city: wizardData.city || "Orlando",
+          state: wizardData.state || "FL",
+          zipCode: "32807",
+          bedrooms: wizardData.minBedrooms || 3,
+          bathrooms: 2,
+          squareFeet: 1750,
+          arv: "295000",
+          maxOffer: "206500",
+          status: "new",
+          leadType: wizardData.sellerType === "any" ? "motivated_seller" : wizardData.sellerType,
+          propertyType: wizardData.propertyType === "any" ? "single_family" : wizardData.propertyType,
+          yearBuilt: 1998,
+          lastSalePrice: "145000",
+          lastSaleDate: "2020-01-15",
+          ownerName: "Carlos & Maria Gonzalez",
+          ownerPhone: "(555) 654-3210",
+          ownerEmail: "Available via skip trace",
+          ownerMailingAddress: "987 Opportunity St, Orlando, FL 32807",
+          equityPercentage: 62,
+          motivationScore: 88,
+          distressedIndicator: "job_relocation_urgent",
+          id: "demo6"
         }
       ];
 
