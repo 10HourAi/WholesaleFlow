@@ -595,10 +595,17 @@ export default function ChatInterface() {
       const introMessage = `Great! I found ${dummyProperties.length} motivated seller leads in **${wizardData.city}, ${wizardData.state}**. Here are your top prospects:`;
       
       if (!currentConversation) {
+        // Store the data for when the new conversation is created
+        localStorage.setItem('pendingSellerResponse', introMessage);
+        localStorage.setItem('pendingSellerCards', JSON.stringify(dummyProperties));
+        
         createConversationMutation.mutate({
           agentType: selectedAgent,
           title: `Lead Search: ${wizardData.city}, ${wizardData.state}`,
         });
+        
+        // The cards will be displayed when the new conversation is created
+        // due to the useEffect that checks for pendingSellerResponse
       } else {
         // Send user query first
         await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
