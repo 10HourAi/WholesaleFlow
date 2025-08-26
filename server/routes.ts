@@ -265,22 +265,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 aiResponse = response;
               }
             } else {
-              // Non-property search, use OpenAI for general lead finder guidance  
-              aiResponse = await generateLeadFinderResponse(validatedData.content, userId);
+              // Non-property search - using dummy response while API is paused
+              aiResponse = "I'm here to help you find motivated sellers and distressed properties! Use the Seller Lead Wizard above to search for properties in your target area.";
             }
             break;
           case "deal-analyzer":
-            const property = conversation.propertyId ? await storage.getProperty(conversation.propertyId, userId) : undefined;
-            aiResponse = await generateDealAnalyzerResponse(validatedData.content, property);
+            // Using dummy response while API is paused
+            aiResponse = "I'm the Deal Analyzer Agent! I help analyze property deals and calculate profit potential. All API calls are currently paused - using dummy data for testing.";
             break;
           case "negotiation":
-            const contact = conversation.contactId ? await storage.getContact(conversation.contactId) : undefined;
-            const negotiationProperty = conversation.propertyId ? await storage.getProperty(conversation.propertyId, userId) : undefined;
-            aiResponse = await generateNegotiationResponse(validatedData.content, contact, negotiationProperty);
+            // Using dummy response while API is paused
+            aiResponse = "I'm the Negotiation Agent! I help craft compelling offers and negotiate with sellers. All API calls are currently paused - using dummy data for testing.";
             break;
           case "closing":
-            const closingProperty = conversation.propertyId ? await storage.getProperty(conversation.propertyId, userId) : undefined;
-            aiResponse = await generateClosingResponse(validatedData.content, closingProperty);
+            // Using dummy response while API is paused
+            aiResponse = "I'm the Closing Agent! I help manage transactions and prepare closing documents. All API calls are currently paused - using dummy data for testing.";
             break;
           default:
             aiResponse = "I'm here to help with your real estate wholesaling needs!";
