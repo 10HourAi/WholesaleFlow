@@ -143,6 +143,7 @@ export default function ChatInterface() {
   const [inputMessage, setInputMessage] = useState("");
   const [showWizard, setShowWizard] = useState(false);
   const [showBuyerWizard, setShowBuyerWizard] = useState(false);
+  const [showTargetMarketFinder, setShowTargetMarketFinder] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
   const [buyerWizardStep, setBuyerWizardStep] = useState(1);
   const [wizardData, setWizardData] = useState<WizardData>({
@@ -1227,6 +1228,47 @@ export default function ChatInterface() {
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {renderBuyerWizard()}
         
+        {/* Target Market Finder Output */}
+        {showTargetMarketFinder && (
+          <Card className="mb-4 border-2 border-purple-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lightbulb className="h-5 w-5 text-purple-600" />
+                Target Market Finder - Interactive Analysis Tool
+              </CardTitle>
+              <p className="text-sm text-gray-600 mt-1">Analyze market opportunities and identify ideal investment areas</p>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="w-full h-[600px] border rounded-lg overflow-hidden">
+                <iframe
+                  src="data:text/html;charset=utf-8,%3C!DOCTYPE%20html%3E%3Chtml%20lang%3D%22en%22%20class%3D%22scroll-smooth%22%3E%3Chead%3E%3Cmeta%20charSet%3D%22utf-8%22/%3E%3Cmeta%20name%3D%22viewport%22%20content%3D%22width%3Ddevice-width%22/%3E%3Cmeta%20name%3D%22next-head-count%22%20content%3D%222%22/%3E%3Clink%20rel%3D%22preload%22%20href%3D%22/axe/_next/static/media/fecba37eb4cf0fd6-s.p.ttf%22%20as%3D%22font%22%20type%3D%22font/ttf%22%20crossorigin%3D%22anonymous%22%20data-next-font%3D%22size-adjust%22/%3E%3C/head%3E%3Cbody%3E%3Cdiv%20style%3D%22padding%3A%2020px%3B%20text-align%3A%20center%3B%20font-family%3A%20Arial%2C%20sans-serif%3B%22%3E%3Ch1%3ETarget%20Market%20Analysis%20Tool%3C/h1%3E%3Cp%3EInteractive%20market%20analysis%20and%20research%20tool%20will%20be%20embedded%20here.%3C/p%3E%3Cp%3EThis%20tool%20helps%20identify%20ideal%20investment%20markets%20based%20on%20various%20criteria.%3C/p%3E%3C/div%3E%3C/body%3E%3C/html%3E"
+                  width="100%"
+                  height="100%"
+                  style={{ border: 'none' }}
+                  title="Target Market Finder Tool"
+                />
+              </div>
+              
+              <div className="flex justify-between pt-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowTargetMarketFinder(false)}
+                >
+                  Close Tool
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  onClick={() => window.open('data:text/html;charset=utf-8,%3C!DOCTYPE%20html%3E%3Chtml%20lang%3D%22en%22%20class%3D%22scroll-smooth%22%3E%3Chead%3E%3Cmeta%20charSet%3D%22utf-8%22/%3E%3Cmeta%20name%3D%22viewport%22%20content%3D%22width%3Ddevice-width%22/%3E%3Cmeta%20name%3D%22next-head-count%22%20content%3D%222%22/%3E%3Clink%20rel%3D%22preload%22%20href%3D%22/axe/_next/static/media/fecba37eb4cf0fd6-s.p.ttf%22%20as%3D%22font%22%20type%3D%22font/ttf%22%20crossorigin%3D%22anonymous%22%20data-next-font%3D%22size-adjust%22/%3E%3C/head%3E%3Cbody%3E%3Cdiv%20style%3D%22padding%3A%2020px%3B%20text-align%3A%20center%3B%20font-family%3A%20Arial%2C%20sans-serif%3B%22%3E%3Ch1%3ETarget%20Market%20Analysis%20Tool%3C/h1%3E%3Cp%3EInteractive%20market%20analysis%20and%20research%20tool%20will%20be%20embedded%20here.%3C/p%3E%3Cp%3EThis%20tool%20helps%20identify%20ideal%20investment%20markets%20based%20on%20various%20criteria.%3C/p%3E%3C/div%3E%3C/body%3E%3C/html%3E', '_blank')}
+                  className="bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  Open in New Tab
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         {/* Processing indicator */}
         {(wizardProcessing || buyerWizardProcessing || sendMessageMutation.isPending) && (
           <Card className="border-2 border-blue-200 bg-blue-50">
@@ -1333,6 +1375,38 @@ export default function ChatInterface() {
                         >
                           <TrendingUp className="h-4 w-4" />
                           Use Cash Buyer Wizard
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
+            
+            {/* Target Market Finder - Only for Lead Finder */}
+            {selectedAgent === "lead-finder" && (
+              <div className="flex items-start space-x-3">
+                <Avatar>
+                  <AvatarImage />
+                  <AvatarFallback>
+                    <Lightbulb className="h-4 w-4" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <Card>
+                    <CardContent className="p-4">
+                      <p className="text-sm text-slate-900">
+                        Hello! I'm your Target Market Finder. I help identify and analyze ideal market areas for real estate investing. Click below to access the interactive market analysis tool!
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowTargetMarketFinder(true)}
+                          className="flex items-center gap-2 mb-2 bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                        >
+                          <Lightbulb className="h-4 w-4" />
+                          Use Target Market Finder
                         </Button>
                       </div>
                     </CardContent>
