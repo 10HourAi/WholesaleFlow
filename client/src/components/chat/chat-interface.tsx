@@ -113,6 +113,90 @@ export default function ChatInterface() {
           }
         }, 200);
       }
+
+      // Check for and send pending seller lead response and individual cards
+      const pendingSellerResponse = localStorage.getItem('pendingSellerResponse');
+      const pendingSellerCards = localStorage.getItem('pendingSellerCards');
+      
+      if (pendingSellerResponse) {
+        localStorage.removeItem('pendingSellerResponse');
+        localStorage.removeItem('pendingSellerCards');
+        
+        // Send the intro message first
+        setTimeout(async () => {
+          try {
+            await apiRequest("POST", `/api/conversations/${conversation.id}/messages`, {
+              content: pendingSellerResponse,
+              role: "assistant",
+              isAiGenerated: true
+            });
+            
+            // If we have individual property cards, send each as a separate message
+            if (pendingSellerCards) {
+              const properties = JSON.parse(pendingSellerCards);
+              for (let i = 0; i < properties.length; i++) {
+                await new Promise(resolve => setTimeout(resolve, 400)); // Small delay between cards
+                const property = properties[i];
+                
+                const propertyCard = `
+<div style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 16px 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+
+<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #3b82f6;">
+<div style="font-size: 24px;">🏠</div>
+<div style="font-size: 18px; font-weight: bold; color: #1e293b;">SELLER LEAD ${i + 1}</div>
+</div>
+
+<div style="margin-bottom: 16px;">
+<div style="font-weight: bold; font-size: 16px; color: #1e293b; margin-bottom: 8px;">𝗟𝗢𝗖𝗔𝗧𝗜𝗢𝗡</div>
+<div style="color: #475569; margin-left: 8px;">📍 ${property.address}, ${property.city}, ${property.state} ${property.zipCode}</div>
+</div>
+
+<div style="border-top: 2px solid #3b82f6; padding-top: 12px; margin-bottom: 16px;">
+<div style="font-weight: bold; font-size: 16px; color: #1e293b; margin-bottom: 8px;">𝗣𝗥𝗢𝗣𝗘𝗥𝗧𝗬 𝗗𝗘𝗧𝗔𝗜𝗟𝗦</div>
+<div style="color: #475569; margin-left: 8px; line-height: 1.6;">
+🏠 ${property.bedrooms} bed, ${property.bathrooms} bath | ${property.squareFeet.toLocaleString()} sq ft<br>
+🏗️ Built: ${property.yearBuilt}<br>
+📊 ARV: $${parseInt(property.arv).toLocaleString()}<br>
+💰 Max Offer: $${parseInt(property.maxOffer).toLocaleString()}
+</div>
+</div>
+
+<div style="border-top: 2px solid #3b82f6; padding-top: 12px; margin-bottom: 16px;">
+<div style="font-weight: bold; font-size: 16px; color: #1e293b; margin-bottom: 8px;">𝗢𝗪𝗡𝗘𝗥 𝗜𝗡𝗙𝗢</div>
+<div style="color: #475569; margin-left: 8px; line-height: 1.6;">
+👤 Owner: ${property.ownerName}<br>
+📱 Phone: ${property.ownerPhone}<br>
+✉️ Email: ${property.ownerEmail}<br>
+📬 Mailing: ${property.ownerMailingAddress}
+</div>
+</div>
+
+<div style="border-top: 2px solid #3b82f6; padding-top: 12px;">
+<div style="font-weight: bold; font-size: 16px; color: #1e293b; margin-bottom: 8px;">𝗠𝗢𝗧𝗜𝗩𝗔𝗧𝗜𝗢𝗡 𝗔𝗡𝗔𝗟𝗬𝗦𝗜𝗦</div>
+<div style="color: #475569; margin-left: 8px; line-height: 1.6;">
+💎 Equity: ${property.equityPercentage}%<br>
+🎯 Motivation Score: ${property.motivationScore}/100<br>
+🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}<br>
+📈 Lead Type: ${property.leadType.replace(/_/g, ' ')}
+</div>
+</div>
+
+</div>`;
+
+                await apiRequest("POST", `/api/conversations/${conversation.id}/messages`, {
+                  content: propertyCard,
+                  role: "assistant",
+                  isAiGenerated: true
+                });
+              }
+            }
+            
+            queryClient.invalidateQueries({ queryKey: ["/api/conversations", conversation.id, "messages"] });
+          } catch (error) {
+            console.error('Failed to send pending seller response:', error);
+          }
+        }, 200);
+      }
     },
   });
 
@@ -320,7 +404,7 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
     localStorage.removeItem('pendingSellerCards');
 
     // Using dummy data for UI testing while API is paused
-    setTimeout(() => {
+    setTimeout(async () => {
       const dummyProperties = [
         {
           userId: "demo-user",
@@ -463,74 +547,15 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
           title: `Lead Search: ${wizardData.city}, ${wizardData.state}`,
         });
       } else {
-        // Send user query first
+        // Store intro and property cards for display
+        localStorage.setItem('pendingSellerResponse', introMessage);
+        localStorage.setItem('pendingSellerCards', JSON.stringify(dummyProperties));
+        
+        // Send user query first - this will trigger the display of stored cards
         sendMessageMutation.mutate({
           content: searchQuery,
           role: "user",
         });
-
-        // Send intro message
-        setTimeout(() => {
-          sendMessageMutation.mutate({
-            content: introMessage,
-            role: "assistant",
-          });
-
-          // Send property cards one by one
-          dummyProperties.forEach((property, index) => {
-            setTimeout(() => {
-              const propertyCard = `
-<div style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 16px 0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
-
-<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #3b82f6;">
-<div style="font-size: 24px;">🏠</div>
-<div style="font-size: 18px; font-weight: bold; color: #1e293b;">SELLER LEAD ${index + 1}</div>
-</div>
-
-<div style="margin-bottom: 16px;">
-<div style="font-weight: bold; font-size: 16px; color: #1e293b; margin-bottom: 8px;">𝗟𝗢𝗖𝗔𝗧𝗜𝗢𝗡</div>
-<div style="color: #475569; margin-left: 8px;">📍 ${property.address}, ${property.city}, ${property.state} ${property.zipCode}</div>
-</div>
-
-<div style="border-top: 2px solid #3b82f6; padding-top: 12px; margin-bottom: 16px;">
-<div style="font-weight: bold; font-size: 16px; color: #1e293b; margin-bottom: 8px;">𝗣𝗥𝗢𝗣𝗘𝗥𝗧𝗬 𝗗𝗘𝗧𝗔𝗜𝗟𝗦</div>
-<div style="color: #475569; margin-left: 8px; line-height: 1.6;">
-🏠 ${property.bedrooms} bed, ${property.bathrooms} bath | ${property.squareFeet.toLocaleString()} sq ft<br>
-🏗️ Built: ${property.yearBuilt}<br>
-📊 ARV: $${parseInt(property.arv).toLocaleString()}<br>
-💰 Max Offer: $${parseInt(property.maxOffer).toLocaleString()}
-</div>
-</div>
-
-<div style="border-top: 2px solid #3b82f6; padding-top: 12px; margin-bottom: 16px;">
-<div style="font-weight: bold; font-size: 16px; color: #1e293b; margin-bottom: 8px;">𝗢𝗪𝗡𝗘𝗥 𝗜𝗡𝗙𝗢</div>
-<div style="color: #475569; margin-left: 8px; line-height: 1.6;">
-👤 Owner: ${property.ownerName}<br>
-📱 Phone: ${property.ownerPhone}<br>
-✉️ Email: ${property.ownerEmail}<br>
-📬 Mailing: ${property.ownerMailingAddress}
-</div>
-</div>
-
-<div style="border-top: 2px solid #3b82f6; padding-top: 12px;">
-<div style="font-weight: bold; font-size: 16px; color: #1e293b; margin-bottom: 8px;">𝗠𝗢𝗧𝗜𝗩𝗔𝗧𝗜𝗢𝗡 𝗔𝗡𝗔𝗟𝗬𝗦𝗜𝗦</div>
-<div style="color: #475569; margin-left: 8px; line-height: 1.6;">
-💎 Equity: ${property.equityPercentage}%<br>
-🎯 Motivation Score: ${property.motivationScore}/100<br>
-🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}<br>
-📈 Lead Type: ${property.leadType.replace(/_/g, ' ')}
-</div>
-</div>
-
-</div>`;
-
-              sendMessageMutation.mutate({
-                content: propertyCard,
-                role: "assistant",
-              });
-            }, (index + 1) * 400);
-          });
-        }, 500);
       }
 
       setWizardProcessing(false);
