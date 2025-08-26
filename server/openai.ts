@@ -129,37 +129,8 @@ Try searching in a different location or expanding your criteria.`;
       return response;
     }
 
-    // Regular AI response for non-property searches
-    const completion = await getOpenAI().chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: `You are a Lead Finder Agent for real estate wholesaling. You help investors find off-market properties, distressed sales, and motivated sellers.
-
-          When users ask about finding properties, searching for leads, or mention specific locations, guide them to use specific search terms like:
-          - "Find 5 properties in Orlando, FL"
-          - "Show me distressed properties in 32803"
-          - "Search for high equity properties in Philadelphia"
-
-          You have access to live property data through BatchData API that includes:
-          - Property details (address, size, year built)
-          - Financial analysis (ARV, equity, max offer calculations)
-          - Owner information (name, mailing address, contact details)
-          - Motivation indicators (distressed signals, foreclosure status)
-
-          Be helpful, professional, and focus on actionable wholesale opportunities.`
-        },
-        {
-          role: "user",
-          content: userMessage
-        }
-      ],
-      max_tokens: 500,
-      temperature: 0.7,
-    });
-
-    return completion.choices[0]?.message?.content || "I'm here to help you find wholesale real estate opportunities!";
+    // Using dummy response while API is paused - no OpenAI calls
+    return "I'm here to help you find motivated sellers and distressed properties! Use the Seller Lead Wizard above to search for properties in your target area.";
   } catch (error) {
     console.error("Error generating lead finder response:", error);
     return "I'm having trouble processing your request right now. Please try again or contact support.";
@@ -167,64 +138,18 @@ Try searching in a different location or expanding your criteria.`;
 }
 
 export async function generateDealAnalyzerResponse(userMessage: string, property?: Property): Promise<string> {
-  const propertyContext = property ? `Property details: ${property.address}, ${property.city}, ${property.state} - ${property.bedrooms}/${property.bathrooms}, ${property.squareFeet} sq ft. ARV: $${property.arv}, Max Offer: $${property.maxOffer}` : "";
-
-  const response = await getOpenAI().chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      {
-        role: "system",
-        content: `You are a Deal Analyzer Agent for real estate wholesaling. You help analyze property deals by calculating ARV (After Repair Value), estimating repair costs, determining maximum allowable offer, and assessing profit potential. Use the 70% rule and provide detailed financial breakdowns. ${propertyContext}`
-      },
-      {
-        role: "user",
-        content: userMessage
-      }
-    ],
-  });
-
-  return response.choices[0].message.content || "I'm sorry, I couldn't analyze this deal.";
+  // Using dummy response while API is paused
+  return "I'm the Deal Analyzer Agent! I help analyze property deals and calculate profit potential. All API calls are currently paused - using dummy data for testing.";
 }
 
 export async function generateNegotiationResponse(userMessage: string, contact?: Contact, property?: Property): Promise<string> {
-  const context = contact && property ? 
-    `Contact: ${contact.name} (${contact.phone}, ${contact.email}). Property: ${property.address}, ${property.city}, ${property.state}. Current status: ${property.status}` : "";
-
-  const response = await getOpenAI().chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      {
-        role: "system",
-        content: `You are a Negotiation Agent for real estate wholesaling. You help craft persuasive emails, texts, and scripts for contacting property owners and negotiating deals. You understand motivated seller psychology and can create compelling offers and follow-up messages. ${context}`
-      },
-      {
-        role: "user",
-        content: userMessage
-      }
-    ],
-  });
-
-  return response.choices[0].message.content || "I'm sorry, I couldn't help with negotiation.";
+  // Using dummy response while API is paused
+  return "I'm the Negotiation Agent! I help craft compelling offers and negotiate with sellers. All API calls are currently paused - using dummy data for testing.";
 }
 
 export async function generateClosingResponse(userMessage: string, property?: Property): Promise<string> {
-  const propertyContext = property ? `Property: ${property.address}, ${property.city}, ${property.state}. Deal value: $${property.maxOffer}` : "";
-
-  const response = await getOpenAI().chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      {
-        role: "system",
-        content: `You are a Closing Agent for real estate wholesaling. You help with contract preparation, title work, closing coordination, and document management. You can generate purchase agreements, assignment contracts, and closing checklists. ${propertyContext}`
-      },
-      {
-        role: "user",
-        content: userMessage
-      }
-    ],
-  });
-
-  return response.choices[0].message.content || "I'm sorry, I couldn't help with closing.";
+  // Using dummy response while API is paused
+  return "I'm the Closing Agent! I help manage transactions and prepare closing documents. All API calls are currently paused - using dummy data for testing.";
 }
 
 export async function generatePropertyLeads(location: string, criteria: string): Promise<{
@@ -242,24 +167,6 @@ export async function generatePropertyLeads(location: string, criteria: string):
     condition: string;
   }>;
 }> {
-  const response = await getOpenAI().chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      {
-        role: "system",
-        content: `You are a real estate data analyzer. Generate realistic property leads based on the given location and criteria. Return a JSON object with an array of properties. Each property should have: address, city, state, bedrooms, bathrooms, squareFeet, price, arv (after repair value), maxOffer (70% of ARV minus estimated repairs), leadType (foreclosure, motivated_seller, distressed, etc.), and condition.`
-      },
-      {
-        role: "user",
-        content: `Find properties in ${location} matching criteria: ${criteria}. Generate 5-8 realistic property leads.`
-      }
-    ],
-    response_format: { type: "json_object" },
-  });
-
-  try {
-    return JSON.parse(response.choices[0].message.content || '{"properties": []}');
-  } catch (error) {
-    return { properties: [] };
-  }
+  // Using dummy response while API is paused
+  return { properties: [] };
 }
