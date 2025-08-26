@@ -144,6 +144,7 @@ export default function ChatInterface() {
   const [showWizard, setShowWizard] = useState(false);
   const [showBuyerWizard, setShowBuyerWizard] = useState(false);
   const [showTargetMarketFinder, setShowTargetMarketFinder] = useState(false);
+  const [targetMarketResults, setTargetMarketResults] = useState(false);
   const [terryMessages, setTerryMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([]);
   const [terryInput, setTerryInput] = useState('');
   const [terryLoading, setTerryLoading] = useState(false);
@@ -1278,22 +1279,15 @@ export default function ChatInterface() {
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
         {renderBuyerWizard()}
         
-        {/* Target Market Finder - Terry Chat Interface */}
-        {showTargetMarketFinder && (
-          <Card className="mb-4 border-2 border-gray-200">
-            <CardHeader className="bg-white border-b border-gray-200">
-              <CardTitle className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-200 to-amber-400 flex items-center justify-center">
-                    <div className="w-6 h-6 text-amber-700">
-                      <svg viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM21 9V7L15 1H5C3.89 1 3 1.89 3 3V21C3 22.11 3.89 23 5 23H19C20.11 23 21 22.11 21 21V9M19 21H5V3H13V9H19Z"/>
-                      </svg>
-                    </div>
-                  </div>
-                  <span className="text-xl font-bold text-gray-900">Terry - Your Target Market Finder</span>
-                </div>
+        {/* Target Market Finder Results - Separate Output Page */}
+        {targetMarketResults && (
+          <Card className="mb-4 border-2 border-purple-200">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Lightbulb className="h-5 w-5 text-purple-600" />
+                Target Market Finder - Chat with Terry
               </CardTitle>
+              <p className="text-sm text-gray-600 mt-1">Interactive market analysis and research with AI • Third of 3 Lead Finder wizards</p>
             </CardHeader>
             <CardContent className="p-0">
               <div className="h-[600px] flex flex-col">
@@ -1410,7 +1404,7 @@ export default function ChatInterface() {
                       disabled={terryLoading}
                     />
                     <button
-                      onClick={handleTerrySendMessage}
+                      onClick={() => handleTerrySendMessage()}
                       disabled={!terryInput.trim() || terryLoading}
                       className="p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
@@ -1421,15 +1415,28 @@ export default function ChatInterface() {
                   </div>
                 </div>
                 
-                {/* Close Button */}
-                <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowTargetMarketFinder(false)}
-                    className="w-full"
-                  >
-                    Close Target Market Finder
-                  </Button>
+                {/* Action Buttons */}
+                <div className="px-6 py-4 bg-gray-50 border-t border-gray-200">
+                  <div className="flex gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setTargetMarketResults(false);
+                        setTerryMessages([]);
+                        setTerryInput('');
+                      }}
+                      className="flex-1"
+                    >
+                      Start New Chat
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setTargetMarketResults(false)}
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                      Back to Wizards
+                    </Button>
+                  </div>
                 </div>
               </div>
             </CardContent>
@@ -1569,7 +1576,10 @@ export default function ChatInterface() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setShowTargetMarketFinder(true)}
+                          onClick={() => {
+                            setShowTargetMarketFinder(false);
+                            setTargetMarketResults(true);
+                          }}
                           className="flex items-center gap-2 mb-2 bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
                         >
                           <Lightbulb className="h-4 w-4" />
