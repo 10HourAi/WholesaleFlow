@@ -34,78 +34,103 @@ interface BuyerWizardData {
   state: string;
 }
 
-// PropertyCard component for rendering property cards with buttons
+// PropertyCard component for rendering property cards with buttons  
 const PropertyCard = ({ content }: { content: string }) => {
   const { toast } = useToast();
   
-  // Extract property number safely
-  const propertyNumber = content.match(/🏠 SELLER LEAD (\d+)/)?.[1] || '1';
+  // Detect card type and extract number
+  const isSellerLead = content.includes('🏠 SELLER LEAD');
+  const isCashBuyer = content.includes('🎯 QUALIFIED CASH BUYER');
+  
+  const cardNumber = isSellerLead 
+    ? content.match(/🏠 SELLER LEAD (\d+)/)?.[1] || '1'
+    : content.match(/🎯 QUALIFIED CASH BUYER #(\d+)/)?.[1] || '1';
+  
+  const cardType = isSellerLead ? 'Property' : 'Buyer';
   
   const handleAddToCRM = () => {
     toast({
       title: "Added to CRM",
-      description: `Property ${propertyNumber} has been added to your CRM system.`,
+      description: `${cardType} ${cardNumber} has been added to your CRM system.`,
     });
   };
   
   const handleAnalyzeDeal = () => {
-    toast({
-      title: "Deal Analysis Started", 
-      description: `Analyzing deal for property ${propertyNumber}...`,
-    });
+    if (isSellerLead) {
+      toast({
+        title: "Deal Analysis Started", 
+        description: `Analyzing deal for property ${cardNumber}...`,
+      });
+    } else {
+      toast({
+        title: "Buyer Profile Analysis",
+        description: `Analyzing investment profile for buyer ${cardNumber}...`,
+      });
+    }
   };
   
   const handleContactOwner = () => {
-    toast({
-      title: "Contact Owner",
-      description: `Preparing to contact property owner...`,
-    });
+    if (isSellerLead) {
+      toast({
+        title: "Contact Owner",
+        description: `Preparing to contact property owner...`,
+      });
+    } else {
+      toast({
+        title: "Contact Investor",
+        description: `Preparing to contact cash buyer...`,
+      });
+    }
   };
   
-  // Remove the actions section from content for display
-  const displayContent = content.replace(/🎯 ACTIONS[\s\S]*?━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━/g, '').trim();
+  // Remove any action sections from content for display
+  const displayContent = content
+    .replace(/🎯 ACTIONS[\s\S]*?━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━/g, '')
+    .trim();
+  
+  // Dynamic button labels based on card type
+  const actionButtons = isSellerLead 
+    ? [
+        { label: "Add to CRM", icon: Plus, color: "green", action: handleAddToCRM },
+        { label: "Analyze Deal", icon: BarChart3, color: "blue", action: handleAnalyzeDeal },
+        { label: "Contact Owner", icon: PhoneCall, color: "orange", action: handleContactOwner }
+      ]
+    : [
+        { label: "Add to CRM", icon: Plus, color: "green", action: handleAddToCRM },
+        { label: "View Portfolio", icon: BarChart3, color: "blue", action: handleAnalyzeDeal },
+        { label: "Contact Investor", icon: PhoneCall, color: "orange", action: handleContactOwner }
+      ];
   
   return (
     <div className="space-y-4">
-      {/* Display the formatted property content */}
+      {/* Display the formatted content */}
       <div className="text-sm whitespace-pre-wrap font-mono bg-slate-50 p-3 rounded border">
         {displayContent}
       </div>
       
       {/* Action buttons */}
       <div className="flex flex-wrap gap-2 pt-2 border-t">
-        <Button
-          onClick={handleAddToCRM}
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-2 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
-          data-testid={`button-add-crm-${propertyNumber}`}
-        >
-          <Plus className="h-4 w-4" />
-          Add to CRM
-        </Button>
-        
-        <Button
-          onClick={handleAnalyzeDeal}
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
-          data-testid={`button-analyze-deal-${propertyNumber}`}
-        >
-          <BarChart3 className="h-4 w-4" />
-          Analyze Deal
-        </Button>
-        
-        <Button
-          onClick={handleContactOwner}
-          variant="outline"
-          size="sm"
-          className="flex items-center gap-2 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
-          data-testid={`button-contact-owner-${propertyNumber}`}
-        >
-          <PhoneCall className="h-4 w-4" />
-          Contact Owner
-        </Button>
+        {actionButtons.map((button, idx) => {
+          const colorClasses = {
+            green: "bg-green-50 border-green-200 text-green-700 hover:bg-green-100",
+            blue: "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100", 
+            orange: "bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+          };
+          
+          return (
+            <Button
+              key={idx}
+              onClick={button.action}
+              variant="outline"
+              size="sm"
+              className={`flex items-center gap-2 ${colorClasses[button.color as keyof typeof colorClasses]}`}
+              data-testid={`button-${button.label.toLowerCase().replace(/\s+/g, '-')}-${cardNumber}`}
+            >
+              <button.icon className="h-4 w-4" />
+              {button.label}
+            </Button>
+          );
+        })}
       </div>
     </div>
   );
@@ -1447,7 +1472,8 @@ export default function ChatInterface() {
             <div className={`flex-1 ${message.role === "user" ? "max-w-xs sm:max-w-md" : ""}`}>
               <Card className={message.role === "user" ? "bg-primary text-primary-foreground" : ""}>
                 <CardContent className="p-4">
-                  {message.content.startsWith('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🏠 SELLER LEAD') ? (
+                  {(message.content.startsWith('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🏠 SELLER LEAD') || 
+                    message.content.includes('🎯 QUALIFIED CASH BUYER #')) ? (
                     <PropertyCard content={message.content} />
                   ) : (
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
