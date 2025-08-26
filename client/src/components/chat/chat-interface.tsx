@@ -186,71 +186,7 @@ export default function ChatInterface() {
     mutationFn: async (data: { content: string; role: string }) => {
       if (!currentConversation) throw new Error("No conversation selected");
 
-      // Check if we have pending seller lead data - if so, use dummy data instead of API
-      const pendingSellerResponse = localStorage.getItem('pendingSellerResponse');
-      const pendingSellerCards = localStorage.getItem('pendingSellerCards');
-      
-      if (pendingSellerResponse && selectedAgent === "lead-finder") {
-        // Remove from localStorage
-        localStorage.removeItem('pendingSellerResponse');
-        localStorage.removeItem('pendingSellerCards');
-        
-        // Add user message
-        await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
-          content: data.content,
-          role: "user"
-        });
-
-        // Add intro message
-        await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
-          content: pendingSellerResponse,
-          role: "assistant",
-          isAiGenerated: true
-        });
-
-        // Add property cards if available
-        if (pendingSellerCards) {
-          const properties = JSON.parse(pendingSellerCards);
-          for (let i = 0; i < properties.length; i++) {
-            const property = properties[i];
-            
-            const propertyCard = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🏠 SELLER LEAD ${i + 1}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📍 LOCATION
-   ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
-
-💰 PROPERTY DETAILS
-   🏠 ${property.bedrooms} bed, ${property.bathrooms} bath | ${property.squareFeet.toLocaleString()} sq ft
-   🏗️ Built: ${property.yearBuilt}
-   📊 ARV: $${parseInt(property.arv).toLocaleString()}
-   💰 Max Offer: $${parseInt(property.maxOffer).toLocaleString()}
-
-👤 OWNER INFO
-   Owner: ${property.ownerName}
-   📱 Phone: ${property.ownerPhone}
-   ✉️ Email: ${property.ownerEmail}
-   📬 Mailing: ${property.ownerMailingAddress}
-
-🎯 MOTIVATION ANALYSIS
-   💎 Equity: ${property.equityPercentage}%
-   🎯 Motivation Score: ${property.motivationScore}/100
-   🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
-   📈 Lead Type: ${property.leadType.replace(/_/g, ' ')}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
-
-            await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
-              content: propertyCard,
-              role: "assistant",
-              isAiGenerated: true
-            });
-          }
-        }
-
-        return { response: pendingSellerResponse };
-      }
+      // Seller lead wizard is handled directly by handleWizardSubmit - no duplicate processing needed here
 
       if (selectedAgent === "lead-finder") {
         // Skip API call for seller leads - we're using dummy data for UI testing
