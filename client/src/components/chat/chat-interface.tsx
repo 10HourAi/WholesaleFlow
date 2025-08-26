@@ -163,6 +163,9 @@ export default function ChatInterface() {
    🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
    📈 Lead Type: ${property.leadType.replace(/_/g, ' ')}
 
+🎯 ACTIONS
+   📋 Add to CRM        📊 Analyze Deal        📞 Contact Owner
+
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
                 await apiRequest("POST", `/api/conversations/${conversation.id}/messages`, {
@@ -567,6 +570,9 @@ export default function ChatInterface() {
    🎯 Motivation Score: ${property.motivationScore}/100
    🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
    📈 Lead Type: ${property.leadType.replace(/_/g, ' ')}
+
+🎯 ACTIONS
+   📋 Add to CRM        📊 Analyze Deal        📞 Contact Owner
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
