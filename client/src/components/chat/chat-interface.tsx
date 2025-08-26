@@ -315,17 +315,206 @@ Distressed Indicator: ${prop.distressedIndicator.replace('_', ' ')}`;
     setShowWizard(false);
     setWizardStep(1);
 
-    if (!currentConversation) {
-      createConversationMutation.mutate({
-        agentType: selectedAgent,
-        title: `Lead Search: ${wizardData.city}, ${wizardData.state}`,
-      });
-    } else {
-      sendMessageMutation.mutate({
-        content: searchQuery,
-        role: "user",
-      });
-    }
+    // Clear any previous search results
+    localStorage.removeItem('pendingSellerResponse');
+    localStorage.removeItem('pendingSellerCards');
+
+    // Using dummy data for UI testing while API is paused
+    setTimeout(() => {
+      const dummyProperties = [
+        {
+          userId: "demo-user",
+          address: "123 Distressed Ave",
+          city: wizardData.city || "Orlando",
+          state: wizardData.state || "FL",
+          zipCode: "32801",
+          bedrooms: wizardData.minBedrooms || 3,
+          bathrooms: 2,
+          squareFeet: 1850,
+          arv: "285000",
+          maxOffer: "199500",
+          status: "new",
+          leadType: wizardData.sellerType === "any" ? "high_equity" : wizardData.sellerType,
+          propertyType: wizardData.propertyType === "any" ? "single_family" : wizardData.propertyType,
+          yearBuilt: 1995,
+          lastSalePrice: "165000",
+          lastSaleDate: "2019-03-15",
+          ownerName: "Sarah & Mike Johnson",
+          ownerPhone: "(555) 123-4567",
+          ownerEmail: "Available via skip trace",
+          ownerMailingAddress: "456 Current Residence St, Orlando, FL 32802",
+          equityPercentage: 75,
+          motivationScore: 85,
+          distressedIndicator: "high_equity_motivated",
+          id: "demo1"
+        },
+        {
+          userId: "demo-user",
+          address: "789 Motivated Seller Ln",
+          city: wizardData.city || "Orlando", 
+          state: wizardData.state || "FL",
+          zipCode: "32803",
+          bedrooms: wizardData.minBedrooms || 4,
+          bathrooms: 3,
+          squareFeet: 2200,
+          arv: "425000",
+          maxOffer: "297500",
+          status: "new",
+          leadType: wizardData.sellerType === "any" ? "distressed" : wizardData.sellerType,
+          propertyType: wizardData.propertyType === "any" ? "single_family" : wizardData.propertyType,
+          yearBuilt: 2001,
+          lastSalePrice: "245000",
+          lastSaleDate: "2020-08-22",
+          ownerName: "Robert Chen",
+          ownerPhone: "(555) 987-6543",
+          ownerEmail: "rchen@email.com",
+          ownerMailingAddress: "789 Motivated Seller Ln, Orlando, FL 32803",
+          equityPercentage: 68,
+          motivationScore: 92,
+          distressedIndicator: "divorce_financial_distress",
+          id: "demo2"
+        },
+        {
+          userId: "demo-user",
+          address: "456 Absentee Owner Rd",
+          city: wizardData.city || "Orlando",
+          state: wizardData.state || "FL", 
+          zipCode: "32804",
+          bedrooms: wizardData.minBedrooms || 3,
+          bathrooms: 2,
+          squareFeet: 1650,
+          arv: "315000",
+          maxOffer: "220500",
+          status: "new",
+          leadType: wizardData.sellerType === "any" ? "absentee_owner" : wizardData.sellerType,
+          propertyType: wizardData.propertyType === "any" ? "single_family" : wizardData.propertyType,
+          yearBuilt: 1988,
+          lastSalePrice: "125000",
+          lastSaleDate: "2018-12-10",
+          ownerName: "Investment Properties LLC",
+          ownerPhone: "Available via skip trace",
+          ownerEmail: "Available via skip trace",
+          ownerMailingAddress: "987 Business Park Dr, Miami, FL 33101",
+          equityPercentage: 100,
+          motivationScore: 78,
+          distressedIndicator: "absentee_high_equity",
+          id: "demo3"
+        },
+        {
+          userId: "demo-user",
+          address: "321 Pre Foreclosure Way",
+          city: wizardData.city || "Orlando",
+          state: wizardData.state || "FL",
+          zipCode: "32805",
+          bedrooms: wizardData.minBedrooms || 4,
+          bathrooms: 2,
+          squareFeet: 1950,
+          arv: "365000",
+          maxOffer: "255500",
+          status: "new",
+          leadType: wizardData.sellerType === "any" ? "pre_foreclosure" : wizardData.sellerType,
+          propertyType: wizardData.propertyType === "any" ? "single_family" : wizardData.propertyType,
+          yearBuilt: 1992,
+          lastSalePrice: "198000",
+          lastSaleDate: "2021-05-18",
+          ownerName: "Amanda & David Rodriguez",
+          ownerPhone: "(555) 456-7890",
+          ownerEmail: "Available via skip trace",
+          ownerMailingAddress: "321 Pre Foreclosure Way, Orlando, FL 32805",
+          equityPercentage: 45,
+          motivationScore: 95,
+          distressedIndicator: "pre_foreclosure_urgent",
+          id: "demo4"
+        },
+        {
+          userId: "demo-user",
+          address: "654 High Equity Dr",
+          city: wizardData.city || "Orlando",
+          state: wizardData.state || "FL",
+          zipCode: "32806",
+          bedrooms: wizardData.minBedrooms || 5,
+          bathrooms: 3,
+          squareFeet: 2850,
+          arv: "485000",
+          maxOffer: "339500",
+          status: "new",
+          leadType: wizardData.sellerType === "any" ? "high_equity" : wizardData.sellerType,
+          propertyType: wizardData.propertyType === "any" ? "single_family" : wizardData.propertyType,
+          yearBuilt: 2005,
+          lastSalePrice: "185000",
+          lastSaleDate: "2017-11-30",
+          ownerName: "Elizabeth Thompson",
+          ownerPhone: "(555) 321-0987",
+          ownerEmail: "ethompson@email.com",
+          ownerMailingAddress: "654 High Equity Dr, Orlando, FL 32806",
+          equityPercentage: 88,
+          motivationScore: 80,
+          distressedIndicator: "high_equity_elderly",
+          id: "demo5"
+        }
+      ];
+
+      // Create intro message
+      const introMessage = `Great! I found ${dummyProperties.length} motivated seller leads in **${wizardData.city}, ${wizardData.state}**. Here are your top prospects:`;
+      
+      if (!currentConversation) {
+        createConversationMutation.mutate({
+          agentType: selectedAgent,
+          title: `Lead Search: ${wizardData.city}, ${wizardData.state}`,
+        });
+      } else {
+        // Send user query first
+        sendMessageMutation.mutate({
+          content: searchQuery,
+          role: "user",
+        });
+
+        // Send intro message
+        setTimeout(() => {
+          sendMessageMutation.mutate({
+            content: introMessage,
+            role: "assistant",
+          });
+
+          // Send property cards one by one
+          dummyProperties.forEach((property, index) => {
+            setTimeout(() => {
+              const propertyCard = `**🏠 LEAD ${index + 1}: ${property.address}**
+
+**𝗟𝗢𝗖𝗔𝗧𝗜𝗢𝗡**
+📍 ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
+
+**𝗣𝗥𝗢𝗣𝗘𝗥𝗧𝗬 𝗗𝗘𝗧𝗔𝗜𝗟𝗦**
+🏠 ${property.bedrooms} bed, ${property.bathrooms} bath | ${property.squareFeet.toLocaleString()} sq ft
+🏗️ Built: ${property.yearBuilt}
+📊 ARV: $${parseInt(property.arv).toLocaleString()}
+💰 Max Offer: $${parseInt(property.maxOffer).toLocaleString()}
+
+**𝗢𝗪𝗡𝗘𝗥 𝗜𝗡𝗙𝗢**
+👤 Owner: ${property.ownerName}
+📱 Phone: ${property.ownerPhone}
+✉️ Email: ${property.ownerEmail}
+📬 Mailing: ${property.ownerMailingAddress}
+
+**𝗠𝗢𝗧𝗜𝗩𝗔𝗧𝗜𝗢𝗡 𝗔𝗡𝗔𝗟𝗬𝗦𝗜𝗦**
+💎 Equity: ${property.equityPercentage}%
+🎯 Motivation Score: ${property.motivationScore}/100
+🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
+📈 Lead Type: ${property.leadType.replace(/_/g, ' ')}
+
+───────────────────────`;
+
+              sendMessageMutation.mutate({
+                content: propertyCard,
+                role: "assistant",
+              });
+            }, (index + 1) * 400);
+          });
+        }, 500);
+      }
+
+      setWizardProcessing(false);
+    }, 1000);
   };
 
   const handleBuyerWizardSubmit = async () => {
