@@ -186,9 +186,14 @@ export default function ChatInterface() {
     mutationFn: async (data: { content: string; role: string }) => {
       if (!currentConversation) throw new Error("No conversation selected");
 
-      // Seller lead wizard is handled directly by handleWizardSubmit - no duplicate processing needed here
+      // Skip auto-responses for wizard-generated messages
+      const isWizardMessage = data.content.toLowerCase().includes('find') && 
+                             data.content.toLowerCase().includes('properties') &&
+                             (data.content.toLowerCase().includes('distressed') || 
+                              data.content.toLowerCase().includes('motivated') ||
+                              data.content.toLowerCase().includes('leads'));
 
-      if (selectedAgent === "lead-finder") {
+      if (selectedAgent === "lead-finder" && !isWizardMessage) {
         // Skip API call for seller leads - we're using dummy data for UI testing
         // const demoResponse = await fetch('/api/demo/chat', {
         //   method: 'POST',
@@ -216,6 +221,13 @@ export default function ChatInterface() {
         });
 
         return { response: "API paused for testing" };
+      } else if (isWizardMessage) {
+        // For wizard messages, just send the user message without triggering AI response
+        await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
+          content: data.content,
+          role: "user"
+        });
+        return { response: "Wizard message sent" };
       } else {
         const response = await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, data);
         return response.json();
@@ -489,32 +501,6 @@ export default function ChatInterface() {
           distressedIndicator: "high_equity_elderly",
           id: "demo5"
         },
-        {
-          userId: "demo-user",
-          address: "987 Opportunity St",
-          city: wizardData.city || "Orlando",
-          state: wizardData.state || "FL",
-          zipCode: "32807",
-          bedrooms: wizardData.minBedrooms || 3,
-          bathrooms: 2,
-          squareFeet: 1750,
-          arv: "295000",
-          maxOffer: "206500",
-          status: "new",
-          leadType: wizardData.sellerType === "any" ? "motivated_seller" : wizardData.sellerType,
-          propertyType: wizardData.propertyType === "any" ? "single_family" : wizardData.propertyType,
-          yearBuilt: 1998,
-          lastSalePrice: "145000",
-          lastSaleDate: "2020-01-15",
-          ownerName: "Carlos & Maria Gonzalez",
-          ownerPhone: "(555) 654-3210",
-          ownerEmail: "Available via skip trace",
-          ownerMailingAddress: "987 Opportunity St, Orlando, FL 32807",
-          equityPercentage: 62,
-          motivationScore: 88,
-          distressedIndicator: "job_relocation_urgent",
-          id: "demo6"
-        }
       ];
 
       // Create intro message
