@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Send, Search, TrendingUp, MessageSquare, FileText, Lightbulb, ArrowRight, ArrowLeft } from "lucide-react";
+import { Send, Search, TrendingUp, MessageSquare, FileText, Lightbulb, ArrowRight, ArrowLeft, Plus, BarChart3, PhoneCall } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { Conversation, Message, Property } from "@shared/schema";
@@ -32,6 +32,91 @@ interface BuyerWizardData {
   city: string;
   state: string;
 }
+
+// PropertyCard component for rendering property cards with buttons
+const PropertyCard = ({ content }: { content: string }) => {
+  const { toast } = useToast();
+  
+  // Parse the property data from the content
+  const lines = content.split('\n');
+  const getLineValue = (prefix: string) => {
+    const line = lines.find(l => l.trim().startsWith(prefix));
+    return line ? line.split(prefix)[1]?.trim() : '';
+  };
+  
+  const propertyNumber = content.match(/🏠 SELLER LEAD (\d+)/)?.[1] || '1';
+  const address = getLineValue('📍 LOCATION');
+  const arv = getLineValue('📊 ARV:');
+  const maxOffer = getLineValue('💰 Max Offer:');
+  const ownerName = getLineValue('Owner:');
+  const equity = getLineValue('💎 Equity:');
+  
+  const handleAddToCRM = () => {
+    toast({
+      title: "Added to CRM",
+      description: `Property ${propertyNumber} has been added to your CRM system.`,
+    });
+  };
+  
+  const handleAnalyzeDeal = () => {
+    toast({
+      title: "Deal Analysis Started",
+      description: `Analyzing deal for property ${propertyNumber}...`,
+    });
+  };
+  
+  const handleContactOwner = () => {
+    toast({
+      title: "Contact Owner",
+      description: `Preparing to contact ${ownerName || 'property owner'}...`,
+    });
+  };
+  
+  return (
+    <div className="space-y-4">
+      {/* Display the formatted property content */}
+      <div className="text-sm whitespace-pre-wrap font-mono bg-slate-50 p-3 rounded border">
+        {content.replace(/🎯 ACTIONS[\s\S]*?━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━/g, '')}
+      </div>
+      
+      {/* Action buttons */}
+      <div className="flex flex-wrap gap-2 pt-2 border-t">
+        <Button
+          onClick={handleAddToCRM}
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-2 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+          data-testid={`button-add-crm-${propertyNumber}`}
+        >
+          <Plus className="h-4 w-4" />
+          Add to CRM
+        </Button>
+        
+        <Button
+          onClick={handleAnalyzeDeal}
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+          data-testid={`button-analyze-deal-${propertyNumber}`}
+        >
+          <BarChart3 className="h-4 w-4" />
+          Analyze Deal
+        </Button>
+        
+        <Button
+          onClick={handleContactOwner}
+          variant="outline"
+          size="sm"
+          className="flex items-center gap-2 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+          data-testid={`button-contact-owner-${propertyNumber}`}
+        >
+          <PhoneCall className="h-4 w-4" />
+          Contact Owner
+        </Button>
+      </div>
+    </div>
+  );
+};
 
 export default function ChatInterface() {
   const [selectedAgent, setSelectedAgent] = useState("lead-finder");
@@ -1369,7 +1454,11 @@ export default function ChatInterface() {
             <div className={`flex-1 ${message.role === "user" ? "max-w-xs sm:max-w-md" : ""}`}>
               <Card className={message.role === "user" ? "bg-primary text-primary-foreground" : ""}>
                 <CardContent className="p-4">
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  {message.content.startsWith('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🏠 SELLER LEAD') ? (
+                    <PropertyCard content={message.content} />
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  )}
                 </CardContent>
               </Card>
             </div>
