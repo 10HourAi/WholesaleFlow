@@ -2,9 +2,19 @@ import OpenAI from "openai";
 import type { Property, Contact, Message } from "@shared/schema";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY
-});
+let openai: OpenAI | null = null;
+
+function getOpenAI(): OpenAI {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error("OpenAI API key is required but not configured");
+    }
+    openai = new OpenAI({ 
+      apiKey: process.env.OPENAI_API_KEY
+    });
+  }
+  return openai;
+}
 
 export async function generateLeadFinderResponse(userMessage: string, userId?: string): Promise<string> {
   try {
@@ -120,7 +130,7 @@ Try searching in a different location or expanding your criteria.`;
     }
 
     // Regular AI response for non-property searches
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
         {
@@ -159,7 +169,7 @@ Try searching in a different location or expanding your criteria.`;
 export async function generateDealAnalyzerResponse(userMessage: string, property?: Property): Promise<string> {
   const propertyContext = property ? `Property details: ${property.address}, ${property.city}, ${property.state} - ${property.bedrooms}/${property.bathrooms}, ${property.squareFeet} sq ft. ARV: $${property.arv}, Max Offer: $${property.maxOffer}` : "";
 
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: "gpt-4o",
     messages: [
       {
@@ -180,7 +190,7 @@ export async function generateNegotiationResponse(userMessage: string, contact?:
   const context = contact && property ? 
     `Contact: ${contact.name} (${contact.phone}, ${contact.email}). Property: ${property.address}, ${property.city}, ${property.state}. Current status: ${property.status}` : "";
 
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: "gpt-4o",
     messages: [
       {
@@ -200,7 +210,7 @@ export async function generateNegotiationResponse(userMessage: string, contact?:
 export async function generateClosingResponse(userMessage: string, property?: Property): Promise<string> {
   const propertyContext = property ? `Property: ${property.address}, ${property.city}, ${property.state}. Deal value: $${property.maxOffer}` : "";
 
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: "gpt-4o",
     messages: [
       {
@@ -232,7 +242,7 @@ export async function generatePropertyLeads(location: string, criteria: string):
     condition: string;
   }>;
 }> {
-  const response = await openai.chat.completions.create({
+  const response = await getOpenAI().chat.completions.create({
     model: "gpt-4o",
     messages: [
       {
