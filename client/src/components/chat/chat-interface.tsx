@@ -447,9 +447,10 @@ export default function ChatInterface() {
     }
 
     setWizardProcessing(true);
-    setInputMessage(searchQuery);
-    setShowWizard(false);
-    setWizardStep(1);
+    // Don't set the input message or close wizard yet - wait until after we send dummy data
+    // setInputMessage(searchQuery);
+    // setShowWizard(false);
+    // setWizardStep(1);
 
     // Clear any previous search results
     localStorage.removeItem('pendingSellerResponse');
@@ -672,9 +673,14 @@ export default function ChatInterface() {
         queryClient.invalidateQueries({ queryKey: ["/api/conversations", currentConversation, "messages"] });
       }
 
+      // Now close the wizard and reset state
+      setShowWizard(false);
+      setWizardStep(1);
       setWizardProcessing(false);
     } catch (error) {
       console.error('Error in wizard submit:', error);
+      setShowWizard(false);
+      setWizardStep(1);
       setWizardProcessing(false);
     }
   };
