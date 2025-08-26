@@ -175,19 +175,20 @@ export default function ChatInterface() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to get response from Terry');
-      }
-
       const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to get response from Terry');
+      }
       
       // Add Terry's response
       setTerryMessages([...newMessages, { role: 'assistant' as const, content: data.response }]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Terry chat error:', error);
+      const errorMessage = error.message || "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.";
       setTerryMessages([...newMessages, { 
         role: 'assistant' as const, 
-        content: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment." 
+        content: errorMessage
       }]);
     } finally {
       setTerryLoading(false);
