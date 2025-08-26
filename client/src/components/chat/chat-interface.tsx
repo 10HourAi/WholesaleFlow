@@ -131,47 +131,7 @@ export default function ChatInterface() {
               isAiGenerated: true
             });
             
-            // If we have individual property cards, send each as a separate message
-            if (pendingSellerCards) {
-              const properties = JSON.parse(pendingSellerCards);
-              for (let i = 0; i < properties.length; i++) {
-                await new Promise(resolve => setTimeout(resolve, 400)); // Small delay between cards
-                const property = properties[i];
-                
-                const propertyCard = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🏠 SELLER LEAD ${i + 1}
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-📍 LOCATION
-   ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
-
-💰 PROPERTY DETAILS
-   🏠 ${property.bedrooms} bed, ${property.bathrooms} bath | ${property.squareFeet.toLocaleString()} sq ft
-   🏗️ Built: ${property.yearBuilt}
-   📊 ARV: $${parseInt(property.arv).toLocaleString()}
-   💰 Max Offer: $${parseInt(property.maxOffer).toLocaleString()}
-
-👤 OWNER INFO
-   Owner: ${property.ownerName}
-   📱 Phone: ${property.ownerPhone}
-   ✉️ Email: ${property.ownerEmail}
-   📬 Mailing: ${property.ownerMailingAddress}
-
-🎯 MOTIVATION ANALYSIS
-   💎 Equity: ${property.equityPercentage}%
-   🎯 Motivation Score: ${property.motivationScore}/100
-   🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
-   📈 Lead Type: ${property.leadType.replace(/_/g, ' ')}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
-
-                await apiRequest("POST", `/api/conversations/${conversation.id}/messages`, {
-                  content: propertyCard,
-                  role: "assistant",
-                  isAiGenerated: true
-                });
-              }
-            }
+            // Property cards are handled by handleWizardSubmit - no duplicate cards needed here
             
             queryClient.invalidateQueries({ queryKey: ["/api/conversations", conversation.id, "messages"] });
           } catch (error) {
