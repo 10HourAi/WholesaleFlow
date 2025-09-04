@@ -718,11 +718,13 @@ Would you like to adjust your search criteria and try again?`;
       // Call real BatchData API for cash buyers
       console.log('🔍 Calling BatchData API for cash buyers in:', location);
       
-      const cashBuyerData = await apiRequest("POST", "/api/cash-buyers/search", {
+      const response = await apiRequest("POST", "/api/cash-buyers/search", {
         location: location,
         buyerType: buyerWizardData.buyerType,
         minProperties: 3 // Looking for investors with 3+ properties
       });
+      
+      const cashBuyerData = await response.json();
       
       if (!cashBuyerData.success) {
         throw new Error(cashBuyerData.error || 'Failed to fetch cash buyers');
