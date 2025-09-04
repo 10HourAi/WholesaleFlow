@@ -131,18 +131,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       const userMessage = await storage.createMessage(validatedData);
 
-      // Skip AI responses for wizard-generated messages
+      // Skip AI responses for wizard-generated messages OR any property search messages
       const isWizardMessage = validatedData.content.toLowerCase().includes('find') && 
                              validatedData.content.toLowerCase().includes('properties') &&
                              (validatedData.content.toLowerCase().includes('distressed') || 
                               validatedData.content.toLowerCase().includes('motivated') ||
                               validatedData.content.toLowerCase().includes('leads'));
+      
+      // Also skip if it looks like any property search to let frontend wizard handle it
+      const isAnyPropertySearch = validatedData.content.toLowerCase().match(/(find|search|show|get)\s+(properties|distressed|leads)/i) ||
+                                  validatedData.content.toLowerCase().includes('properties in') ||
+                                  validatedData.content.match(/\d+\s+properties/i);
 
       // Generate AI response based on agent type (skip for wizard messages)
       const conversation = await storage.getConversation(req.params.id);
       let aiResponse = "";
 
-      if (conversation && !isWizardMessage) {
+      if (conversation && !isWizardMessage && !isAnyPropertySearch) {
         switch (conversation.agentType) {
           case "lead-finder":
             // Check if this is a property search request from Seller Lead Wizard
