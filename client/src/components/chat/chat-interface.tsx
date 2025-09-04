@@ -303,8 +303,8 @@ export default function ChatInterface() {
    ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
 
 💰 PROPERTY DETAILS
-   🏠 ${property.bedrooms} bed, ${property.bathrooms} bath | ${property.squareFeet.toLocaleString()} sq ft
-   🏗️ Built: ${property.yearBuilt}
+   🏠 ${property.bedrooms || 'N/A'} bed, ${property.bathrooms || 'N/A'} bath${property.squareFeet ? ` | ${property.squareFeet.toLocaleString()} sq ft` : ''}
+   🏗️ Built: ${property.yearBuilt || 'N/A'}
    📊 ARV: $${parseInt(property.arv).toLocaleString()}
    💰 Max Offer: $${parseInt(property.maxOffer).toLocaleString()}
 
@@ -640,8 +640,8 @@ Would you like to adjust your search criteria and try again?`;
    ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
 
 💰 PROPERTY DETAILS
-   🏠 ${property.bedrooms} bed, ${property.bathrooms} bath | ${property.squareFeet.toLocaleString()} sq ft
-   🏗️ Built: ${property.yearBuilt}
+   🏠 ${property.bedrooms || 'N/A'} bed, ${property.bathrooms || 'N/A'} bath${property.squareFeet ? ` | ${property.squareFeet.toLocaleString()} sq ft` : ''}
+   🏗️ Built: ${property.yearBuilt || 'N/A'}
    📊 ARV: $${parseInt(property.arv).toLocaleString()}
    💰 Max Offer: $${parseInt(property.maxOffer).toLocaleString()}
 
