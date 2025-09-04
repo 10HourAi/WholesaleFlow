@@ -360,7 +360,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims.sub;
       const { count = 5, criteria = {} } = req.body;
       
-      console.log("🔍 Batch properties search with criteria:", criteria);
+      console.log("🔍 Backend: Batch properties search starting");
+      console.log("🔍 Backend: User ID:", userId);
+      console.log("🔍 Backend: Request body:", req.body);
+      console.log("🔍 Backend: Search criteria:", criteria);
       
       const { batchLeadsService } = await import("./batchleads");
       const results = await batchLeadsService.searchValidProperties(criteria, count);
@@ -368,13 +371,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Properties are already converted by searchValidProperties - no need for double conversion
       const convertedProperties = results.data;
       
-      res.json({
+      console.log("🔍 Backend: results.data from searchValidProperties:", results.data);
+      console.log("🔍 Backend: convertedProperties length:", convertedProperties.length);
+      console.log("🔍 Backend: first converted property:", convertedProperties[0]);
+      
+      const responseData = {
         properties: convertedProperties,
         total: results.totalChecked,
         filtered: results.filtered,
         hasMore: results.hasMore,
         message: `Found ${convertedProperties.length} properties matching your criteria`
-      });
+      };
+      
+      console.log("🔍 Backend: Final response being sent:", responseData);
+      console.log("🔍 Backend: Response properties length:", responseData.properties.length);
+      
+      res.json(responseData);
     } catch (error: any) {
       console.error("Batch properties error:", error);
       res.status(500).json({ 
