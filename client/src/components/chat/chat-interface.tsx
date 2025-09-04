@@ -528,148 +528,37 @@ export default function ChatInterface() {
     localStorage.removeItem('pendingSellerResponse');
     localStorage.removeItem('pendingSellerCards');
 
-    // Using dummy data for UI testing while API is paused
+    // Call real BatchData API for seller leads
     try {
-      const dummyProperties = [
-        {
-          userId: "demo-user",
-          address: "123 Distressed Ave",
-          city: wizardData.city || "Orlando",
-          state: wizardData.state || "FL",
-          zipCode: "32801",
-          bedrooms: wizardData.minBedrooms || 3,
-          bathrooms: 2,
-          squareFeet: 1850,
-          arv: "285000",
-          maxOffer: "199500",
-          status: "new",
-          leadType: wizardData.sellerType === "any" ? "high_equity" : wizardData.sellerType,
-          propertyType: wizardData.propertyType === "any" ? "single_family" : wizardData.propertyType,
-          yearBuilt: 1995,
-          lastSalePrice: "165000",
-          lastSaleDate: "2019-03-15",
-          ownerName: "Sarah & Mike Johnson",
-          ownerPhone: "(555) 123-4567",
-          ownerEmail: "Available via skip trace",
-          ownerMailingAddress: "456 Current Residence St, Orlando, FL 32802",
-          equityPercentage: 75,
-          motivationScore: 85,
-          distressedIndicator: "high_equity_motivated",
-          id: "demo1"
-        },
-        {
-          userId: "demo-user",
-          address: "789 Motivated Seller Ln",
-          city: wizardData.city || "Orlando", 
-          state: wizardData.state || "FL",
-          zipCode: "32803",
-          bedrooms: wizardData.minBedrooms || 4,
-          bathrooms: 3,
-          squareFeet: 2200,
-          arv: "425000",
-          maxOffer: "297500",
-          status: "new",
-          leadType: wizardData.sellerType === "any" ? "distressed" : wizardData.sellerType,
-          propertyType: wizardData.propertyType === "any" ? "single_family" : wizardData.propertyType,
-          yearBuilt: 2001,
-          lastSalePrice: "245000",
-          lastSaleDate: "2020-08-22",
-          ownerName: "Robert Chen",
-          ownerPhone: "(555) 987-6543",
-          ownerEmail: "rchen@email.com",
-          ownerMailingAddress: "789 Motivated Seller Ln, Orlando, FL 32803",
-          equityPercentage: 68,
-          motivationScore: 92,
-          distressedIndicator: "divorce_financial_distress",
-          id: "demo2"
-        },
-        {
-          userId: "demo-user",
-          address: "456 Absentee Owner Rd",
-          city: wizardData.city || "Orlando",
-          state: wizardData.state || "FL", 
-          zipCode: "32804",
-          bedrooms: wizardData.minBedrooms || 3,
-          bathrooms: 2,
-          squareFeet: 1650,
-          arv: "315000",
-          maxOffer: "220500",
-          status: "new",
-          leadType: wizardData.sellerType === "any" ? "absentee_owner" : wizardData.sellerType,
-          propertyType: wizardData.propertyType === "any" ? "single_family" : wizardData.propertyType,
-          yearBuilt: 1988,
-          lastSalePrice: "125000",
-          lastSaleDate: "2018-12-10",
-          ownerName: "Investment Properties LLC",
-          ownerPhone: "Available via skip trace",
-          ownerEmail: "Available via skip trace",
-          ownerMailingAddress: "987 Business Park Dr, Miami, FL 33101",
-          equityPercentage: 100,
-          motivationScore: 78,
-          distressedIndicator: "absentee_high_equity",
-          id: "demo3"
-        },
-        {
-          userId: "demo-user",
-          address: "321 Pre Foreclosure Way",
-          city: wizardData.city || "Orlando",
-          state: wizardData.state || "FL",
-          zipCode: "32805",
-          bedrooms: wizardData.minBedrooms || 4,
-          bathrooms: 2,
-          squareFeet: 1950,
-          arv: "365000",
-          maxOffer: "255500",
-          status: "new",
-          leadType: wizardData.sellerType === "any" ? "pre_foreclosure" : wizardData.sellerType,
-          propertyType: wizardData.propertyType === "any" ? "single_family" : wizardData.propertyType,
-          yearBuilt: 1992,
-          lastSalePrice: "198000",
-          lastSaleDate: "2021-05-18",
-          ownerName: "Amanda & David Rodriguez",
-          ownerPhone: "(555) 456-7890",
-          ownerEmail: "Available via skip trace",
-          ownerMailingAddress: "321 Pre Foreclosure Way, Orlando, FL 32805",
-          equityPercentage: 45,
-          motivationScore: 95,
-          distressedIndicator: "pre_foreclosure_urgent",
-          id: "demo4"
-        },
-        {
-          userId: "demo-user",
-          address: "654 High Equity Dr",
-          city: wizardData.city || "Orlando",
-          state: wizardData.state || "FL",
-          zipCode: "32806",
-          bedrooms: wizardData.minBedrooms || 5,
-          bathrooms: 3,
-          squareFeet: 2850,
-          arv: "485000",
-          maxOffer: "339500",
-          status: "new",
-          leadType: wizardData.sellerType === "any" ? "high_equity" : wizardData.sellerType,
-          propertyType: wizardData.propertyType === "any" ? "single_family" : wizardData.propertyType,
-          yearBuilt: 2005,
-          lastSalePrice: "185000",
-          lastSaleDate: "2017-11-30",
-          ownerName: "Elizabeth Thompson",
-          ownerPhone: "(555) 321-0987",
-          ownerEmail: "ethompson@email.com",
-          ownerMailingAddress: "654 High Equity Dr, Orlando, FL 32806",
-          equityPercentage: 88,
-          motivationScore: 80,
-          distressedIndicator: "high_equity_elderly",
-          id: "demo5"
-        },
-      ];
+      const searchCriteria = {
+        location: location,
+        sellerType: wizardData.sellerType,
+        propertyType: wizardData.propertyType,
+        minBedrooms: wizardData.minBedrooms,
+        maxPrice: wizardData.maxPrice,
+        minPrice: wizardData.minPrice
+      };
+      
+      console.log('🔍 Calling BatchData API for seller leads with criteria:', searchCriteria);
+      
+      const response = await apiRequest("POST", "/api/properties/batch", {
+        count: 5,
+        criteria: searchCriteria
+      });
+      
+      if (!response.properties || response.properties.length === 0) {
+        throw new Error('No properties found for your search criteria');
+      }
+      
+      const properties = response.properties;
 
-      // Create intro message
-      const introMessage = `Great! I found ${dummyProperties.length} motivated seller leads in **${wizardData.city}, ${wizardData.state}**. Here are your top prospects:`;
+      // Create intro message with real data
+      const introMessage = `Great! I found ${properties.length} motivated seller leads in **${wizardData.city}, ${wizardData.state}**. Here are your top prospects:`;
       
       if (!currentConversation) {
         // Store the data for when the new conversation is created
         localStorage.setItem('pendingSellerResponse', introMessage);
-        localStorage.setItem('pendingSellerCards', JSON.stringify(dummyProperties));
+        localStorage.setItem('pendingSellerCards', JSON.stringify(properties));
         
         createConversationMutation.mutate({
           agentType: selectedAgent,
@@ -786,205 +675,14 @@ export default function ChatInterface() {
     localStorage.removeItem('pendingCashBuyerCards');
     
     try {
-      // Using dummy data for UI testing while API is paused
-      const cashBuyerData = {
-        success: true,
+      // Call real BatchData API for cash buyers
+      console.log('🔍 Calling BatchData API for cash buyers in:', location);
+      
+      const cashBuyerData = await apiRequest("POST", "/api/cash-buyers/search", {
         location: location,
-        totalFound: 5,
-        returned: 5,
-        buyers: [
-          {
-            _id: "dummy1",
-            address: {
-              street: "123 Investment Dr",
-              city: location.split(',')[0].trim(),
-              state: buyerWizardData.state,
-              zip: "12345"
-            },
-            building: {
-              propertyType: "Single Family",
-              squareFeet: "2400",
-              bedrooms: 4,
-              bathrooms: 2
-            },
-            owner: {
-              fullName: "John Smith Properties LLC",
-              emails: ["john@smithproperties.com"],
-              phoneNumbers: [{number: "(555) 123-4567", type: "mobile", dnc: false}],
-              mailingAddress: {
-                street: "456 Business Ave",
-                city: location.split(',')[0].trim(),
-                state: buyerWizardData.state,
-                zip: "12346"
-              }
-            },
-            propertyOwnerProfile: {
-              propertiesCount: 8,
-              propertiesTotalEstimatedValue: "2400000",
-              averagePurchasePrice: "300000"
-            },
-            sale: {
-              lastSaleDate: "2024-03-15T00:00:00.000Z",
-              lastSalePrice: "285000"
-            },
-            valuation: {
-              estimatedValue: "320000"
-            }
-          },
-          {
-            _id: "dummy2",
-            address: {
-              street: "789 Portfolio Ln",
-              city: location.split(',')[0].trim(),
-              state: buyerWizardData.state,
-              zip: "12347"
-            },
-            building: {
-              propertyType: "Single Family",
-              squareFeet: "1800",
-              bedrooms: 3,
-              bathrooms: 2
-            },
-            owner: {
-              fullName: "ABC Real Estate Investments",
-              emails: ["info@abcrei.com"],
-              phoneNumbers: [{number: "(555) 987-6543", type: "business", dnc: false}],
-              mailingAddress: {
-                street: "321 Commercial St",
-                city: location.split(',')[0].trim(),
-                state: buyerWizardData.state,
-                zip: "12348"
-              }
-            },
-            propertyOwnerProfile: {
-              propertiesCount: 12,
-              propertiesTotalEstimatedValue: "3600000",
-              averagePurchasePrice: "250000"
-            },
-            sale: {
-              lastSaleDate: "2024-01-22T00:00:00.000Z",
-              lastSalePrice: "195000"
-            },
-            valuation: {
-              estimatedValue: "245000"
-            }
-          },
-          {
-            _id: "dummy3",
-            address: {
-              street: "456 Capital Blvd",
-              city: location.split(',')[0].trim(),
-              state: buyerWizardData.state,
-              zip: "12349"
-            },
-            building: {
-              propertyType: "Single Family",
-              squareFeet: "2100",
-              bedrooms: 3,
-              bathrooms: 2
-            },
-            owner: {
-              fullName: "Maria Rodriguez Investment Group",
-              emails: ["maria@mrig.com"],
-              phoneNumbers: [{number: "(555) 456-7890", type: "mobile", dnc: false}],
-              mailingAddress: {
-                street: "654 Executive Way",
-                city: location.split(',')[0].trim(),
-                state: buyerWizardData.state,
-                zip: "12350"
-              }
-            },
-            propertyOwnerProfile: {
-              propertiesCount: 6,
-              propertiesTotalEstimatedValue: "1800000",
-              averagePurchasePrice: "275000"
-            },
-            sale: {
-              lastSaleDate: "2024-02-10T00:00:00.000Z",
-              lastSalePrice: "265000"
-            },
-            valuation: {
-              estimatedValue: "295000"
-            }
-          },
-          {
-            _id: "dummy4",
-            address: {
-              street: "987 Investor Ct",
-              city: location.split(',')[0].trim(),
-              state: buyerWizardData.state,
-              zip: "12351"
-            },
-            building: {
-              propertyType: "Single Family",
-              squareFeet: "2800",
-              bedrooms: 4,
-              bathrooms: 3
-            },
-            owner: {
-              fullName: "Diamond Property Holdings",
-              emails: ["contact@diamondph.com"],
-              phoneNumbers: [{number: "(555) 321-0987", type: "office", dnc: false}],
-              mailingAddress: {
-                street: "111 Finance Plaza",
-                city: location.split(',')[0].trim(),
-                state: buyerWizardData.state,
-                zip: "12352"
-              }
-            },
-            propertyOwnerProfile: {
-              propertiesCount: 15,
-              propertiesTotalEstimatedValue: "4500000",
-              averagePurchasePrice: "320000"
-            },
-            sale: {
-              lastSaleDate: "2024-04-05T00:00:00.000Z",
-              lastSalePrice: "315000"
-            },
-            valuation: {
-              estimatedValue: "355000"
-            }
-          },
-          {
-            _id: "dummy5",
-            address: {
-              street: "555 Wealth St",
-              city: location.split(',')[0].trim(),
-              state: buyerWizardData.state,
-              zip: "12353"
-            },
-            building: {
-              propertyType: "Single Family",
-              squareFeet: "2200",
-              bedrooms: 3,
-              bathrooms: 2
-            },
-            owner: {
-              fullName: "Elite Realty Partners LLC",
-              emails: ["partners@eliterealty.com"],
-              phoneNumbers: [{number: "(555) 654-3210", type: "mobile", dnc: false}],
-              mailingAddress: {
-                street: "888 Success Rd",
-                city: location.split(',')[0].trim(),
-                state: buyerWizardData.state,
-                zip: "12354"
-              }
-            },
-            propertyOwnerProfile: {
-              propertiesCount: 9,
-              propertiesTotalEstimatedValue: "2700000",
-              averagePurchasePrice: "285000"
-            },
-            sale: {
-              lastSaleDate: "2024-01-30T00:00:00.000Z",
-              lastSalePrice: "275000"
-            },
-            valuation: {
-              estimatedValue: "310000"
-            }
-          }
-        ]
-      };
+        buyerType: buyerWizardData.buyerType,
+        minProperties: 3 // Looking for investors with 3+ properties
+      });
       
       if (!cashBuyerData.success) {
         throw new Error(cashBuyerData.error || 'Failed to fetch cash buyers');
