@@ -773,8 +773,11 @@ Would you like to adjust your search criteria and try again?`;
           const dncPhones = phoneNumbers.filter(p => p.dnc);
           
           // Create modern, sleek card design
-          let cardContent = `🎯 QUALIFIED CASH BUYER #${index + 1}\n`;
-          cardContent += `🔵━━━━━━━━━━━━━━━━━━━━━━━━━━🔵\n\n`;
+          let cardContent = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 QUALIFIED CASH BUYER #${index + 1}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+`;
           
           cardContent += `👤 𝗜𝗡𝗩𝗘𝗦𝗧𝗢𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘\n`;
           cardContent += `${owner.fullName || 'ACTIVE CASH INVESTOR'}\n`;
@@ -809,7 +812,10 @@ Would you like to adjust your search criteria and try again?`;
             cardContent += `📱 Available via skip trace\n`;
           }
           
-          cardContent += `\n🔵━━━━━━━━━━━━━━━━━━━━━━━━━━🔵`;
+          cardContent += `\n🎯 ACTIONS
+   📋 Add to CRM        📊 View Portfolio        📞 Contact Investor
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
           
           return cardContent;
         });
@@ -838,12 +844,19 @@ Would you like to adjust your search criteria and try again?`;
         
         // Send individual buyer cards with a small delay
         setTimeout(async () => {
-          for (let i = 0; i < buyerCards.length; i++) {
-            await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
-              content: buyerCards[i],
-              role: "assistant",
-              isAiGenerated: true
-            });
+          const storedCards = localStorage.getItem('pendingCashBuyerCards');
+          if (storedCards) {
+            localStorage.removeItem('pendingCashBuyerCards');
+            const buyerCards = JSON.parse(storedCards);
+            
+            for (let i = 0; i < buyerCards.length; i++) {
+              await new Promise(resolve => setTimeout(resolve, 400)); // Small delay between cards
+              await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
+                content: buyerCards[i],
+                role: "assistant",
+                isAiGenerated: true
+              });
+            }
           }
           
           queryClient.invalidateQueries({ queryKey: ["/api/conversations", currentConversation, "messages"] });
