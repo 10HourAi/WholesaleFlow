@@ -1523,22 +1523,12 @@ Would you like to adjust your search criteria and try again?`;
             <div className={`flex-1 ${message.role === "user" ? "max-w-xs sm:max-w-md" : ""}`}>
               <Card className={message.role === "user" ? "bg-primary text-primary-foreground" : ""}>
                 <CardContent className="p-4">
-                  {(() => {
-                    const hasSellerLead = message.content.includes('🏠 SELLER LEAD');
-                    const hasCashBuyer = message.content.includes('🎯 QUALIFIED CASH BUYER #');
-                    console.log('🔍 Message detection:', {
-                      hasSellerLead,
-                      hasCashBuyer,
-                      contentPreview: message.content.substring(0, 100),
-                      role: message.role
-                    });
-                    
-                    if (hasSellerLead || hasCashBuyer) {
-                      return <PropertyCard content={message.content} />;
-                    } else {
-                      return <p className="text-sm whitespace-pre-wrap">{message.content}</p>;
-                    }
-                  })()}
+                  {(message.content.includes('🏠 SELLER LEAD') || 
+                    message.content.includes('🎯 QUALIFIED CASH BUYER #')) ? (
+                    <PropertyCard content={message.content} />
+                  ) : (
+                    <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  )}
                 </CardContent>
               </Card>
             </div>
