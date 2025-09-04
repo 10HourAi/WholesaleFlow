@@ -385,8 +385,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log("🔍 Backend: Final response being sent:", responseData);
       console.log("🔍 Backend: Response properties length:", responseData.properties.length);
+      console.log("🔍 Backend: About to call res.json() with:", JSON.stringify(responseData).substring(0, 200) + "...");
       
-      res.json(responseData);
+      // Try direct response instead of complex object
+      const simpleResponse = {
+        properties: convertedProperties,
+        total: convertedProperties.length,
+        message: "Success"
+      };
+      
+      console.log("🔍 Backend: Sending simplified response:", simpleResponse);
+      res.json(simpleResponse);
     } catch (error: any) {
       console.error("Batch properties error:", error);
       res.status(500).json({ 
