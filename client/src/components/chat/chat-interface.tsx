@@ -546,14 +546,54 @@ export default function ChatInterface() {
         criteria: searchCriteria
       });
       
-      if (!response.properties || response.properties.length === 0) {
-        throw new Error('No properties found for your search criteria');
-      }
+      const properties = response.properties || [];
       
-      const properties = response.properties;
+      // Handle case when no properties are found
+      if (properties.length === 0) {
+        const noResultsMessage = `I searched for properties in **${location}** but couldn't find any that match your specific criteria:
+
+🔍 **Search Criteria:**
+• Location: ${location}
+• Seller Type: ${wizardData.sellerType.replace(/_/g, ' ')}
+• Property Type: ${wizardData.propertyType.replace(/_/g, ' ')}
+${wizardData.minBedrooms ? `• Min Bedrooms: ${wizardData.minBedrooms}` : ''}
+${wizardData.maxPrice ? `• Max Price: $${wizardData.maxPrice.toLocaleString()}` : ''}
+
+💡 **Suggestions:**
+• Try a broader location (like a full city/state)
+• Increase your price range
+• Reduce bedroom requirements
+• Try "any" for seller or property type
+
+Would you like to adjust your search criteria and try again?`;
+
+        if (!currentConversation) {
+          localStorage.setItem('pendingSellerResponse', noResultsMessage);
+          createConversationMutation.mutate({
+            agentType: selectedAgent,
+            title: `No Results: ${location}`,
+          });
+        } else {
+          await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
+            content: searchQuery,
+            role: "user"
+          });
+          await apiRequest("POST", `/api/conversations/${currentConversation}/messages`, {
+            content: noResultsMessage,
+            role: "assistant",
+            isAiGenerated: true
+          });
+          queryClient.invalidateQueries({ queryKey: ["/api/conversations", currentConversation, "messages"] });
+        }
+        
+        setShowWizard(false);
+        setWizardStep(1);
+        setWizardProcessing(false);
+        return;
+      }
 
       // Create intro message with real data
-      const introMessage = `Great! I found ${properties.length} motivated seller leads in **${wizardData.city}, ${wizardData.state}**. Here are your top prospects:`;
+      const introMessage = `Great! I found ${properties.length} motivated seller leads in **${location}**. Here are your top prospects:`;
       
       if (!currentConversation) {
         // Store the data for when the new conversation is created
