@@ -451,18 +451,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("🔍 Batch properties search with criteria:", criteria);
       
       const { batchLeadsService } = await import("./batchleads");
-      const results = await batchLeadsService.searchValidProperties(count, criteria);
+      const results = await batchLeadsService.searchValidProperties(criteria, count);
       
       // Convert BatchData properties to app format
-      const convertedProperties = results.properties.map(batchProperty => {
+      const convertedProperties = results.data.map(batchProperty => {
         return batchLeadsService.convertToProperty(batchProperty, userId);
       });
       
       res.json({
         properties: convertedProperties,
-        total: results.total_results,
+        total: results.totalChecked,
         filtered: results.filtered,
-        hasMore: results.properties.length === count,
+        hasMore: results.hasMore,
         message: `Found ${convertedProperties.length} properties matching your criteria`
       });
     } catch (error: any) {
