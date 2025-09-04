@@ -365,10 +365,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { batchLeadsService } = await import("./batchleads");
       const results = await batchLeadsService.searchValidProperties(criteria, count);
       
-      // Convert BatchData properties to app format
-      const convertedProperties = results.data.map(batchProperty => {
-        return batchLeadsService.convertToProperty(batchProperty, userId);
-      });
+      // Properties are already converted by searchValidProperties - no need for double conversion
+      const convertedProperties = results.data;
       
       res.json({
         properties: convertedProperties,
