@@ -1508,7 +1508,7 @@ Would you like to adjust your search criteria and try again?`;
             <div className={`flex-1 ${message.role === "user" ? "max-w-xs sm:max-w-md" : ""}`}>
               <Card className={message.role === "user" ? "bg-primary text-primary-foreground" : ""}>
                 <CardContent className="p-4">
-                  {(message.content.includes('🏠 SELLER LEAD') || 
+                  {(message.content.startsWith('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🏠 SELLER LEAD') || 
                     message.content.includes('🎯 QUALIFIED CASH BUYER #')) ? (
                     <PropertyCard content={message.content} />
                   ) : (
