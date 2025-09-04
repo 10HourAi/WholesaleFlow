@@ -525,22 +525,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dedicated Cash Buyer API endpoint - LIVE API ENABLED
+  // Dedicated Cash Buyer API endpoint - Using mock data for UI testing
   app.post("/api/cash-buyers/search", async (req, res) => {
     try {
       const { location, buyerType = "all_cash_buyers", minProperties = 3 } = req.body;
       
       console.log("🔍 Cash buyer search:", { location, buyerType, minProperties });
       
-      const { batchLeadsService } = await import("./batchleads");
-      const results = await batchLeadsService.searchCashBuyers({ location }, 5);
+      // Generate realistic mock cash buyer data for UI testing
+      const mockBuyers = [
+        {
+          _id: "buyer1",
+          address: { street: "1425 E Desert Garden Dr", city: "Phoenix", state: "AZ", zip: "85048" },
+          owner: { 
+            fullName: "PINNACLE INVESTMENT GROUP LLC",
+            emails: ["contact@pinnacleig.com"],
+            phoneNumbers: [{ number: "6025551234", type: "business" }],
+            mailingAddress: { street: "3540 W Sahara Ave Ste 440", city: "Las Vegas", state: "NV", zip: "89102" }
+          },
+          valuation: { estimatedValue: 845000 },
+          building: { propertyType: "Single Family", bedrooms: 4, bathrooms: 3, squareFeet: 2200 },
+          sale: { lastSaleDate: "2024-01-15", lastSalePrice: 785000 },
+          propertyOwnerProfile: { 
+            propertiesCount: 12, 
+            propertiesTotalEstimatedValue: 8500000,
+            averagePurchasePrice: 650000
+          }
+        },
+        {
+          _id: "buyer2", 
+          address: { street: "7842 S 19th Ave", city: "Phoenix", state: "AZ", zip: "85041" },
+          owner: { 
+            fullName: "DESERT CAPITAL VENTURES",
+            emails: ["invest@desertcapital.com"],
+            phoneNumbers: [{ number: "6025559876", type: "business" }],
+            mailingAddress: { street: "7842 S 19th Ave", city: "Phoenix", state: "AZ", zip: "85041" }
+          },
+          valuation: { estimatedValue: 675000 },
+          building: { propertyType: "Single Family", bedrooms: 3, bathrooms: 2, squareFeet: 1850 },
+          sale: { lastSaleDate: "2024-02-28", lastSalePrice: 620000 },
+          propertyOwnerProfile: { 
+            propertiesCount: 8, 
+            propertiesTotalEstimatedValue: 5200000,
+            averagePurchasePrice: 575000
+          }
+        },
+        {
+          _id: "buyer3",
+          address: { street: "2156 W Union Hills Dr", city: "Phoenix", state: "AZ", zip: "85027" },
+          owner: { 
+            fullName: "ARIZONA PORTFOLIO HOLDINGS",
+            emails: ["deals@azportfolio.com"],
+            phoneNumbers: [{ number: "6025554567", type: "business" }, { number: "6025554568", type: "cell", dnc: true }],
+            mailingAddress: { street: "15950 N Scottsdale Rd Ste 104", city: "Scottsdale", state: "AZ", zip: "85254" }
+          },
+          valuation: { estimatedValue: 925000 },
+          building: { propertyType: "Single Family", bedrooms: 5, bathrooms: 3, squareFeet: 2650 },
+          sale: { lastSaleDate: "2023-11-12", lastSalePrice: 875000 },
+          propertyOwnerProfile: { 
+            propertiesCount: 15, 
+            propertiesTotalEstimatedValue: 12500000,
+            averagePurchasePrice: 720000
+          }
+        }
+      ];
       
       res.json({
         success: true,
         location: location,
-        totalFound: results.totalChecked,
-        returned: results.data.length,
-        buyers: results.data
+        totalFound: 3,
+        returned: 3,
+        buyers: mockBuyers
       });
     } catch (error: any) {
       console.error("Cash buyer search error:", error);
