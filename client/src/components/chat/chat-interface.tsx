@@ -546,7 +546,14 @@ export default function ChatInterface() {
         criteria: searchCriteria
       });
       
+      console.log('🔍 Frontend received response:', response);
+      console.log('🔍 Response properties:', response.properties);
+      console.log('🔍 Response properties length:', response.properties?.length);
+      
       const properties = response.properties || [];
+      
+      console.log('🔍 Final properties array:', properties);
+      console.log('🔍 Final properties length:', properties.length);
       
       // Handle case when no properties are found
       if (properties.length === 0) {
