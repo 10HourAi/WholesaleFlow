@@ -546,11 +546,15 @@ export default function ChatInterface() {
         criteria: searchCriteria
       });
       
-      console.log('🔍 Frontend received response:', response);
-      console.log('🔍 Response properties:', response.properties);
-      console.log('🔍 Response properties length:', response.properties?.length);
+      // Parse the JSON from the Response object
+      const data = await response.json();
       
-      const properties = response.properties || [];
+      console.log('🔍 Frontend received raw response:', response);
+      console.log('🔍 Frontend parsed data:', data);
+      console.log('🔍 Data properties:', data.properties);
+      console.log('🔍 Data properties length:', data.properties?.length);
+      
+      const properties = data.properties || [];
       
       console.log('🔍 Final properties array:', properties);
       console.log('🔍 Final properties length:', properties.length);
