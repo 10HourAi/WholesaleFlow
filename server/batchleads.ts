@@ -350,6 +350,8 @@ class BatchLeadsService {
     }
 
     console.log(`📊 3-step integration complete: ${validProperties.length} valid properties, ${totalChecked} checked, ${filtered} filtered`);
+    console.log(`🔍 BatchLeads: Returning validProperties array:`, validProperties);
+    console.log(`🔍 BatchLeads: First property in validProperties:`, validProperties[0]);
 
     return {
       data: validProperties,
