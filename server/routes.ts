@@ -442,16 +442,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get multiple properties at once - API DISABLED FOR UI TESTING
+  // Get multiple properties at once - LIVE API ENABLED
   app.post("/api/properties/batch", isAuthenticated, async (req: any, res) => {
-    console.log("🚫 API calls paused - batch properties endpoint disabled for UI testing");
-    res.json({
-      properties: [],
-      total: 0,
-      filtered: 0,
-      hasMore: false,
-      message: "API calls paused for UI testing. Use the Seller Lead Wizard for dummy data."
-    });
+    try {
+      const userId = req.user.claims.sub;
+      const { count = 5, criteria = {} } = req.body;
+      
+      console.log("🔍 Batch properties search with criteria:", criteria);
+      
+      const { batchLeadsService } = await import("./batchleads");
+      const results = await batchLeadsService.searchValidProperties(count, criteria);
+      
+      // Convert BatchData properties to app format
+      const convertedProperties = results.properties.map(batchProperty => {
+        return batchLeadsService.convertToProperty(batchProperty, userId);
+      });
+      
+      res.json({
+        properties: convertedProperties,
+        total: results.total_results,
+        filtered: results.filtered,
+        hasMore: results.properties.length === count,
+        message: `Found ${convertedProperties.length} properties matching your criteria`
+      });
+    } catch (error: any) {
+      console.error("Batch properties error:", error);
+      res.status(500).json({ 
+        properties: [],
+        total: 0,
+        filtered: 0,
+        hasMore: false,
+        message: error.message || "Failed to fetch properties"
+      });
+    }
   });
 
   // Serve demo page
@@ -502,16 +525,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dedicated Cash Buyer API endpoint - API DISABLED FOR UI TESTING
+  // Dedicated Cash Buyer API endpoint - LIVE API ENABLED
   app.post("/api/cash-buyers/search", async (req, res) => {
-    console.log("🚫 API calls paused - cash buyer search endpoint disabled for UI testing");
-    res.json({
-      success: false,
-      error: "API calls paused for UI testing. Use the Cash Buyer Wizard for dummy data.",
-      buyers: [],
-      totalFound: 0,
-      returned: 0
-    });
+    try {
+      const { location, buyerType = "all_cash_buyers", minProperties = 3 } = req.body;
+      
+      console.log("🔍 Cash buyer search:", { location, buyerType, minProperties });
+      
+      const { batchLeadsService } = await import("./batchleads");
+      const results = await batchLeadsService.searchCashBuyers({ location }, 5);
+      
+      res.json({
+        success: true,
+        location: location,
+        totalFound: results.totalChecked,
+        returned: results.data.length,
+        buyers: results.data
+      });
+    } catch (error: any) {
+      console.error("Cash buyer search error:", error);
+      res.status(500).json({
+        success: false,
+        error: error.message || "Failed to fetch cash buyers",
+        buyers: [],
+        totalFound: 0,
+        returned: 0
+      });
+    }
   });
 
   // Terry - Target Market Finder Chat API
