@@ -441,51 +441,53 @@ class BatchLeadsService {
         return { owner: quicklistProperty.owner || {} };
       }
 
-      console.log(`👤 STEP 3: Making Contact Enrichment API call`);
-      console.log(`📋 API Request URL: ${this.baseUrl}/api/v1/contact/enrich`);
+      console.log(`👤 STEP 3: Making Property Skip Trace API call (BatchData Contact Enrichment)`);
+      console.log(`📋 API Request URL: ${this.baseUrl}/api/v1/property/skip-trace`);
       
-      const enrichmentRequest = {
+      // Use BatchData Property Skip Trace API format (official documentation)
+      const skipTraceRequest = {
         requests: [{
-          owner: {
-            fullName: ownerName,
-            address: {
-              street: address.street,
-              city: address.city,
-              state: address.state,
-              zip: address.zip
-            }
+          address: {
+            street: address.street,
+            city: address.city,
+            state: address.state,
+            zip: address.zip
           }
         }]
       };
       
-      console.log(`📋 Contact Enrichment Request:`, JSON.stringify(enrichmentRequest, null, 2));
+      console.log(`📋 Property Skip Trace Request:`, JSON.stringify(skipTraceRequest, null, 2));
 
-      // Use BatchData Contact Enrichment API for email/phone data
-      console.log(`📞 Making actual API request to: ${this.baseUrl}/api/v1/contact/enrich`);
-      const enrichmentResponse = await this.makeRequest('/api/v1/contact/enrich', enrichmentRequest);
+      // Use BatchData Property Skip Trace API for email/phone data (official endpoint)
+      console.log(`📞 Making actual API request to: ${this.baseUrl}/api/v1/property/skip-trace`);
+      const enrichmentResponse = await this.makeRequest('/api/v1/property/skip-trace', skipTraceRequest);
       
-      console.log(`📞 FULL CONTACT ENRICHMENT API RESPONSE:`, JSON.stringify(enrichmentResponse, null, 2));
+      console.log(`📞 FULL PROPERTY SKIP TRACE API RESPONSE:`, JSON.stringify(enrichmentResponse, null, 2));
       
-      // Extract enriched contact data
-      const enrichedContact = enrichmentResponse.results?.[0]?.contact || {};
+      // Extract enriched contact data from BatchData Property Skip Trace API response
+      const skipTraceResult = enrichmentResponse.results?.[0] || {};
+      const contactData = skipTraceResult.contact || skipTraceResult.owner || {};
+      const phoneNumbers = skipTraceResult.phones || contactData.phones || [];
+      const emailAddresses = skipTraceResult.emails || contactData.emails || [];
       
-      console.log(`📞 Contact fields available:`, {
-        hasEmail: !!(enrichedContact.email || enrichedContact.emails?.length),
-        hasPhone: !!(enrichedContact.phone || enrichedContact.phones?.length),
-        hasDNCPhone: !!(enrichedContact.dncPhones?.length),
-        hasLandLine: !!(enrichedContact.landLine),
-        hasMobile: !!(enrichedContact.mobilePhone)
+      console.log(`📞 Skip trace contact fields available:`, {
+        hasEmails: emailAddresses.length > 0,
+        hasPhones: phoneNumbers.length > 0,
+        emailCount: emailAddresses.length,
+        phoneCount: phoneNumbers.length,
+        contactDataKeys: Object.keys(contactData),
+        skipTraceKeys: Object.keys(skipTraceResult)
       });
       
       return {
         owner: {
           ...quicklistProperty.owner,
-          // Merge enriched contact data
-          email: enrichedContact.email || enrichedContact.emails?.[0] || null,
-          phone: enrichedContact.phone || enrichedContact.phones?.[0] || null,
-          dncPhone: enrichedContact.dncPhones?.[0] || null,
-          landLine: enrichedContact.landLine || null,
-          mobilePhone: enrichedContact.mobilePhone || enrichedContact.cellPhone || null
+          // Merge enriched contact data from BatchData Property Skip Trace
+          email: emailAddresses[0]?.email || emailAddresses[0] || null,
+          phone: phoneNumbers[0]?.number || phoneNumbers[0] || null,
+          dncPhone: phoneNumbers.find(p => p.type === 'dnc')?.number || null,
+          landLine: phoneNumbers.find(p => p.type === 'landline')?.number || null,
+          mobilePhone: phoneNumbers.find(p => p.type === 'mobile')?.number || phoneNumbers.find(p => p.type === 'cell')?.number || null
         }
       };
     } catch (error) {
