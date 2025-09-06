@@ -256,6 +256,7 @@ class BatchLeadsService {
     const maxPages = 10;
 
     console.log(`🚀 SEARCHVALIDPROPERTIES FUNCTION CALLED - DEBUGGING START`);
+    console.log(`🔥🔥🔥 CONTACT ENRICHMENT SHOULD WORK NOW - FIXED PROPERTYADDRESS FORMAT 🔥🔥🔥`);
     console.log(`🚀 Parameters: count=${count}, criteria=`, criteria);
     console.log(`🔍 Starting 3-step BatchLeads integration for ${count} properties`);
     console.log(`📋 Search criteria:`, JSON.stringify(criteria, null, 2));
