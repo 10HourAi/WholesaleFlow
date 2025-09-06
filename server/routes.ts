@@ -485,7 +485,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Apply contact enrichment directly here for debugging
       const enrichedProperties = [];
-      for (let i = 0; i < Math.min(results.data.length, 2); i++) { // Test with first 2 properties
+      for (let i = 0; i < results.data.length; i++) { // Process ALL properties
         const property = results.data[i];
         console.log(`🔍 ROUTES: Processing property ${i+1}: ${property.address}`);
         
@@ -533,9 +533,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         enrichedProperties.push(property);
       }
-      
-      // Add remaining properties without enrichment for now
-      enrichedProperties.push(...results.data.slice(2));
       
       const convertedProperties = enrichedProperties;
       
