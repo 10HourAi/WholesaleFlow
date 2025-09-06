@@ -480,8 +480,40 @@ class BatchLeadsService {
         firstPhone: phoneNumbers[0]?.number,
         firstEmail: emailAddresses[0]?.email
       });
+
+      // STEP 3B: Get building data from Property Lookup API (same path as contact enrichment)
+      let buildingData = {};
+      try {
+        console.log(`🏗️ CONTACT ENRICHMENT: Adding Property Lookup call for building data`);
+        const lookupRequest = {
+          requests: [{
+            address: {
+              street: address.street,
+              city: address.city,
+              state: address.state,
+              zip: address.zip
+            }
+          }]
+        };
+        
+        const lookupResponse = await this.makeRequest('/api/v1/property/lookup', lookupRequest);
+        console.log(`🏗️ CONTACT ENRICHMENT: Property Lookup response:`, JSON.stringify(lookupResponse, null, 2));
+        
+        const building = lookupResponse.results?.[0]?.property?.building || {};
+        buildingData = {
+          bedrooms: building.bedroomCount || building.bedrooms || null,
+          bathrooms: building.bathroomCount || building.bathrooms || null,
+          squareFeet: building.totalBuildingAreaSquareFeet || building.livingArea || null,
+          yearBuilt: building.effectiveYearBuilt || building.yearBuilt || null
+        };
+        
+        console.log(`🏗️ CONTACT ENRICHMENT: Extracted building data:`, buildingData);
+      } catch (error) {
+        console.log(`❌ CONTACT ENRICHMENT: Property Lookup failed:`, error);
+      }
       
       return {
+        ...buildingData, // Add building data directly to the return object
         owner: {
           ...quicklistProperty.owner,
           // Merge enriched contact data from BatchData Property Skip Trace  
