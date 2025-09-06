@@ -326,8 +326,9 @@ class BatchLeadsService {
           // STEP 1: Use quicklist data as base
           console.log(`🏠 Processing property: ${quicklistProperty.address?.street}`);
           
-          // STEP 2: Get detailed property data (optional - may not be available for all properties)
-          // const corePropertyData = await this.getCorePropertyData(propertyId, quicklistProperty);
+          // STEP 2: Get detailed property data (bedrooms, bathrooms, year built)
+          console.log(`🏗️ Getting detailed building data for ${propertyId}`);
+          const corePropertyData = await this.getCorePropertyData(propertyId, quicklistProperty);
           
           // STEP 3: Get contact enrichment data (this is what provides email/phone)
           console.log(`🔍 About to call contact enrichment for ${propertyId}`);
@@ -337,6 +338,7 @@ class BatchLeadsService {
           // Merge all data sources
           const enrichedProperty = {
             ...quicklistProperty,
+            ...corePropertyData,
             ...contactEnrichment
           };
 
