@@ -463,6 +463,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Get multiple properties at once - LIVE API ENABLED  
   app.post("/api/properties/batch", isAuthenticated, async (req: any, res) => {
+    console.log("🔥🔥🔥 ROUTE HANDLER CALLED - TIMESTAMP:", new Date().toISOString());
+    console.log("🔥🔥🔥 USER AUTHENTICATED:", !!req.user);
+    console.log("🔥🔥🔥 REQUEST BODY:", JSON.stringify(req.body, null, 2));
     console.log("🚨🚨🚨 NEW ENHANCED ROUTE HANDLER WITH PROPERTY LOOKUP API - VERSION 2.0");
     try {
       console.log("🚨 CRITICAL DEBUG: /api/properties/batch route HIT!");
