@@ -320,10 +320,20 @@ class BatchLeadsService {
             continue;
           }
 
-          // Temporarily use quicklist data only until we identify correct API endpoints
-          console.log(`🏠 Using quicklist data for ${quicklistProperty.address?.street}`);
+          // STEP 1: Use quicklist data as base
+          console.log(`🏠 Processing property: ${quicklistProperty.address?.street}`);
           
-          const enrichedProperty = quicklistProperty;
+          // STEP 2: Get detailed property data (optional - may not be available for all properties)
+          // const corePropertyData = await this.getCorePropertyData(propertyId, quicklistProperty);
+          
+          // STEP 3: Get contact enrichment data (this is what provides email/phone)
+          const contactEnrichment = await this.getContactEnrichment(propertyId, quicklistProperty);
+          
+          // Merge all data sources
+          const enrichedProperty = {
+            ...quicklistProperty,
+            ...contactEnrichment
+          };
 
           const convertedProperty = this.convertToProperty(enrichedProperty, 'demo-user', criteria);
 
@@ -416,11 +426,68 @@ class BatchLeadsService {
     }
   }
 
-  // STEP 3: Contact enrichment - skip for now since main focus is building data
+  // STEP 3: BatchData Contact Enrichment API Integration
   async getContactEnrichment(propertyId: string, quicklistProperty: any): Promise<any> {
-    // For now, just return quicklist owner data since the main issue is missing building details
-    console.log(`👤 STEP 3: Using quicklist owner data (contact enrichment disabled for debugging)`);
-    return { owner: quicklistProperty.owner || {} };
+    try {
+      const ownerName = quicklistProperty.owner?.fullName;
+      const address = quicklistProperty.address;
+      
+      if (!ownerName || !address?.street) {
+        console.log(`⚠️ Insufficient data for contact enrichment: ${propertyId}`);
+        return { owner: quicklistProperty.owner || {} };
+      }
+
+      console.log(`👤 STEP 3: Making Contact Enrichment API call`);
+      console.log(`📋 API Request URL: ${this.baseUrl}/api/v1/contact/enrich`);
+      
+      const enrichmentRequest = {
+        requests: [{
+          owner: {
+            fullName: ownerName,
+            address: {
+              street: address.street,
+              city: address.city,
+              state: address.state,
+              zip: address.zip
+            }
+          }
+        }]
+      };
+      
+      console.log(`📋 Contact Enrichment Request:`, JSON.stringify(enrichmentRequest, null, 2));
+
+      // Use BatchData Contact Enrichment API for email/phone data
+      const enrichmentResponse = await this.makeRequest('/api/v1/contact/enrich', enrichmentRequest);
+      
+      console.log(`📞 FULL CONTACT ENRICHMENT API RESPONSE:`, JSON.stringify(enrichmentResponse, null, 2));
+      
+      // Extract enriched contact data
+      const enrichedContact = enrichmentResponse.results?.[0]?.contact || {};
+      
+      console.log(`📞 Contact fields available:`, {
+        hasEmail: !!(enrichedContact.email || enrichedContact.emails?.length),
+        hasPhone: !!(enrichedContact.phone || enrichedContact.phones?.length),
+        hasDNCPhone: !!(enrichedContact.dncPhones?.length),
+        hasLandLine: !!(enrichedContact.landLine),
+        hasMobile: !!(enrichedContact.mobilePhone)
+      });
+      
+      return {
+        owner: {
+          ...quicklistProperty.owner,
+          // Merge enriched contact data
+          email: enrichedContact.email || enrichedContact.emails?.[0] || null,
+          phone: enrichedContact.phone || enrichedContact.phones?.[0] || null,
+          dncPhone: enrichedContact.dncPhones?.[0] || null,
+          landLine: enrichedContact.landLine || null,
+          mobilePhone: enrichedContact.mobilePhone || enrichedContact.cellPhone || null
+        }
+      };
+    } catch (error) {
+      console.log(`❌ CONTACT ENRICHMENT API ERROR for ${propertyId}:`, error);
+      console.log(`⚠️ Contact enrichment failed, using quicklist data only`);
+      return { owner: quicklistProperty.owner || {} };
+    }
   }
 
   // Get next valid property with error handling and filtering
