@@ -357,6 +357,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get multiple properties at once - LIVE API ENABLED
   app.post("/api/properties/batch", isAuthenticated, async (req: any, res) => {
     try {
+      console.log("🚨 CRITICAL DEBUG: /api/properties/batch route HIT!");
       const userId = req.user.claims.sub;
       const { count = 5, criteria = {} } = req.body;
       
