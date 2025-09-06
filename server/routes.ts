@@ -400,6 +400,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // CRITICAL: Add this route EARLY to avoid Vite middleware conflicts
+  app.all("/api/properties/batch", (req, res, next) => {
+    console.log("🚨 PRE-ROUTE INTERCEPTOR: /api/properties/batch called");
+    if (req.method === 'POST') {
+      next(); // Continue to the actual POST handler
+    } else {
+      res.status(405).json({ error: 'Method not allowed' });
+    }
+  });
+
   // Get multiple properties at once - LIVE API ENABLED
   app.post("/api/properties/batch", isAuthenticated, async (req: any, res) => {
     console.log("🟢🟢🟢 ROUTE ENTRY: /api/properties/batch STARTED");
