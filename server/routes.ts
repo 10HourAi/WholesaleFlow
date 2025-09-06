@@ -366,10 +366,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("🔍 Backend: Search criteria:", criteria);
       
       const { batchLeadsService } = await import("./batchleads");
+      console.log("🚀 ROUTES: About to call searchValidProperties");
       const results = await batchLeadsService.searchValidProperties(criteria, count);
+      console.log("🚀 ROUTES: searchValidProperties returned:", results.data.length, "properties");
       
-      // Properties are already converted by searchValidProperties - no need for double conversion
-      const convertedProperties = results.data;
+      // Apply contact enrichment directly here for debugging
+      const enrichedProperties = [];
+      for (let i = 0; i < Math.min(results.data.length, 2); i++) { // Test with first 2 properties
+        const property = results.data[i];
+        console.log(`🔍 ROUTES: Processing property ${i+1}: ${property.address}`);
+        
+        try {
+          // Make BatchData Property Skip Trace API call directly
+          const skipTraceRequest = {
+            requests: [{
+              address: {
+                street: property.address,
+                city: property.city,
+                state: property.state,
+                zip: property.zipCode
+              }
+            }]
+          };
+          
+          console.log(`📞 ROUTES: Making skip trace call for ${property.address}`);
+          const response = await fetch('https://api.batchdata.com/api/v1/property/skip-trace', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.BATCHLEADS_API_KEY}`
+            },
+            body: JSON.stringify(skipTraceRequest)
+          });
+          
+          console.log(`📞 ROUTES: Skip trace response status:`, response.status);
+          const skipTraceData = await response.json();
+          console.log(`📞 ROUTES: Skip trace data:`, JSON.stringify(skipTraceData, null, 2));
+          
+          // Extract contact info from response
+          const result = skipTraceData.results?.[0] || {};
+          const emails = result.emails || [];
+          const phones = result.phones || [];
+          
+          // Update property with contact info
+          property.ownerEmail = emails[0]?.email || emails[0] || property.ownerEmail;
+          property.ownerPhone = phones[0]?.number || phones[0] || property.ownerPhone;
+          
+          console.log(`✅ ROUTES: Updated property with email: ${property.ownerEmail}, phone: ${property.ownerPhone}`);
+          
+        } catch (error) {
+          console.log(`❌ ROUTES: Skip trace error for ${property.address}:`, error);
+        }
+        
+        enrichedProperties.push(property);
+      }
+      
+      // Add remaining properties without enrichment for now
+      enrichedProperties.push(...results.data.slice(2));
+      
+      const convertedProperties = enrichedProperties;
       
       console.log("🔍 Backend: results.data from searchValidProperties:", results.data);
       console.log("🔍 Backend: convertedProperties length:", convertedProperties.length);
