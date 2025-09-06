@@ -525,7 +525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`🏗️ ROUTES: Updated building data - beds: ${property.bedrooms}, baths: ${property.bathrooms}, sqft: ${property.squareFeet}, year: ${property.yearBuilt}`);
           
-          // STEP 2: Get contact data from Property Skip Trace API
+          // STEP 2A: Get contact data from Property Skip Trace API
           const skipTraceRequest = {
             requests: [{
               propertyAddress: {
@@ -560,6 +560,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           property.ownerPhone = phoneNumbers[0]?.number || property.ownerPhone;
           
           console.log(`✅ ROUTES: Updated property with email: ${property.ownerEmail}, phone: ${property.ownerPhone}`);
+          
           
         } catch (error) {
           console.log(`❌ ROUTES: API enrichment error for ${property.address}:`, error);
