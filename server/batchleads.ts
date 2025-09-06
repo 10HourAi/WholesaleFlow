@@ -447,7 +447,7 @@ class BatchLeadsService {
       // Use BatchData Property Skip Trace API format (official documentation)
       const skipTraceRequest = {
         requests: [{
-          address: {
+          propertyAddress: {
             street: address.street,
             city: address.city,
             state: address.state,

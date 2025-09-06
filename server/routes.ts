@@ -428,7 +428,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Make BatchData Property Skip Trace API call directly
           const skipTraceRequest = {
             requests: [{
-              address: {
+              propertyAddress: {
                 street: property.address,
                 city: property.city,
                 state: property.state,
