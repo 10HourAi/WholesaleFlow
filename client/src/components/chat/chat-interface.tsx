@@ -314,9 +314,9 @@ export default function ChatInterface() {
    ✉️ Email: ${property.ownerEmail}
    📬 Mailing: ${property.ownerMailingAddress}
 
-🎯 MOTIVATION ANALYSIS
+🎯 CONFIDENCE ANALYSIS
    💎 Equity: ${property.equityPercentage}%
-   🎯 Motivation Score: ${property.motivationScore}/100
+   🎯 Confidence Score: ${property.confidenceScore}/100
    🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
    📈 Lead Type: ${property.leadType.replace(/_/g, ' ')}
 
@@ -662,9 +662,9 @@ Would you like to adjust your search criteria and try again?`;
    ✉️ Email: ${property.ownerEmail}
    📬 Mailing: ${property.ownerMailingAddress}
 
-🎯 MOTIVATION ANALYSIS
+🎯 CONFIDENCE ANALYSIS
    💎 Equity: ${property.equityPercentage}%
-   🎯 Motivation Score: ${property.motivationScore}/100
+   🎯 Confidence Score: ${property.confidenceScore}/100
    🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
    📈 Lead Type: ${property.leadType.replace(/_/g, ' ')}
 

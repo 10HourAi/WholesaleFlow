@@ -50,8 +50,13 @@ export const properties = pgTable("properties", {
   ownerName: text("owner_name"),
   ownerPhone: text("owner_phone"),
   ownerEmail: text("owner_email"),
+  ownerMailingAddress: text("owner_mailing_address"),
+  ownerDNCPhone: text("owner_dnc_phone"), // Do Not Call phone numbers
+  ownerLandLine: text("owner_land_line"), // Land line from contact enrichment
+  ownerMobilePhone: text("owner_mobile_phone"), // Mobile phone from contact enrichment
   equityPercentage: integer("equity_percentage"),
-  motivationScore: integer("motivation_score"),
+  confidenceScore: integer("confidence_score"), // Changed from motivationScore to match BatchData
+  equityBalance: text("equity_balance"), // Equity balance from BatchData valuation
   distressedIndicator: text("distressed_indicator"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),

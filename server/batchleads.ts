@@ -573,27 +573,67 @@ class BatchLeadsService {
       ownerMailingAddress = `${owner.mailingStreet || ''} ${owner.mailingCity || ''} ${owner.mailingState || ''} ${owner.mailingZip || ''}`.trim();
     }
     
-    // Contact enrichment - extract available phone/email if present
+    // Contact Enrichment - Extract REAL contact information from BatchData
+    // Based on Contact Enrichment tab structure: Email(s), Phone(s), DNC Phone(s)
     const ownerPhone = owner.phone || owner.primaryPhone || owner.homePhone || 
-                      owner.cellPhone || 'Available via skip trace';
-    const ownerEmail = owner.email || owner.primaryEmail || 'Available via skip trace';
+                      owner.cellPhone || owner.mobilePhone || null;
+    const ownerEmail = owner.email || owner.primaryEmail || owner.workEmail || null;
+    
+    // Extract additional contact fields from BatchData Contact Enrichment
+    const ownerDNCPhone = owner.dncPhone || owner.dncNumbers || null;
+    const ownerLandLine = owner.landLine || owner.homePhone || null;
+    const ownerMobilePhone = owner.mobilePhone || owner.cellPhone || null;
+    
+    console.log(`📞 Contact enrichment data:`, {
+      ownerPhone, ownerEmail, ownerDNCPhone, 
+      hasValidEmail: !!ownerEmail && !ownerEmail.includes('@example.com'),
+      hasValidPhone: !!ownerPhone && ownerPhone.length >= 10
+    });
 
-    console.log(`📋 Extracted values:`, {
+    // QUALITY FILTER: Skip properties without complete contact enrichment data
+    const hasCompleteContactInfo = (
+      ownerEmail && 
+      ownerEmail !== 'Available via skip trace' && 
+      !ownerEmail.includes('@example.com') &&
+      ownerPhone && 
+      ownerPhone !== 'Available via skip trace' &&
+      ownerPhone.length >= 10
+    );
+    
+    const hasCompletePropertyDetails = (
+      address && address.trim() !== '' &&
+      city && city.trim() !== '' &&
+      state && state.trim() !== '' &&
+      estimatedValue > 50000 && // Minimum property value
+      bedrooms !== null && bedrooms > 0 &&
+      bathrooms !== null && bathrooms > 0
+    );
+    
+    console.log(`📋 Contact Enrichment Quality Check:`, {
       estimatedValue,
       equityPercent,
-      address,
-      city,
-      state,
-      zipCode,
+      address, city, state, zipCode,
       ownerName,
-      bedrooms: bedrooms !== null ? bedrooms : 'Not provided by API',
-      bathrooms: bathrooms !== null ? bathrooms : 'Not provided by API',
-      squareFeet: squareFeet !== null ? squareFeet : 'Not provided by API',
-      hasBuildingData: !!(bedrooms !== null || bathrooms !== null || squareFeet !== null),
-      passesSquareFootageFilter: squareFeet === null || squareFeet > 0,
-      maxPriceFilter: criteria?.maxPrice ? `$${criteria.maxPrice.toLocaleString()}` : 'None',
-      willBeFiltered: criteria?.maxPrice ? estimatedValue > criteria.maxPrice : false
+      ownerEmail: ownerEmail ? (ownerEmail.includes('@') ? 'Valid email found' : ownerEmail) : 'No email',
+      ownerPhone: ownerPhone ? (ownerPhone.length >= 10 ? 'Valid phone found' : ownerPhone) : 'No phone',
+      hasCompleteContactInfo,
+      hasCompletePropertyDetails,
+      bedrooms: bedrooms !== null ? bedrooms : 'Missing',
+      bathrooms: bathrooms !== null ? bathrooms : 'Missing',
+      squareFeet: squareFeet !== null ? squareFeet : 'Missing'
     });
+    
+    // SKIP properties without complete contact information
+    if (!hasCompleteContactInfo) {
+      console.log(`❌ FILTERED OUT: Property lacks complete contact enrichment data`);
+      return null;
+    }
+    
+    // SKIP properties without essential property details  
+    if (!hasCompletePropertyDetails) {
+      console.log(`❌ FILTERED OUT: Property lacks complete property details`);
+      return null;
+    }
 
     // Apply state filtering based on location criteria - DISABLED for UI demonstration
     // Note: API often returns incomplete location data, so we'll use fallback values instead of filtering
@@ -657,8 +697,13 @@ class BatchLeadsService {
       console.log(`⚠️ Invalid building data detected (0 bedrooms or 0 sq ft) - using fallback values for UI demonstration`);
     }
 
-    // Use default equity if not available
+    // Use actual equity data from BatchData valuation
     const finalEquityPercent = equityPercent !== undefined && equityPercent !== null ? equityPercent : 50;
+    
+    // Extract additional valuation details from BatchData
+    const equityBalance = batchProperty.valuation?.equityBalance || null;
+    const lastSalePrice = batchProperty.sale?.lastSale?.salePrice || 
+                         batchProperty.propertyDetails?.lastSalePrice || null;
 
     const convertedProperty = {
       userId,
@@ -684,9 +729,13 @@ class BatchLeadsService {
       ownerName: finalOwnerName,
       ownerPhone: ownerPhone,
       ownerEmail: ownerEmail,
+      ownerDNCPhone: ownerDNCPhone,
+      ownerLandLine: ownerLandLine,
+      ownerMobilePhone: ownerMobilePhone,
       ownerMailingAddress: finalMailingAddress,
       equityPercentage: Math.round(finalEquityPercent),
-      motivationScore: this.calculateMotivationScore(batchProperty),
+      equityBalance: batchProperty.valuation?.equityBalance || null,
+      confidenceScore: this.calculateConfidenceScore(batchProperty),
       distressedIndicator: this.getDistressedIndicator(batchProperty)
     };
 
@@ -718,10 +767,23 @@ class BatchLeadsService {
     return 'standard';
   }
 
-  private calculateMotivationScore(property: any): number {
+  private calculateConfidenceScore(property: any): number {
+    // Confidence Score based on BatchData Contact Enrichment completeness
     let score = 50; // Base score
 
     const equityPercent = property.valuation?.equityPercent || 0;
+    const owner = property.owner || property.ownerInfo || property.contact || {};
+    
+    // Boost confidence if we have complete contact information
+    if (owner.email && !owner.email.includes('skip trace')) {
+      score += 15; // Real email increases confidence
+    }
+    if (owner.phone && owner.phone.length >= 10) {
+      score += 15; // Valid phone increases confidence
+    }
+    if (owner.mailingAddress || owner.ownerOccupied === false) {
+      score += 10; // Clear mailing address increases confidence
+    }
     const quickLists = property.quickLists || {};
 
     // High equity adds points
