@@ -490,7 +490,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`🔍 ROUTES: Processing property ${i+1}: ${property.address}`);
         
         try {
-          // Make BatchData Property Skip Trace API call directly
+          // STEP 1: Get building data from Property Lookup API
+          console.log(`🏗️ ROUTES: Making Property Lookup call for ${property.address}`);
+          const lookupRequest = {
+            requests: [{
+              address: {
+                street: property.address,
+                city: property.city,
+                state: property.state,
+                zip: property.zipCode
+              }
+            }]
+          };
+          
+          const lookupResponse = await fetch('https://api.batchdata.com/api/v1/property/lookup', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.BATCHLEADS_API_KEY}`
+            },
+            body: JSON.stringify(lookupRequest)
+          });
+          
+          console.log(`🏗️ ROUTES: Property Lookup response status:`, lookupResponse.status);
+          const lookupData = await lookupResponse.json();
+          console.log(`🏗️ ROUTES: Building data available:`, JSON.stringify(lookupData.results?.[0]?.property?.building || {}, null, 2));
+          
+          // Extract building data
+          const building = lookupData.results?.[0]?.property?.building || {};
+          property.bedrooms = building.bedroomCount || building.bedrooms || property.bedrooms;
+          property.bathrooms = building.bathroomCount || building.bathrooms || property.bathrooms;
+          property.squareFeet = building.totalBuildingAreaSquareFeet || building.livingArea || property.squareFeet;
+          property.yearBuilt = building.effectiveYearBuilt || building.yearBuilt || property.yearBuilt;
+          
+          console.log(`🏗️ ROUTES: Updated building data - beds: ${property.bedrooms}, baths: ${property.bathrooms}, sqft: ${property.squareFeet}, year: ${property.yearBuilt}`);
+          
+          // STEP 2: Get contact data from Property Skip Trace API
           const skipTraceRequest = {
             requests: [{
               propertyAddress: {
@@ -514,7 +549,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           console.log(`📞 ROUTES: Skip trace response status:`, response.status);
           const skipTraceData = await response.json();
-          console.log(`📞 ROUTES: Skip trace data:`, JSON.stringify(skipTraceData, null, 2));
           
           // Extract contact info from response
           const person = skipTraceData.results?.persons?.[0];
@@ -528,7 +562,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`✅ ROUTES: Updated property with email: ${property.ownerEmail}, phone: ${property.ownerPhone}`);
           
         } catch (error) {
-          console.log(`❌ ROUTES: Skip trace error for ${property.address}:`, error);
+          console.log(`❌ ROUTES: API enrichment error for ${property.address}:`, error);
         }
         
         enrichedProperties.push(property);
