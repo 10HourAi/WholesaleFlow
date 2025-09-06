@@ -517,13 +517,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`📞 ROUTES: Skip trace data:`, JSON.stringify(skipTraceData, null, 2));
           
           // Extract contact info from response
-          const result = skipTraceData.results?.[0] || {};
-          const emails = result.emails || [];
-          const phones = result.phones || [];
+          const person = skipTraceData.results?.persons?.[0];
+          const emails = person?.emails || [];
+          const phoneNumbers = person?.phoneNumbers || [];
           
           // Update property with contact info
-          property.ownerEmail = emails[0]?.email || emails[0] || property.ownerEmail;
-          property.ownerPhone = phones[0]?.number || phones[0] || property.ownerPhone;
+          property.ownerEmail = emails[0]?.email || property.ownerEmail;
+          property.ownerPhone = phoneNumbers[0]?.number || property.ownerPhone;
           
           console.log(`✅ ROUTES: Updated property with email: ${property.ownerEmail}, phone: ${property.ownerPhone}`);
           
