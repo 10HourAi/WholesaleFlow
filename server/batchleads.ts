@@ -459,6 +459,7 @@ class BatchLeadsService {
       console.log(`📋 Contact Enrichment Request:`, JSON.stringify(enrichmentRequest, null, 2));
 
       // Use BatchData Contact Enrichment API for email/phone data
+      console.log(`📞 Making actual API request to: ${this.baseUrl}/api/v1/contact/enrich`);
       const enrichmentResponse = await this.makeRequest('/api/v1/contact/enrich', enrichmentRequest);
       
       console.log(`📞 FULL CONTACT ENRICHMENT API RESPONSE:`, JSON.stringify(enrichmentResponse, null, 2));
