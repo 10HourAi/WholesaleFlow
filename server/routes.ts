@@ -418,6 +418,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const results = await batchLeadsService.searchValidProperties(criteria, count);
       console.log("🚀 ROUTES: searchValidProperties returned:", results.data.length, "properties");
       
+      // FORCE CONTACT ENRICHMENT - BYPASS CACHING ISSUES
+      console.log("🔥 APPLYING DIRECT CONTACT ENRICHMENT TO ALL PROPERTIES");
+      
       // Apply contact enrichment directly here for debugging
       const enrichedProperties = [];
       for (let i = 0; i < Math.min(results.data.length, 2); i++) { // Test with first 2 properties
