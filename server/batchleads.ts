@@ -327,7 +327,9 @@ class BatchLeadsService {
           // const corePropertyData = await this.getCorePropertyData(propertyId, quicklistProperty);
           
           // STEP 3: Get contact enrichment data (this is what provides email/phone)
+          console.log(`🔍 About to call contact enrichment for ${propertyId}`);
           const contactEnrichment = await this.getContactEnrichment(propertyId, quicklistProperty);
+          console.log(`📞 Contact enrichment result:`, contactEnrichment);
           
           // Merge all data sources
           const enrichedProperty = {
