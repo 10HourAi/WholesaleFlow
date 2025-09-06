@@ -356,10 +356,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // TEST ENDPOINT TO GET ACTUAL SKIP TRACE RESPONSE (NO AUTH FOR TESTING)
+  app.post("/api/test/skip-trace", async (req: any, res) => {
+    console.log("🟢 TEST ROUTE HIT - MAKING REAL SKIP TRACE CALL!");
+    
+    try {
+      // Test with one of the actual Phoenix properties
+      const testRequest = {
+        requests: [{
+          address: {
+            street: "13402 S 38th Pl",
+            city: "Phoenix", 
+            state: "AZ",
+            zip: "85044"
+          }
+        }]
+      };
+      
+      console.log("📞 Making BatchData Property Skip Trace API call...");
+      const response = await fetch('https://api.batchdata.com/api/v1/property/skip-trace', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.BATCHLEADS_API_KEY}`
+        },
+        body: JSON.stringify(testRequest)
+      });
+      
+      console.log("📞 BatchData Skip Trace Response Status:", response.status);
+      const skipTraceData = await response.json();
+      console.log("📞 FULL BATCHDATA SKIP TRACE RESPONSE:", JSON.stringify(skipTraceData, null, 2));
+      
+      res.json({ 
+        message: "Skip trace test completed", 
+        status: response.status,
+        data: skipTraceData,
+        timestamp: new Date().toISOString() 
+      });
+      
+    } catch (error) {
+      console.log("❌ Skip trace test error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Get multiple properties at once - LIVE API ENABLED
   app.post("/api/properties/batch", isAuthenticated, async (req: any, res) => {
     try {
       console.log("🚨 CRITICAL DEBUG: /api/properties/batch route HIT!");
+      console.log("🔥 ROUTE TIMESTAMP:", new Date().toISOString());
       const userId = req.user.claims.sub;
       const { count = 5, criteria = {} } = req.body;
       
