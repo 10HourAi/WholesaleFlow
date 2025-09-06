@@ -7,6 +7,8 @@ import { generateLeadFinderResponse, generateDealAnalyzerResponse, generateNegot
 import { setupAuth, isAuthenticated } from "./replitAuth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  console.log("🟢 ROUTES FILE LOADED - NEW VERSION WITH SKIP TRACE!");
+  
   // Auth middleware
   await setupAuth(app);
 
