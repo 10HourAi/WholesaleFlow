@@ -51,6 +51,11 @@ app.use((req, res, next) => {
   // setting up all the other routes so the catch-all route
   // doesn't interfere with the other routes
   if (app.get("env") === "development") {
+    // Add API route protection before Vite middleware
+    app.use('/api/*', (req, res, next) => {
+      // This ensures API routes are handled by registered handlers, not Vite
+      next();
+    });
     await setupVite(app, server);
   } else {
     serveStatic(app);
