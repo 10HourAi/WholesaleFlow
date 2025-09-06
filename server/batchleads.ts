@@ -468,26 +468,25 @@ class BatchLeadsService {
       console.log(`📞 FULL PROPERTY SKIP TRACE API RESPONSE:`, JSON.stringify(enrichmentResponse, null, 2));
       
       // Extract enriched contact data from BatchData Property Skip Trace API response
-      const skipTraceResult = enrichmentResponse.results?.[0] || {};
-      const contactData = skipTraceResult.contact || skipTraceResult.owner || {};
-      const phoneNumbers = skipTraceResult.phones || contactData.phones || [];
-      const emailAddresses = skipTraceResult.emails || contactData.emails || [];
+      const person = enrichmentResponse.results?.persons?.[0];
+      const phoneNumbers = person?.phoneNumbers || [];
+      const emailAddresses = person?.emails || [];
       
       console.log(`📞 Skip trace contact fields available:`, {
         hasEmails: emailAddresses.length > 0,
         hasPhones: phoneNumbers.length > 0,
         emailCount: emailAddresses.length,
         phoneCount: phoneNumbers.length,
-        contactDataKeys: Object.keys(contactData),
-        skipTraceKeys: Object.keys(skipTraceResult)
+        firstPhone: phoneNumbers[0]?.number,
+        firstEmail: emailAddresses[0]?.email
       });
       
       return {
         owner: {
           ...quicklistProperty.owner,
-          // Merge enriched contact data from BatchData Property Skip Trace
-          email: emailAddresses[0]?.email || emailAddresses[0] || null,
-          phone: phoneNumbers[0]?.number || phoneNumbers[0] || null,
+          // Merge enriched contact data from BatchData Property Skip Trace  
+          email: emailAddresses[0]?.email || null,
+          phone: phoneNumbers[0]?.number || null,
           dncPhone: phoneNumbers.find(p => p.type === 'dnc')?.number || null,
           landLine: phoneNumbers.find(p => p.type === 'landline')?.number || null,
           mobilePhone: phoneNumbers.find(p => p.type === 'mobile')?.number || phoneNumbers.find(p => p.type === 'cell')?.number || null
