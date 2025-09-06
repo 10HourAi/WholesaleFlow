@@ -400,13 +400,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // CRITICAL: Add this route EARLY to avoid Vite middleware conflicts
-  app.all("/api/properties/batch", (req, res, next) => {
-    console.log("🚨 PRE-ROUTE INTERCEPTOR: /api/properties/batch called");
-    if (req.method === 'POST') {
-      next(); // Continue to the actual POST handler
-    } else {
-      res.status(405).json({ error: 'Method not allowed' });
+  // DIRECT CONTACT ENRICHMENT TEST - BYPASS COMPLEX ROUTING
+  app.post("/api/properties/batch-test", async (req: any, res) => {
+    console.log("🟢 DIRECT CONTACT ENRICHMENT TEST ROUTE HIT!");
+    
+    try {
+      // Test with hardcoded Phoenix property
+      const testProperty = {
+        address: "2715 W Lamar Rd",
+        city: "Phoenix",
+        state: "AZ",
+        zipCode: "85017",
+        ownerName: "Kosani Gerard"
+      };
+      
+      console.log("📞 Making direct BatchData Property Skip Trace call...");
+      const skipTraceRequest = {
+        requests: [{
+          propertyAddress: {
+            street: testProperty.address,
+            city: testProperty.city,
+            state: testProperty.state,
+            zip: testProperty.zipCode
+          }
+        }]
+      };
+      
+      const response = await fetch('https://api.batchdata.com/api/v1/property/skip-trace', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.BATCHLEADS_API_KEY}`
+        },
+        body: JSON.stringify(skipTraceRequest)
+      });
+      
+      const skipTraceData = await response.json();
+      console.log("📞 CONTACT ENRICHMENT SUCCESS:", JSON.stringify(skipTraceData, null, 2));
+      
+      // Extract contact data
+      const person = skipTraceData.results?.persons?.[0];
+      const enrichedProperty = {
+        ...testProperty,
+        ownerPhone: person?.phoneNumbers?.[0]?.number || null,
+        ownerEmail: person?.emails?.[0]?.email || null,
+        phoneNumbers: person?.phoneNumbers || [],
+        emails: person?.emails || []
+      };
+      
+      res.json({
+        success: true,
+        originalProperty: testProperty,
+        enrichedProperty: enrichedProperty,
+        fullSkipTraceResponse: skipTraceData
+      });
+      
+    } catch (error) {
+      console.log("❌ Contact enrichment test error:", error);
+      res.status(500).json({ error: error.message });
     }
   });
 
