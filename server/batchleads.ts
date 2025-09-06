@@ -590,50 +590,43 @@ class BatchLeadsService {
       hasValidPhone: !!ownerPhone && ownerPhone.length >= 10
     });
 
-    // QUALITY FILTER: Skip properties without complete contact enrichment data
-    const hasCompleteContactInfo = (
-      ownerEmail && 
-      ownerEmail !== 'Available via skip trace' && 
-      !ownerEmail.includes('@example.com') &&
-      ownerPhone && 
-      ownerPhone !== 'Available via skip trace' &&
-      ownerPhone.length >= 10
-    );
-    
-    const hasCompletePropertyDetails = (
+    // REASONABLE QUALITY FILTER: Basic property validation only
+    const hasBasicPropertyInfo = (
       address && address.trim() !== '' &&
       city && city.trim() !== '' &&
       state && state.trim() !== '' &&
-      estimatedValue > 50000 && // Minimum property value
-      bedrooms !== null && bedrooms > 0 &&
-      bathrooms !== null && bathrooms > 0
+      estimatedValue > 25000 // Minimum reasonable property value
     );
     
-    console.log(`📋 Contact Enrichment Quality Check:`, {
+    // Contact enrichment info is available but not required to pass initial filter
+    const contactQuality = {
+      hasEmail: ownerEmail && ownerEmail !== 'Available via skip trace' && ownerEmail.includes('@'),
+      hasPhone: ownerPhone && ownerPhone !== 'Available via skip trace' && ownerPhone.length >= 10,
+      hasOwnerName: ownerName && ownerName !== 'Property Owner' && !ownerName.includes('undefined')
+    };
+    
+    console.log(`📋 Property Quality Check:`, {
       estimatedValue,
       equityPercent,
       address, city, state, zipCode,
       ownerName,
-      ownerEmail: ownerEmail ? (ownerEmail.includes('@') ? 'Valid email found' : ownerEmail) : 'No email',
-      ownerPhone: ownerPhone ? (ownerPhone.length >= 10 ? 'Valid phone found' : ownerPhone) : 'No phone',
-      hasCompleteContactInfo,
-      hasCompletePropertyDetails,
-      bedrooms: bedrooms !== null ? bedrooms : 'Missing',
-      bathrooms: bathrooms !== null ? bathrooms : 'Missing',
-      squareFeet: squareFeet !== null ? squareFeet : 'Missing'
+      ownerEmail: ownerEmail || 'Available via skip trace',
+      ownerPhone: ownerPhone || 'Available via skip trace', 
+      contactQuality,
+      hasBasicPropertyInfo,
+      bedrooms: bedrooms !== null ? bedrooms : 'API data not available',
+      bathrooms: bathrooms !== null ? bathrooms : 'API data not available',
+      squareFeet: squareFeet !== null ? squareFeet : 'API data not available'
     });
     
-    // SKIP properties without complete contact information
-    if (!hasCompleteContactInfo) {
-      console.log(`❌ FILTERED OUT: Property lacks complete contact enrichment data`);
+    // Only filter out properties with completely invalid basic info
+    if (!hasBasicPropertyInfo) {
+      console.log(`❌ FILTERED OUT: Property lacks basic required information`);
       return null;
     }
     
-    // SKIP properties without essential property details  
-    if (!hasCompletePropertyDetails) {
-      console.log(`❌ FILTERED OUT: Property lacks complete property details`);
-      return null;
-    }
+    // Properties with missing contact info still pass through but get lower confidence scores
+    console.log(`✅ PASSED FILTER: Property has sufficient basic information`);
 
     // Apply state filtering based on location criteria - DISABLED for UI demonstration
     // Note: API often returns incomplete location data, so we'll use fallback values instead of filtering
@@ -768,22 +761,33 @@ class BatchLeadsService {
   }
 
   private calculateConfidenceScore(property: any): number {
-    // Confidence Score based on BatchData Contact Enrichment completeness
-    let score = 50; // Base score
+    // Confidence Score based on available data completeness
+    let score = 30; // Lower base score since contact enrichment may be incomplete
 
     const equityPercent = property.valuation?.equityPercent || 0;
     const owner = property.owner || property.ownerInfo || property.contact || {};
     
-    // Boost confidence if we have complete contact information
-    if (owner.email && !owner.email.includes('skip trace')) {
-      score += 15; // Real email increases confidence
+    // Boost confidence based on available data
+    if (owner.email && !owner.email.includes('skip trace') && owner.email.includes('@')) {
+      score += 20; // Real email significantly increases confidence
+    } else {
+      score += 5; // Contact enrichment available via skip trace
     }
+    
     if (owner.phone && owner.phone.length >= 10) {
-      score += 15; // Valid phone increases confidence
+      score += 20; // Valid phone significantly increases confidence  
+    } else {
+      score += 5; // Phone available via skip trace
     }
+    
     if (owner.mailingAddress || owner.ownerOccupied === false) {
-      score += 10; // Clear mailing address increases confidence
+      score += 15; // Clear mailing address increases confidence
     }
+    
+    // Property completeness factors
+    if (property.building?.bedrooms) score += 10;
+    if (property.building?.bathrooms) score += 10;
+    if (property.valuation?.estimatedValue > 100000) score += 5;
     const quickLists = property.quickLists || {};
 
     // High equity adds points
