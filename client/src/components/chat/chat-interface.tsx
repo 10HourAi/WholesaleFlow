@@ -314,7 +314,7 @@ export default function ChatInterface() {
    ✉️ Email: ${property.ownerEmail}
    📬 Mailing: ${property.ownerMailingAddress}
 
-🎯 CONFIDENCE ANALYSIS
+Valuation details
    💎 Equity: ${property.equityPercentage}%
    🎯 Confidence Score: ${property.confidenceScore}/100
    🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
@@ -662,7 +662,7 @@ Would you like to adjust your search criteria and try again?`;
    ✉️ Email: ${property.ownerEmail}
    📬 Mailing: ${property.ownerMailingAddress}
 
-🎯 CONFIDENCE ANALYSIS
+Valuation details
    💎 Equity: ${property.equityPercentage}%
    🎯 Confidence Score: ${property.confidenceScore}/100
    🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
