@@ -484,20 +484,20 @@ class BatchLeadsService {
       // STEP 3B: Get building data from Property Lookup API (same path as contact enrichment)
       let buildingData = {};
       try {
-        console.log(`🏗️ CONTACT ENRICHMENT: Adding Property Search call for building data`);
+        console.log(`🏗️ CONTACT ENRICHMENT: Adding Property Lookup call for building data`);
         const lookupRequest = {
-          searchCriteria: {
+          requests: [{
             address: {
               street: address.street,
               city: address.city,
               state: address.state,
               zip: address.zip
             }
-          }
+          }]
         };
         
-        const lookupResponse = await this.makeRequest('/api/v1/property/search', lookupRequest);
-        console.log(`🏗️ CONTACT ENRICHMENT: Property Search response:`, JSON.stringify(lookupResponse, null, 2));
+        const lookupResponse = await this.makeRequest('/api/v1/property/lookup', lookupRequest);
+        console.log(`🏗️ CONTACT ENRICHMENT: Property Lookup response:`, JSON.stringify(lookupResponse, null, 2));
         
         const building = lookupResponse.results?.[0]?.property?.building || {};
         buildingData = {
@@ -509,7 +509,7 @@ class BatchLeadsService {
         
         console.log(`🏗️ CONTACT ENRICHMENT: Extracted building data:`, buildingData);
       } catch (error) {
-        console.log(`❌ CONTACT ENRICHMENT: Property Search failed:`, error);
+        console.log(`❌ CONTACT ENRICHMENT: Property Lookup failed:`, error);
       }
       
       return {
