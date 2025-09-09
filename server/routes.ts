@@ -493,20 +493,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`🔍 ROUTES: Processing property ${i+1}: ${property.address}`);
         
         try {
-          // STEP 1: Get building data from Property Lookup API
-          console.log(`🏗️ ROUTES: Making Property Lookup call for ${property.address}`);
+          // STEP 1: Get building data from Property Search API
+          console.log(`🏗️ ROUTES: Making Property Search call for ${property.address}`);
           const lookupRequest = {
-            requests: [{
+            searchCriteria: {
               address: {
                 street: property.address,
                 city: property.city,
                 state: property.state,
                 zip: property.zipCode
               }
-            }]
+            }
           };
           
-          const lookupResponse = await fetch('https://api.batchdata.com/api/v1/property/lookup', {
+          const lookupResponse = await fetch('https://api.batchdata.com/api/v1/property/search', {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -515,7 +515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             body: JSON.stringify(lookupRequest)
           });
           
-          console.log(`🏗️ ROUTES: Property Lookup response status:`, lookupResponse.status);
+          console.log(`🏗️ ROUTES: Property Search response status:`, lookupResponse.status);
           const lookupData = await lookupResponse.json();
           console.log(`🏗️ ROUTES: Building data available:`, JSON.stringify(lookupData.results?.[0]?.property?.building || {}, null, 2));
           
