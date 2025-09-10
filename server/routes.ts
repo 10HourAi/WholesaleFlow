@@ -398,6 +398,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Test Property Search API - No authentication required for testing
+  app.post("/api/test/property-search", async (req: any, res) => {
+    console.log("🧪 TESTING PROPERTY SEARCH API");
+    
+    try {
+      // Test with a real property address
+      const testRequest = {
+        address: "2715 W Lamar Rd",
+        city: "Phoenix", 
+        state: "AZ",
+        zipCode: "85017"
+      };
+      
+      console.log("🏠 Testing Property Search API with:", JSON.stringify(testRequest, null, 2));
+      
+      // Call BatchData Property Lookup API directly
+      const lookupRequest = {
+        requests: [{
+          address: {
+            street: testRequest.address,
+            city: testRequest.city,
+            state: testRequest.state,
+            zip: testRequest.zipCode
+          }
+        }]
+      };
+      
+      console.log("📋 BatchData Property Lookup API Request:", JSON.stringify(lookupRequest, null, 2));
+      
+      const response = await fetch('https://api.batchdata.com/api/v1/property/lookup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.BATCHLEADS_API_KEY}`
+        },
+        body: JSON.stringify(lookupRequest)
+      });
+      
+      console.log(`🏗️ Property Search API Response Status:`, response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`BatchData API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+      
+      const propertyData = await response.json();
+      
+      console.log("🏠 COMPLETE PROPERTY SEARCH API RESPONSE:");
+      console.log(JSON.stringify(propertyData, null, 2));
+      
+      // Extract and format the data
+      const property = propertyData.results?.[0]?.property || {};
+      const building = property.building || {};
+      const assessment = property.assessment || {};
+      
+      const formattedResponse = {
+        success: true,
+        testAddress: testRequest,
+        rawApiResponse: propertyData,
+        extractedData: {
+          building: {
+            bedrooms: building.bedroomCount || building.bedrooms || null,
+            bathrooms: building.bathroomCount || building.bathrooms || null,
+            squareFeet: building.totalBuildingAreaSquareFeet || building.livingArea || null,
+            yearBuilt: building.effectiveYearBuilt || building.yearBuilt || null,
+            propertyType: building.propertyType || null,
+            lotSize: building.lotSizeSquareFeet || null,
+            stories: building.stories || null,
+            foundationType: building.foundationType || null,
+            heatingType: building.heatingType || null,
+            coolingType: building.coolingType || null,
+            roofMaterial: building.roofMaterial || null,
+            exteriorWallType: building.exteriorWallType || null
+          },
+          assessment: {
+            totalMarketValue: assessment.totalMarketValue || null,
+            landValue: assessment.landValue || null,
+            improvementValue: assessment.improvementValue || null,
+            assessedYear: assessment.assessedYear || null
+          }
+        }
+      };
+      
+      console.log("✅ FORMATTED PROPERTY SEARCH RESPONSE:");
+      console.log(JSON.stringify(formattedResponse, null, 2));
+      
+      res.json(formattedResponse);
+      
+    } catch (error: any) {
+      console.error("❌ Property Search API test error:", error);
+      res.status(500).json({ 
+        success: false,
+        message: error.message,
+        error: error.toString()
+      });
+    }
+  });
+
   // BatchLeads Property Search
   app.post("/api/properties/search", isAuthenticated, async (req: any, res) => {
     try {
