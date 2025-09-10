@@ -595,9 +595,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         timestamp: new Date().toISOString() 
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.log("❌ Skip trace test error:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message || 'Unknown error occurred' });
     }
   });
 
@@ -656,9 +656,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fullSkipTraceResponse: skipTraceData
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.log("❌ Contact enrichment test error:", error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: error.message || 'Unknown error occurred' });
     }
   });
 
@@ -838,14 +838,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         try {
           console.log(`Testing format: "${format}"`);
           const response = await batchLeadsService.searchProperties({ location: format }, 1, 5);
-          results[format] = {
+          results[format as string] = {
             totalResults: response.total_results,
             propertiesFound: response.data.length,
             success: true
           };
-        } catch (error) {
-          results[format] = {
-            error: error.message,
+        } catch (error: any) {
+          results[format as string] = {
+            error: error.message || 'Unknown error occurred',
             success: false
           };
         }
@@ -855,8 +855,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         originalLocation: location,
         results
       });
-    } catch (error) {
-      res.status(500).json({ error: error.message });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Unknown error occurred' });
     }
   });
 
