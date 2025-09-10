@@ -20,6 +20,21 @@ const agentTypes = [
   { id: "closing", name: "📋 Closing Agent", icon: FileText },
 ];
 
+// Safe text renderer for Terry's messages - handles **bold** without XSS risk
+const renderFormattedText = (text: string) => {
+  const parts = text.split(/(\*\*.*?\*\*)/g);
+  
+  return parts.map((part, index) => {
+    if (part.startsWith('**') && part.endsWith('**')) {
+      // Remove the ** markers and wrap in <strong>
+      const boldText = part.slice(2, -2);
+      return <strong key={index}>{boldText}</strong>;
+    }
+    // Regular text - React will safely escape any HTML
+    return <span key={index}>{part}</span>;
+  });
+};
+
 interface WizardData {
   city: string;
   state: string;
@@ -1113,7 +1128,15 @@ ${buildingDetails}
                           ? 'bg-blue-600 text-white' 
                           : 'bg-white text-gray-900'
                       }`}>
-                        <p>{message.content}</p>
+                        <div className="prose prose-sm max-w-none">
+                          {message.role === 'assistant' ? (
+                            <div className="whitespace-pre-wrap">
+                              {renderFormattedText(message.content)}
+                            </div>
+                          ) : (
+                            <p>{message.content}</p>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
