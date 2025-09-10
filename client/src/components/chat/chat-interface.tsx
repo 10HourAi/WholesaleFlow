@@ -40,6 +40,7 @@ interface BuyerWizardData {
 // PropertyCard component for rendering property cards with buttons  
 const PropertyCard = ({ content }: { content: string }) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   // Detect card type and extract number
   const isSellerLead = content.includes('🏠 SELLER LEAD');
@@ -51,11 +52,114 @@ const PropertyCard = ({ content }: { content: string }) => {
   
   const cardType = isSellerLead ? 'Property' : 'Buyer';
   
-  const handleAddToCRM = () => {
-    toast({
-      title: "Added to CRM",
-      description: `${cardType} ${cardNumber} has been added to your CRM system.`,
-    });
+  // Function to extract property data from seller lead content
+  const extractPropertyData = (content: string) => {
+    if (!isSellerLead) return null;
+    
+    try {
+      // Extract address information
+      const addressMatch = content.match(/📍 LOCATION\s+(.+?)\n/);
+      const address = addressMatch ? addressMatch[1].trim() : '';
+      
+      // Parse address components
+      const addressParts = address.split(', ');
+      const streetAddress = addressParts[0] || '';
+      const city = addressParts[1] || '';
+      const stateZip = addressParts[2] || '';
+      const [state, zipCode] = stateZip.split(' ');
+      
+      // Extract building details
+      const bedroomsMatch = content.match(/🏠 (\d+) bed/);
+      const bathroomsMatch = content.match(/(\d+) bath/);
+      const squareFeetMatch = content.match(/(\d{1,3}(?:,\d{3})*) sq ft/);
+      const yearBuiltMatch = content.match(/📅 Built: (\d{4})/);
+      const propertyTypeMatch = content.match(/📐 Property Type: (.+?)\n/);
+      
+      // Extract financial information
+      const arvMatch = content.match(/📊 ARV: \$([0-9,]+)/);
+      const maxOfferMatch = content.match(/💰 Max Offer: \$([0-9,]+)/);
+      const equityMatch = content.match(/💎 Equity: (\d+)%/);
+      
+      // Extract owner information
+      const ownerNameMatch = content.match(/Owner: (.+?)\n/);
+      const ownerPhoneMatch = content.match(/📱 Phone: (.+?)\n/);
+      const ownerEmailMatch = content.match(/✉️ Email: (.+?)\n/);
+      const ownerMailingMatch = content.match(/📬 Mailing: (.+?)\n/);
+      
+      // Extract lead analysis
+      const confidenceScoreMatch = content.match(/🎯 Confidence Score: (\d+)\/100/);
+      const distressIndicatorMatch = content.match(/🚨 Distress Indicator: (.+?)\n/);
+      const leadTypeMatch = content.match(/📈 Lead Type: (.+?)\n/);
+      
+      return {
+        address: streetAddress,
+        city: city,
+        state: state || '',
+        zipCode: zipCode || '',
+        bedrooms: bedroomsMatch ? parseInt(bedroomsMatch[1]) : null,
+        bathrooms: bathroomsMatch ? parseInt(bathroomsMatch[1]) : null,
+        squareFeet: squareFeetMatch ? parseInt(squareFeetMatch[1].replace(/,/g, '')) : null,
+        yearBuilt: yearBuiltMatch ? parseInt(yearBuiltMatch[1]) : null,
+        propertyType: propertyTypeMatch ? propertyTypeMatch[1].trim() : 'single_family',
+        arv: arvMatch ? arvMatch[1].replace(/,/g, '') : null,
+        maxOffer: maxOfferMatch ? maxOfferMatch[1].replace(/,/g, '') : null,
+        equityPercentage: equityMatch ? parseInt(equityMatch[1]) : null,
+        ownerName: ownerNameMatch ? ownerNameMatch[1].trim() : null,
+        ownerPhone: ownerPhoneMatch && !ownerPhoneMatch[1].includes('Contact for details') 
+          ? ownerPhoneMatch[1].trim() : null,
+        ownerEmail: ownerEmailMatch && !ownerEmailMatch[1].includes('Contact for details') 
+          ? ownerEmailMatch[1].trim() : null,
+        ownerMailingAddress: ownerMailingMatch ? ownerMailingMatch[1].trim() : null,
+        confidenceScore: confidenceScoreMatch ? parseInt(confidenceScoreMatch[1]) : null,
+        distressedIndicator: distressIndicatorMatch ? distressIndicatorMatch[1].trim().replace(/ /g, '_') : null,
+        leadType: leadTypeMatch ? leadTypeMatch[1].trim().replace(/ /g, '_') : null,
+        status: 'new'
+      };
+    } catch (error) {
+      console.error('Error extracting property data:', error);
+      return null;
+    }
+  };
+  
+  const handleAddToCRM = async () => {
+    if (!isSellerLead) {
+      toast({
+        title: "Added to CRM",
+        description: `${cardType} ${cardNumber} has been added to your CRM system.`,
+      });
+      return;
+    }
+    
+    const propertyData = extractPropertyData(content);
+    
+    if (!propertyData) {
+      toast({
+        title: "Error",
+        description: "Failed to extract property data from the lead.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    try {
+      await apiRequest("POST", "/api/properties", propertyData);
+      
+      toast({
+        title: "Added to CRM",
+        description: `Property at ${propertyData.address} has been added to your CRM system.`,
+      });
+      
+      // Invalidate properties cache to refresh the CRM
+      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      
+    } catch (error: any) {
+      console.error('Error adding property to CRM:', error);
+      toast({
+        title: "Error", 
+        description: "Failed to add property to CRM. Please try again.",
+        variant: "destructive"
+      });
+    }
   };
   
   const handleAnalyzeDeal = () => {
