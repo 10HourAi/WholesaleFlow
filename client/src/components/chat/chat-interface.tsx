@@ -319,8 +319,8 @@ ${buildingDetails}
 
 👤 OWNER INFO
    Owner: ${property.ownerName}
-   📱 Phone: ${property.ownerPhone || 'Available via skip trace'}
-   ✉️ Email: ${property.ownerEmail || 'Available via skip trace'}
+   📱 Phone: ${property.ownerPhone || 'Contact for details'}
+   ✉️ Email: ${property.ownerEmail || 'Contact for details'}
    📬 Mailing: ${property.ownerMailingAddress}
 
 📈 LEAD ANALYSIS
@@ -674,8 +674,8 @@ ${buildingDetails}
 
 👤 OWNER INFO
    Owner: ${property.ownerName}
-   📱 Phone: ${property.ownerPhone || 'Available via skip trace'}
-   ✉️ Email: ${property.ownerEmail || 'Available via skip trace'}
+   📱 Phone: ${property.ownerPhone || 'Contact for details'}
+   ✉️ Email: ${property.ownerEmail || 'Contact for details'}
    📬 Mailing: ${property.ownerMailingAddress}
 
 📈 LEAD ANALYSIS
@@ -776,8 +776,8 @@ ${buildingDetails}
           // Get best contact info
           const bestPhone = owner.phoneNumbers && owner.phoneNumbers[0] ? 
             `(${owner.phoneNumbers[0].number.slice(0,3)}) ${owner.phoneNumbers[0].number.slice(3,6)}-${owner.phoneNumbers[0].number.slice(6)}` : 
-            'Available via skip trace';
-          const bestEmail = owner.emails && owner.emails[0] ? owner.emails[0] : 'Available via skip trace';
+            'Contact for details';
+          const bestEmail = owner.emails && owner.emails[0] ? owner.emails[0] : 'Contact for details';
           
           // Get property owner profile data
           const ownerProfile = buyer.propertyOwnerProfile || {};
@@ -788,12 +788,12 @@ ${buildingDetails}
           
           // Format phone numbers with types
           const formatPhoneNumbers = (phones: any[]) => {
-            if (!phones || phones.length === 0) return 'Available via skip trace';
+            if (!phones || phones.length === 0) return 'Contact for details';
             return phones.map(phone => `${phone.number} (${phone.type})`).join(', ');
           };
           
           // Get emails
-          const emailList = owner.emails && owner.emails.length > 0 ? owner.emails.join(', ') : 'Available via skip trace';
+          const emailList = owner.emails && owner.emails.length > 0 ? owner.emails.join(', ') : 'Contact for details';
           
           // Get phone numbers (separate regular and DNC)
           const phoneNumbers = owner.phoneNumbers || [];
@@ -837,7 +837,7 @@ ${buildingDetails}
           }
           
           if (regularPhones.length === 0 && dncPhones.length === 0) {
-            cardContent += `📱 Available via skip trace\n`;
+            cardContent += `📱 Contact for details\n`;
           }
           
           cardContent += `\n🎯 ACTIONS
