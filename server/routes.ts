@@ -684,96 +684,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const results = await batchLeadsService.searchValidProperties(criteria, count);
       console.log("🚀 ROUTES: searchValidProperties returned:", results.data.length, "properties");
       
-      // FORCE CONTACT ENRICHMENT - BYPASS CACHING ISSUES
-      console.log("🔥 APPLYING DIRECT CONTACT ENRICHMENT TO ALL PROPERTIES");
-      
-      // Apply contact enrichment directly here for debugging
-      const enrichedProperties = [];
-      for (let i = 0; i < results.data.length; i++) { // Process ALL properties
-        const property = results.data[i];
-        console.log(`🔍 ROUTES: Processing property ${i+1}: ${property.address}`);
-        
-        try {
-          // STEP 1: Get building data from Property Lookup API
-          console.log(`🏗️ ROUTES: Making Property Lookup call for ${property.address}`);
-          const lookupRequest = {
-            requests: [{
-              address: {
-                street: property.address,
-                city: property.city,
-                state: property.state,
-                zip: property.zipCode
-              }
-            }]
-          };
-          
-          const lookupResponse = await fetch('https://api.batchdata.com/api/v1/property/lookup', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.BATCHLEADS_API_KEY}`
-            },
-            body: JSON.stringify(lookupRequest)
-          });
-          
-          console.log(`🏗️ ROUTES: Property Lookup response status:`, lookupResponse.status);
-          const lookupData = await lookupResponse.json();
-          console.log(`🏗️ ROUTES: Building data available:`, JSON.stringify(lookupData.results?.[0]?.property?.building || {}, null, 2));
-          
-          // Extract building data
-          const building = lookupData.results?.[0]?.property?.building || {};
-          property.bedrooms = building.bedroomCount || building.bedrooms || property.bedrooms;
-          property.bathrooms = building.bathroomCount || building.bathrooms || property.bathrooms;
-          property.squareFeet = building.totalBuildingAreaSquareFeet || building.livingArea || property.squareFeet;
-          property.yearBuilt = building.effectiveYearBuilt || building.yearBuilt || property.yearBuilt;
-          
-          console.log(`🏗️ ROUTES: Updated building data - beds: ${property.bedrooms}, baths: ${property.bathrooms}, sqft: ${property.squareFeet}, year: ${property.yearBuilt}`);
-          
-          // STEP 2A: Get contact data from Property Skip Trace API
-          const skipTraceRequest = {
-            requests: [{
-              propertyAddress: {
-                street: property.address,
-                city: property.city,
-                state: property.state,
-                zip: property.zipCode
-              }
-            }]
-          };
-          
-          console.log(`📞 ROUTES: Making skip trace call for ${property.address}`);
-          const response = await fetch('https://api.batchdata.com/api/v1/property/skip-trace', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.BATCHLEADS_API_KEY}`
-            },
-            body: JSON.stringify(skipTraceRequest)
-          });
-          
-          console.log(`📞 ROUTES: Skip trace response status:`, response.status);
-          const skipTraceData = await response.json();
-          
-          // Extract contact info from response
-          const person = skipTraceData.results?.persons?.[0];
-          const emails = person?.emails || [];
-          const phoneNumbers = person?.phoneNumbers || [];
-          
-          // Update property with contact info
-          property.ownerEmail = emails[0]?.email || property.ownerEmail;
-          property.ownerPhone = phoneNumbers[0]?.number || property.ownerPhone;
-          
-          console.log(`✅ ROUTES: Updated property with email: ${property.ownerEmail}, phone: ${property.ownerPhone}`);
-          
-          
-        } catch (error) {
-          console.log(`❌ ROUTES: API enrichment error for ${property.address}:`, error);
-        }
-        
-        enrichedProperties.push(property);
-      }
-      
-      const convertedProperties = enrichedProperties;
+      // Properties already have building data and contact info from batchLeadsService
+      console.log("🔥 USING ENHANCED BATCHLEADS SERVICE WITH INTELLIGENT DEFAULTS");
+      const convertedProperties = results.data;
       
       console.log("🔍 Backend: results.data from searchValidProperties:", results.data);
       console.log("🔍 Backend: convertedProperties length:", convertedProperties.length);
