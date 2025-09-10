@@ -295,18 +295,69 @@ export default function ChatInterface() {
                 await new Promise(resolve => setTimeout(resolve, 400)); // Small delay between cards
                 const property = properties[i];
                 
+                // Get detailed building data from Property Search API
+                let buildingDetails = '';
+                try {
+                  console.log(`🏗️ Fetching detailed building data for property ${i + 1}:`, property.address);
+                  const buildingResponse = await fetch('/api/property-search', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      address: property.address,
+                      city: property.city,
+                      state: property.state,
+                      zipCode: property.zipCode
+                    })
+                  });
+                  
+                  if (buildingResponse.ok) {
+                    const buildingData = await buildingResponse.json();
+                    console.log(`🏗️ Received building data for property ${i + 1}:`, buildingData);
+                    
+                    const building = buildingData.property?.building || {};
+                    const assessment = buildingData.property?.assessment || {};
+                    
+                    // Enhanced building details section
+                    buildingDetails = `
+🏗️ BUILDING DETAILS
+   🏠 ${building.bedrooms || property.bedrooms || 'N/A'} bed, ${building.bathrooms || property.bathrooms || 'N/A'} bath${building.squareFeet || property.squareFeet ? ` | ${(building.squareFeet || property.squareFeet).toLocaleString()} sq ft` : ''}
+   📅 Built: ${building.yearBuilt || property.yearBuilt || 'N/A'}${building.propertyType ? ` | ${building.propertyType}` : ''}
+   📐 Lot Size: ${building.lotSize ? `${building.lotSize.toLocaleString()} sq ft` : 'N/A'}${building.stories ? ` | ${building.stories} story` : ''}
+   🧱 Foundation: ${building.foundationType || 'N/A'}
+   🌡️ HVAC: ${building.heatingType || 'N/A'} heat${building.coolingType ? ` / ${building.coolingType}` : ''}
+   🏠 Exterior: ${building.exteriorWallType || 'N/A'}${building.roofMaterial ? ` roof, ${building.roofMaterial}` : ''}
+   💰 Market Value: ${assessment.totalMarketValue ? `$${assessment.totalMarketValue.toLocaleString()}` : 'N/A'}`;
+                  } else {
+                    console.log(`⚠️ Building data unavailable for property ${i + 1}, using basic info only`);
+                    buildingDetails = `
+🏗️ BUILDING DETAILS
+   🏠 ${property.bedrooms || 'N/A'} bed, ${property.bathrooms || 'N/A'} bath${property.squareFeet ? ` | ${property.squareFeet.toLocaleString()} sq ft` : ''}
+   📅 Built: ${property.yearBuilt || 'N/A'}
+   📐 Additional building data: Call Property Search API for detailed info`;
+                  }
+                } catch (error) {
+                  console.error(`❌ Error fetching building data for property ${i + 1}:`, error);
+                  buildingDetails = `
+🏗️ BUILDING DETAILS
+   🏠 ${property.bedrooms || 'N/A'} bed, ${property.bathrooms || 'N/A'} bath${property.squareFeet ? ` | ${property.squareFeet.toLocaleString()} sq ft` : ''}
+   📅 Built: ${property.yearBuilt || 'N/A'}
+   📐 Additional building data: Available via Property Search API`;
+                }
+                
                 const propertyCard = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🏠 SELLER LEAD ${i + 1}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📍 LOCATION
    ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
+${buildingDetails}
 
-💰 PROPERTY DETAILS
-   🏠 ${property.bedrooms || 'N/A'} bed, ${property.bathrooms || 'N/A'} bath${property.squareFeet ? ` | ${property.squareFeet.toLocaleString()} sq ft` : ''}
-   🏗️ Built: ${property.yearBuilt || 'N/A'}
+💰 INVESTMENT ANALYSIS
    📊 ARV: $${parseInt(property.arv).toLocaleString()}
    💰 Max Offer: $${parseInt(property.maxOffer).toLocaleString()}
+   💎 Equity: ${property.equityPercentage}%
 
 👤 OWNER INFO
    Owner: ${property.ownerName}
@@ -314,8 +365,7 @@ export default function ChatInterface() {
    ✉️ Email: ${property.ownerEmail}
    📬 Mailing: ${property.ownerMailingAddress}
 
-Valuation details
-   💎 Equity: ${property.equityPercentage}%
+📈 LEAD ANALYSIS
    🎯 Confidence Score: ${property.confidenceScore}/100
    🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
    📈 Lead Type: ${property.leadType.replace(/_/g, ' ')}
@@ -643,18 +693,69 @@ Would you like to adjust your search criteria and try again?`;
               await new Promise(resolve => setTimeout(resolve, 400)); // Small delay between cards
               const property = properties[i];
               
+              // Get detailed building data from Property Search API
+              let buildingDetails = '';
+              try {
+                console.log(`🏗️ Fetching detailed building data for property ${i + 1}:`, property.address);
+                const buildingResponse = await fetch('/api/property-search', {
+                  method: 'POST',
+                  headers: {
+                    'Content-Type': 'application/json',
+                  },
+                  body: JSON.stringify({
+                    address: property.address,
+                    city: property.city,
+                    state: property.state,
+                    zipCode: property.zipCode
+                  })
+                });
+                
+                if (buildingResponse.ok) {
+                  const buildingData = await buildingResponse.json();
+                  console.log(`🏗️ Received building data for property ${i + 1}:`, buildingData);
+                  
+                  const building = buildingData.property?.building || {};
+                  const assessment = buildingData.property?.assessment || {};
+                  
+                  // Enhanced building details section
+                  buildingDetails = `
+🏗️ BUILDING DETAILS
+   🏠 ${building.bedrooms || property.bedrooms || 'N/A'} bed, ${building.bathrooms || property.bathrooms || 'N/A'} bath${building.squareFeet || property.squareFeet ? ` | ${(building.squareFeet || property.squareFeet).toLocaleString()} sq ft` : ''}
+   📅 Built: ${building.yearBuilt || property.yearBuilt || 'N/A'}${building.propertyType ? ` | ${building.propertyType}` : ''}
+   📐 Lot Size: ${building.lotSize ? `${building.lotSize.toLocaleString()} sq ft` : 'N/A'}${building.stories ? ` | ${building.stories} story` : ''}
+   🧱 Foundation: ${building.foundationType || 'N/A'}
+   🌡️ HVAC: ${building.heatingType || 'N/A'} heat${building.coolingType ? ` / ${building.coolingType}` : ''}
+   🏠 Exterior: ${building.exteriorWallType || 'N/A'}${building.roofMaterial ? ` roof, ${building.roofMaterial}` : ''}
+   💰 Market Value: ${assessment.totalMarketValue ? `$${assessment.totalMarketValue.toLocaleString()}` : 'N/A'}`;
+                } else {
+                  console.log(`⚠️ Building data unavailable for property ${i + 1}, using basic info only`);
+                  buildingDetails = `
+🏗️ BUILDING DETAILS
+   🏠 ${property.bedrooms || 'N/A'} bed, ${property.bathrooms || 'N/A'} bath${property.squareFeet ? ` | ${property.squareFeet.toLocaleString()} sq ft` : ''}
+   📅 Built: ${property.yearBuilt || 'N/A'}
+   📐 Additional building data: Call Property Search API for detailed info`;
+                }
+              } catch (error) {
+                console.error(`❌ Error fetching building data for property ${i + 1}:`, error);
+                buildingDetails = `
+🏗️ BUILDING DETAILS
+   🏠 ${property.bedrooms || 'N/A'} bed, ${property.bathrooms || 'N/A'} bath${property.squareFeet ? ` | ${property.squareFeet.toLocaleString()} sq ft` : ''}
+   📅 Built: ${property.yearBuilt || 'N/A'}
+   📐 Additional building data: Available via Property Search API`;
+              }
+              
               const propertyCard = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🏠 SELLER LEAD ${i + 1}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📍 LOCATION
    ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
+${buildingDetails}
 
-💰 PROPERTY DETAILS
-   🏠 ${property.bedrooms || 'N/A'} bed, ${property.bathrooms || 'N/A'} bath${property.squareFeet ? ` | ${property.squareFeet.toLocaleString()} sq ft` : ''}
-   🏗️ Built: ${property.yearBuilt || 'N/A'}
+💰 INVESTMENT ANALYSIS
    📊 ARV: $${parseInt(property.arv).toLocaleString()}
    💰 Max Offer: $${parseInt(property.maxOffer).toLocaleString()}
+   💎 Equity: ${property.equityPercentage}%
 
 👤 OWNER INFO
    Owner: ${property.ownerName}
@@ -662,8 +763,7 @@ Would you like to adjust your search criteria and try again?`;
    ✉️ Email: ${property.ownerEmail}
    📬 Mailing: ${property.ownerMailingAddress}
 
-Valuation details
-   💎 Equity: ${property.equityPercentage}%
+📈 LEAD ANALYSIS
    🎯 Confidence Score: ${property.confidenceScore}/100
    🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
    📈 Lead Type: ${property.leadType.replace(/_/g, ' ')}
