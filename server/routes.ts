@@ -832,7 +832,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         '17112'                        // Default ZIP
       ];
 
-      const results = {};
+      const results: { [key: string]: any } = {};
 
       for (const format of formats) {
         try {

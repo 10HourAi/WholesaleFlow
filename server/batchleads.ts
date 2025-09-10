@@ -524,9 +524,9 @@ class BatchLeadsService {
           // Merge enriched contact data from BatchData Property Skip Trace  
           email: emailAddresses[0]?.email || null,
           phone: phoneNumbers[0]?.number || null,
-          dncPhone: phoneNumbers.find(p => p.type === 'dnc')?.number || null,
-          landLine: phoneNumbers.find(p => p.type === 'landline')?.number || null,
-          mobilePhone: phoneNumbers.find(p => p.type === 'mobile')?.number || phoneNumbers.find(p => p.type === 'cell')?.number || null
+          dncPhone: phoneNumbers.find((p: any) => p.type === 'dnc')?.number || null,
+          landLine: phoneNumbers.find((p: any) => p.type === 'landline')?.number || null,
+          mobilePhone: phoneNumbers.find((p: any) => p.type === 'mobile')?.number || phoneNumbers.find((p: any) => p.type === 'cell')?.number || null
         }
       };
     } catch (error) {
