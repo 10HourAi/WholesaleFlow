@@ -93,6 +93,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // BatchData Property Search API - Get detailed property information
+  app.post("/api/property-search", isAuthenticated, async (req: any, res) => {
+    try {
+      console.log("🏠 Property Search API endpoint called");
+      const { address, city, state, zipCode } = req.body;
+      
+      if (!address || !city || !state) {
+        return res.status(400).json({ 
+          message: "Address, city, and state are required" 
+        });
+      }
+
+      console.log(`🔍 Searching property details for: ${address}, ${city}, ${state} ${zipCode || ''}`);
+      
+      // Call BatchData Property Lookup API for detailed building information
+      const lookupRequest = {
+        requests: [{
+          address: {
+            street: address,
+            city: city,
+            state: state,
+            zip: zipCode || ''
+          }
+        }]
+      };
+      
+      console.log("📋 BatchData Property Lookup API Request:", JSON.stringify(lookupRequest, null, 2));
+      
+      const response = await fetch('https://api.batchdata.com/api/v1/property/lookup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.BATCHLEADS_API_KEY}`
+        },
+        body: JSON.stringify(lookupRequest)
+      });
+      
+      console.log(`🏗️ BatchData Property Lookup API Response Status:`, response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`BatchData API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+      
+      const propertyData = await response.json();
+      
+      console.log("🏠 COMPLETE BATCHDATA PROPERTY LOOKUP API RESPONSE:");
+      console.log(JSON.stringify(propertyData, null, 2));
+      
+      // Extract building data from the response
+      const property = propertyData.results?.[0]?.property || {};
+      const building = property.building || {};
+      const assessment = property.assessment || {};
+      
+      // Create formatted response with detailed building information
+      const formattedResponse = {
+        success: true,
+        property: {
+          address: {
+            street: address,
+            city: city,
+            state: state,
+            zipCode: zipCode
+          },
+          building: {
+            bedrooms: building.bedroomCount || building.bedrooms || null,
+            bathrooms: building.bathroomCount || building.bathrooms || null,
+            squareFeet: building.totalBuildingAreaSquareFeet || building.livingArea || null,
+            yearBuilt: building.effectiveYearBuilt || building.yearBuilt || null,
+            propertyType: building.propertyType || null,
+            lotSize: building.lotSizeSquareFeet || null,
+            stories: building.stories || null,
+            foundationType: building.foundationType || null,
+            heatingType: building.heatingType || null,
+            coolingType: building.coolingType || null,
+            roofMaterial: building.roofMaterial || null,
+            exteriorWallType: building.exteriorWallType || null
+          },
+          assessment: {
+            totalMarketValue: assessment.totalMarketValue || null,
+            landValue: assessment.landValue || null,
+            improvementValue: assessment.improvementValue || null,
+            assessedYear: assessment.assessedYear || null
+          },
+          fullApiResponse: propertyData
+        }
+      };
+      
+      console.log("✅ Formatted Property Response:");
+      console.log(JSON.stringify(formattedResponse, null, 2));
+      
+      res.json(formattedResponse);
+      
+    } catch (error: any) {
+      console.error("❌ Property Search API error:", error);
+      res.status(500).json({ 
+        success: false,
+        message: error.message,
+        error: error.toString()
+      });
+    }
+  });
+
   // Conversations
   app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
     try {
