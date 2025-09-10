@@ -40,6 +40,10 @@ interface BatchLeadsProperty {
     vacant: boolean;
     preforeclosure: boolean;
   };
+  assessment?: any;
+  taxAssessor?: any;
+  property?: any;
+  propertyDetails?: any;
 }
 
 interface BatchLeadsResponse {
@@ -58,6 +62,7 @@ interface SearchCriteria {
   distressedOnly?: boolean;
   motivationScore?: number;
   minBedrooms?: number;
+  quickLists?: string[];
 }
 
 class BatchLeadsService {
