@@ -27,6 +27,7 @@ interface WizardData {
   propertyType: string;
   minBedrooms?: number;
   maxPrice?: number;
+  minPrice?: number;
 }
 
 interface BuyerWizardData {
@@ -796,8 +797,8 @@ ${buildingDetails}
           
           // Get phone numbers (separate regular and DNC)
           const phoneNumbers = owner.phoneNumbers || [];
-          const regularPhones = phoneNumbers.filter(p => !p.dnc);
-          const dncPhones = phoneNumbers.filter(p => p.dnc);
+          const regularPhones = phoneNumbers.filter((p: any) => !p.dnc);
+          const dncPhones = phoneNumbers.filter((p: any) => p.dnc);
           
           // Create modern, sleek card design
           let cardContent = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
