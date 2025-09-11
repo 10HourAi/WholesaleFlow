@@ -639,7 +639,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       const enrichmentData = await response.json();
-      console.log("📞 CONTACT ENRICHMENT SUCCESS:", JSON.stringify(enrichmentData, null, 2));
+      
+      // Check if the API returned an error
+      const isSuccess = enrichmentData.status?.code === 200;
+      
+      if (!isSuccess) {
+        console.log("❌ CONTACT ENRICHMENT ERROR:", JSON.stringify(enrichmentData, null, 2));
+        return res.json({
+          success: false,
+          error: {
+            code: enrichmentData.status?.code,
+            message: enrichmentData.status?.message || 'Contact enrichment failed'
+          },
+          originalProperty: testProperty,
+          fullContactEnrichmentResponse: enrichmentData
+        });
+      }
+      
+      console.log("📞 CONTACT ENRICHMENT SUCCESS");
       
       // Extract contact data from new contact enrichment response structure
       const owner = enrichmentData.results?.owner || enrichmentData.results?.persons?.[0] || {};

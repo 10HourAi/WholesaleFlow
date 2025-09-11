@@ -455,8 +455,8 @@ ${buildingDetails}
    Mailing Address              ${property.ownerMailingAddress}
 
 📞 CONTACT INFORMATION
-   Email(s)                     ${property.ownerEmail || 'Available via skip trace'}
-   Phone(s)                     ${property.ownerPhone || 'Available via skip trace'}
+   Email(s)                     ${property.ownerEmail || 'Contact for details'}
+   Phone(s)                     ${property.ownerPhone || 'Contact for details'}
    DNC Phone(s)                 ${property.ownerDNCPhone || 'None on record'}
    Mailing Address              ${property.ownerMailingAddress}
 
@@ -820,8 +820,8 @@ ${buildingDetails}
    Mailing Address              ${property.ownerMailingAddress}
 
 📞 CONTACT INFORMATION
-   Email(s)                     ${property.ownerEmail || 'Available via skip trace'}
-   Phone(s)                     ${property.ownerPhone || 'Available via skip trace'}
+   Email(s)                     ${property.ownerEmail || 'Contact for details'}
+   Phone(s)                     ${property.ownerPhone || 'Contact for details'}
    DNC Phone(s)                 ${property.ownerDNCPhone || 'None on record'}
    Mailing Address              ${property.ownerMailingAddress}
 
