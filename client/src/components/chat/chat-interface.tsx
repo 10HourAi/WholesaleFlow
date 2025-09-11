@@ -75,10 +75,11 @@ const PropertyCard = ({ content }: { content: string }) => {
       const yearBuiltMatch = content.match(/📅 Built: (\d{4})/);
       const propertyTypeMatch = content.match(/📐 Property Type: (.+?)\n/);
       
-      // Extract financial information
-      const arvMatch = content.match(/📊 ARV: \$([0-9,]+)/);
-      const maxOfferMatch = content.match(/💰 Max Offer: \$([0-9,]+)/);
-      const equityMatch = content.match(/💎 Equity: (\d+)%/);
+      // Extract financial information - updated for new format
+      // Try both "Market Value" in BUILDING DETAILS and "Estimated Value" in Valuation Details
+      const arvMatch = content.match(/💰 Market Value: \$([0-9,]+)/) || content.match(/Estimated Value\s*\$([0-9,]+)/);
+      const maxOfferMatch = content.match(/Max Offer \(70% Rule\)\s*\$([0-9,]+)/);
+      const equityMatch = content.match(/Equity Percent\s*(\d+)%/);
       
       // Extract owner information
       const ownerNameMatch = content.match(/Owner: (.+?)\n/);
@@ -86,10 +87,8 @@ const PropertyCard = ({ content }: { content: string }) => {
       const ownerEmailMatch = content.match(/✉️ Email: (.+?)\n/);
       const ownerMailingMatch = content.match(/📬 Mailing: (.+?)\n/);
       
-      // Extract lead analysis
-      const confidenceScoreMatch = content.match(/🎯 Confidence Score: (\d+)\/100/);
-      const distressIndicatorMatch = content.match(/🚨 Distress Indicator: (.+?)\n/);
-      const leadTypeMatch = content.match(/📈 Lead Type: (.+?)\n/);
+      // Extract confidence score - updated for new format (no emoji, no "/100")
+      const confidenceScoreMatch = content.match(/Confidence Score\s*(\d+)/);
       
       return {
         address: streetAddress,
@@ -111,8 +110,6 @@ const PropertyCard = ({ content }: { content: string }) => {
           ? ownerEmailMatch[1].trim() : null,
         ownerMailingAddress: ownerMailingMatch ? ownerMailingMatch[1].trim() : null,
         confidenceScore: confidenceScoreMatch ? parseInt(confidenceScoreMatch[1]) : null,
-        distressedIndicator: distressIndicatorMatch ? distressIndicatorMatch[1].trim().replace(/ /g, '_') : null,
-        leadType: leadTypeMatch ? leadTypeMatch[1].trim().replace(/ /g, '_') : null,
         status: 'new'
       };
     } catch (error) {
@@ -432,7 +429,14 @@ export default function ChatInterface() {
 
 📍 LOCATION
    ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
+
 ${buildingDetails}
+
+👤 OWNER INFO
+   Owner: ${property.ownerName}
+   📱 Phone: ${property.ownerPhone || 'Contact for details'}
+   ✉️ Email: ${property.ownerEmail || 'Contact for details'}
+   📬 Mailing: ${property.ownerMailingAddress}
 
 💰 Valuation Details
 
@@ -442,16 +446,6 @@ Equity Balance               $${(parseInt(property.arv) * (property.equityPercen
 Equity Percent               ${property.equityPercentage}%
 Estimated Value              $${parseInt(property.arv).toLocaleString()}
 Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
-
-👤 OWNER INFO
-   Owner: ${property.ownerName}
-   📱 Phone: ${property.ownerPhone || 'Contact for details'}
-   ✉️ Email: ${property.ownerEmail || 'Contact for details'}
-   📬 Mailing: ${property.ownerMailingAddress}
-
-📈 LEAD ANALYSIS
-   Lead Type: ${property.leadType.replace(/_/g, ' ')}
-   Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
 
 🎯 ACTIONS
    📋 Add to CRM        📊 Analyze Deal        📞 Contact Owner
@@ -790,7 +784,14 @@ Would you like to adjust your search criteria and try again?`;
 
 📍 LOCATION
    ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
+
 ${buildingDetails}
+
+👤 OWNER INFO
+   Owner: ${property.ownerName}
+   📱 Phone: ${property.ownerPhone || 'Contact for details'}
+   ✉️ Email: ${property.ownerEmail || 'Contact for details'}
+   📬 Mailing: ${property.ownerMailingAddress}
 
 💰 Valuation Details
 
@@ -800,16 +801,6 @@ Equity Balance               $${(parseInt(property.arv) * (property.equityPercen
 Equity Percent               ${property.equityPercentage}%
 Estimated Value              $${parseInt(property.arv).toLocaleString()}
 Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
-
-👤 OWNER INFO
-   Owner: ${property.ownerName}
-   📱 Phone: ${property.ownerPhone || 'Contact for details'}
-   ✉️ Email: ${property.ownerEmail || 'Contact for details'}
-   📬 Mailing: ${property.ownerMailingAddress}
-
-📈 LEAD ANALYSIS
-   Lead Type: ${property.leadType.replace(/_/g, ' ')}
-   Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
 
 🎯 ACTIONS
    📋 Add to CRM        📊 Analyze Deal        📞 Contact Owner
