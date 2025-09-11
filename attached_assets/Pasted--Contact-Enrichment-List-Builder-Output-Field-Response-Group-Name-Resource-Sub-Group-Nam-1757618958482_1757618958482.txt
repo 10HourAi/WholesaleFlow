@@ -1,0 +1,16 @@
+					
+Contact Enrichment					
+List Builder Output Field	Response Group Name	Resource Sub Group Name	Name	Data Type	Description
+owner.dnc.tcpa	owner	dnc	tcpa	boolean	A flag indicating whether the person is on the TCPA litigators list
+owner.emails	owner	emails	emails	array[string]	An array of email addresses associated with the property owner(Returned only when options.skipTrace = true)
+owner.emails.[n].tested	owner	emails	tested	array[string]	A flag indicating that the email is registered and emails sent to it are unlikely to bounce
+owner.litigator	owner		litigator	boolean	A flag indicating whether the person is known to be a TCPA litigator (Returned only when options.skipTrace = true)
+owner.phoneNumbers.[n].carrier	owner	phoneNumbers	carrier	string	The phone number's carrier (e.g. Verizon)
+owner.phoneNumbers.[n].dnc	owner	phoneNumbers	dnc	boolean	A flag indicating whether the phone number is on the national Do Not Call (DNC) Registry.
+owner.phoneNumbers.[n].firstReportedDate	owner	phoneNumbers	firstReportedDate	string	The date the phone number was first associated with the property owner
+owner.phoneNumbers.[n].lastReportedDate	owner	phoneNumbers	lastReportedDate	string	The last known date the phone number was associated with the property owner
+owner.phoneNumbers.[n].number	owner	phoneNumbers	number	string	The 10-digit phone number (e.g. 9876543210)
+owner.phoneNumbers.[n].reachable	owner	phoneNumbers	reachable	boolean	A flag indicating that the phone number was reached at least once in the last 3 months
+owner.phoneNumbers.[n].score	owner	phoneNumbers	score	string	The phone number score. The higher the score the more likely it is that the property owner can be reached at that number. The number with highest score will be ranked as first amont the rest of the phone numbers. Not necessary that the highest ranked number will have score of 100.
+owner.phoneNumbers.[n].tested	owner	phoneNumbers	tested	boolean	A flag indicating that a connection was made to the number for at least 6 seconds
+owner.phoneNumbers.[n].type	owner	phoneNumbers	type	string	The phone number type (e.g. Land Line or Mobile)
