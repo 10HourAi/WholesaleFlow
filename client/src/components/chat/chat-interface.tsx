@@ -449,14 +449,10 @@ ${buildingDetails}
    Property Type                ${property.propertyType?.replace(/_/g, ' ') || 'Single Family'}
    Bedrooms                     ${property.bedrooms || 'Contact seller'}
    Bathrooms                    ${property.bathrooms || 'Contact seller'}
-   Last Sale Price              ${property.lastSalePrice ? '$' + parseInt(property.lastSalePrice).toLocaleString() : 'Not available'}
 
 👤 OWNER INFORMATION
    Owner Name                   ${property.ownerName}
    Mailing Address              ${property.ownerMailingAddress}
-   Owner Occupied               ${property.ownerOccupied || 'No'}
-   Length of Residence          ${property.lengthOfResidence || 'Contact for details'}
-   Ownership Start Date         ${property.ownershipStartDate || 'Contact for details'}
 
 📞 CONTACT INFORMATION
    Email(s)                     ${property.ownerEmail || 'Available via skip trace'}
@@ -818,14 +814,10 @@ ${buildingDetails}
    Property Type                ${property.propertyType?.replace(/_/g, ' ') || 'Single Family'}
    Bedrooms                     ${property.bedrooms || 'Contact seller'}
    Bathrooms                    ${property.bathrooms || 'Contact seller'}
-   Last Sale Price              ${property.lastSalePrice ? '$' + parseInt(property.lastSalePrice).toLocaleString() : 'Not available'}
 
 👤 OWNER INFORMATION
    Owner Name                   ${property.ownerName}
    Mailing Address              ${property.ownerMailingAddress}
-   Owner Occupied               ${property.ownerOccupied || 'No'}
-   Length of Residence          ${property.lengthOfResidence || 'Contact for details'}
-   Ownership Start Date         ${property.ownershipStartDate || 'Contact for details'}
 
 📞 CONTACT INFORMATION
    Email(s)                     ${property.ownerEmail || 'Available via skip trace'}
