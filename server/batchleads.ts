@@ -104,7 +104,12 @@ class BatchLeadsService {
 
     const requestBody: any = {
       searchCriteria: {
-        query: criteria.location
+        query: criteria.location,
+        // Filter for leads with guaranteed contact data
+        owner: {
+          emails: { exists: true },
+          phoneNumbers: { exists: true }
+        }
       },
       options: {
         skip: (page - 1) * perPage,
@@ -463,391 +468,63 @@ class BatchLeadsService {
     };
   }
 
-  // STEP 3: BatchData Contact Enrichment API Integration
+  // STEP 3: Extract Contact Enrichment from Search Results (skipTrace: true)
   async getContactEnrichment(propertyId: string, quicklistProperty: any): Promise<any> {
     try {
-      const ownerName = quicklistProperty.owner?.fullName;
-      const address = quicklistProperty.address;
+      console.log(`👤 STEP 3: Extracting Contact Enrichment from Search Results (skipTrace: true)`);
       
-      if (!ownerName || !address?.street) {
-        console.log(`⚠️ Insufficient data for contact enrichment: ${propertyId}`);
-        return { owner: quicklistProperty.owner || {} };
-      }
-
-      console.log(`👤 STEP 3: Making Contact Enrichment API call (BatchData Contact Enrichment)`);
-      console.log(`📋 API Request URL: ${this.baseUrl}/api/v1/contact/enrichment`);
+      // Extract contact data directly from search results since skipTrace: true is enabled
+      const owner = quicklistProperty.owner || {};
+      const phoneNumbers = owner.phoneNumbers || [];
+      const emailAddresses = owner.emails || [];
       
-      // Use BatchData Property Lookup API format for contact enrichment
-      const contactEnrichmentRequest = {
-        requests: [{
-          address: {
-            street: address.street,
-            city: address.city,
-            state: address.state,
-            zip: address.zip
-          }
-        }]
-      };
-      
-      console.log(`📋 Contact Enrichment Request:`, JSON.stringify(contactEnrichmentRequest, null, 2));
-
-      // Use BatchData Property Lookup API for contact enrichment data (contains owner contact info)
-      console.log(`📞 Making actual API request to: ${this.baseUrl}/api/v1/property/lookup`);
-      const enrichmentResponse = await this.makeRequest('/api/v1/property/lookup', contactEnrichmentRequest);
-      
-      // Check if the API returned an error status
-      if (enrichmentResponse.status?.code !== 200) {
-        console.log(`❌ CONTACT ENRICHMENT API ERROR - Status: ${enrichmentResponse.status?.code}, Message: ${enrichmentResponse.status?.message}`);
-        throw new Error(`Contact enrichment failed: ${enrichmentResponse.status?.message || 'Unknown error'}`);
-      }
-      
-      console.log(`📞 CONTACT ENRICHMENT API SUCCESS - Status: ${enrichmentResponse.status?.code}`);
-      
-      // Extract enriched contact data from BatchData Contact Enrichment API response
-      const owner = enrichmentResponse.results?.owner || enrichmentResponse.results?.persons?.[0] || {};
-      const phoneNumbers = owner?.phoneNumbers || [];
-      const emailAddresses = owner?.emails || [];
-      
-      console.log(`📞 Contact enrichment fields available:`, {
+      console.log(`📞 Contact enrichment data found in search results:`, {
         hasEmails: emailAddresses.length > 0,
         hasPhones: phoneNumbers.length > 0,
         emailCount: emailAddresses.length,
         phoneCount: phoneNumbers.length,
-        firstPhone: phoneNumbers[0]?.number,
-        firstEmail: emailAddresses[0]?.email || emailAddresses[0]
+        emails: emailAddresses,
+        phoneNumbers: phoneNumbers,
+        ownerKeys: Object.keys(owner)
       });
-
-      // STEP 3B: Get building data and ownership history from Property Lookup API (same path as contact enrichment)
-      let buildingData = {};
-      let ownershipData = {};
-      try {
-        console.log(`🏗️ CONTACT ENRICHMENT: Adding Property Lookup call for building data and ownership history`);
-        const lookupRequest = {
-          requests: [{
-            address: {
-              street: address.street,
-              city: address.city,
-              state: address.state,
-              zip: address.zip
-            }
-          }]
-        };
-        
-        const lookupResponse = await this.makeRequest('/api/v1/property/lookup', lookupRequest);
-        
-        // First, examine the actual response structure for ownership data
-        const result = lookupResponse.results?.[0] || {};
-        const property = result.property || {};
-        const building = property.building || {};
-        
-        // Log the complete structure to understand the actual field paths
-        console.log(`🏗️ PROPERTY LOOKUP RESPONSE STRUCTURE ANALYSIS:`);
-        console.log(`📋 Top level keys:`, Object.keys(result));
-        console.log(`📋 Property level keys:`, Object.keys(property));
-        console.log(`📋 Building keys:`, Object.keys(building));
-        
-        // Check multiple possible locations for ownership data based on actual API structure
-        // Option 1: Direct on result object
-        const deed = result.deed || property.deed || {};
-        const assessment = result.assessment || property.assessment || {};
-        const ownership = result.ownership || property.ownership || {};
-        const transaction = result.transaction || property.transaction || {};
-        const sale = result.sale || property.sale || {};
-        const taxAssessor = result.taxAssessor || property.taxAssessor || {};
-        const propertyDetails = result.propertyDetails || property.propertyDetails || {};
-        
-        // Log what we found at each level
-        console.log(`📅 OWNERSHIP DATA STRUCTURE FOUND:`, {
-          deed: Object.keys(deed),
-          assessment: Object.keys(assessment), 
-          ownership: Object.keys(ownership),
-          transaction: Object.keys(transaction),
-          sale: Object.keys(sale),
-          taxAssessor: Object.keys(taxAssessor),
-          propertyDetails: Object.keys(propertyDetails)
-        });
-        
-        buildingData = {
-          bedrooms: building.bedroomCount || building.bedrooms || null,
-          bathrooms: building.bathroomCount || building.bathrooms || null,
-          squareFeet: building.totalBuildingAreaSquareFeet || building.livingArea || null,
-          yearBuilt: building.effectiveYearBuilt || building.yearBuilt || null
-        };
-        
-        // Extract ownership history data
-        const currentDate = new Date();
-        let ownershipStartDate = null;
-        let lengthOfResidence = "Contact for details";
-        let ownerOccupied = "Contact for details";
-        
-        // Try comprehensive paths for ownership start date based on actual API structure
-        // Check all possible locations where ownership dates might be stored
-        const possibleDates = [
-          // Primary deed/transaction dates
-          deed.recordingDate,
-          deed.saleDate,
-          deed.grantDate,
-          deed.transferDate,
-          transaction.saleDate,
-          transaction.recordingDate,
-          transaction.transferDate,
-          transaction.closingDate,
-          
-          // Assessment and tax records
-          assessment.saleDate,
-          assessment.lastSaleDate,
-          assessment.transferDate,
-          taxAssessor.lastSaleDate,
-          taxAssessor.saleDate,
-          
-          // Ownership records
-          ownership.purchaseDate,
-          ownership.acquisitionDate,
-          ownership.startDate,
-          ownership.dateAcquired,
-          
-          // Sale history
-          sale.lastSaleDate,
-          sale.saleDate,
-          sale.mostRecentSaleDate,
-          propertyDetails.lastSaleDate,
-          
-          // Additional possible paths
-          result.lastSaleDate,
-          property.lastSaleDate,
-          property.mostRecentTransferDate
-        ];
-        
-        // Find the first valid date
-        for (const dateStr of possibleDates) {
-          if (dateStr && typeof dateStr === 'string') {
-            const testDate = new Date(dateStr);
-            if (!isNaN(testDate.getTime()) && testDate.getFullYear() > 1900) {
-              ownershipStartDate = testDate;
-              console.log(`📅 Found ownership start date: ${dateStr} from field`);
-              break;
-            }
-          }
-        }
-        
-        // Calculate length of residence if we have a start date
-        if (ownershipStartDate && !isNaN(ownershipStartDate.getTime())) {
-          const diffTime = Math.abs(currentDate.getTime() - ownershipStartDate.getTime());
-          const diffYears = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 365));
-          const diffMonths = Math.floor((diffTime % (1000 * 60 * 60 * 24 * 365)) / (1000 * 60 * 60 * 24 * 30));
-          
-          if (diffYears > 0) {
-            lengthOfResidence = `${diffYears} year${diffYears > 1 ? 's' : ''}`;
-            if (diffMonths > 0) {
-              lengthOfResidence += `, ${diffMonths} month${diffMonths > 1 ? 's' : ''}`;
-            }
-          } else if (diffMonths > 0) {
-            lengthOfResidence = `${diffMonths} month${diffMonths > 1 ? 's' : ''}`;
-          } else {
-            lengthOfResidence = "Less than 1 month";
-          }
-        }
-        
-        // Try comprehensive paths for owner occupied status
-        const possibleOwnerOccupiedValues = [
-          ownership.ownerOccupied,
-          ownership.isOwnerOccupied,
-          deed.ownerOccupied, 
-          deed.isOwnerOccupied,
-          transaction.ownerOccupied,
-          transaction.isOwnerOccupied,
-          assessment.ownerOccupied,
-          assessment.isOwnerOccupied,
-          taxAssessor.ownerOccupied,
-          taxAssessor.isOwnerOccupied,
-          propertyDetails.ownerOccupied,
-          propertyDetails.isOwnerOccupied,
-          result.ownerOccupied,
-          property.ownerOccupied,
-          
-          // Check quicklist data from original search response if available
-          quicklistProperty.quickLists?.ownerOccupied
-        ];
-        
-        // Find the first defined boolean value
-        for (const value of possibleOwnerOccupiedValues) {
-          if (value !== undefined && value !== null) {
-            ownerOccupied = value ? "Yes" : "No";
-            console.log(`🏠 Found owner occupied status: ${ownerOccupied}`);
-            break;
-          }
-        }
-        
-        // If still no value, try address comparison logic
-        if (ownerOccupied === "Contact for details") {
-          const propertyAddress = `${address.street}, ${address.city}, ${address.state}`.toLowerCase();
-          const mailingAddress = quicklistProperty.owner?.mailingAddress;
-          
-          if (mailingAddress) {
-            const ownerAddress = `${mailingAddress.street}, ${mailingAddress.city}, ${mailingAddress.state}`.toLowerCase();
-            if (propertyAddress === ownerAddress) {
-              ownerOccupied = "Yes";
-              console.log(`🏠 Determined owner occupied by address match`);
-            } else {
-              ownerOccupied = "No";
-              console.log(`🏠 Determined not owner occupied by address mismatch`);
-            }
-          }
-        }
-        
-        ownershipData = {
-          ownershipStartDate: ownershipStartDate ? ownershipStartDate.toISOString().split('T')[0] : null,
-          lengthOfResidence,
-          ownerOccupied
-        };
-        
-        console.log(`🏗️ CONTACT ENRICHMENT: Extracted building data:`, buildingData);
-        console.log(`📅 CONTACT ENRICHMENT: Extracted ownership data:`, ownershipData);
-        
-        // Only log specific ownership-related fields that were found (avoid full JSON dumps)
-        console.log(`📅 OWNERSHIP EXTRACTION SUMMARY:`, {
-          foundOwnershipDate: !!ownershipStartDate,
-          ownershipDateSource: ownershipStartDate ? 'found' : 'none',
-          lengthOfResidence: lengthOfResidence,
-          ownerOccupiedStatus: ownerOccupied,
-          ownerOccupiedSource: ownerOccupied !== 'Contact for details' ? 'found' : 'none'
-        });
-      } catch (error) {
-        console.log(`❌ CONTACT ENRICHMENT: Property Lookup failed:`, error);
-      }
       
-      return {
-        ...buildingData, // Add building data directly to the return object
-        ...ownershipData, // Add ownership history data directly to the return object
-        owner: {
-          ...quicklistProperty.owner,
-          // Contact Enrichment Data structure as specified
-          fullName: quicklistProperty.owner?.fullName || owner?.name?.full || `${owner?.name?.first} ${owner?.name?.last}`.trim() || null,
-          
-          // Mailing Address fields
-          Street: quicklistProperty.owner?.mailingAddress?.street || owner?.mailingAddress?.street || null,
-          City: quicklistProperty.owner?.mailingAddress?.city || owner?.mailingAddress?.city || null,
-          State: quicklistProperty.owner?.mailingAddress?.state || owner?.mailingAddress?.state || null,
-          Zip: quicklistProperty.owner?.mailingAddress?.zip || owner?.mailingAddress?.zip || null,
-          
-          // Ownership details
-          ownershipStartDate: (ownershipData as any)?.ownershipStartDate || null,
-          
-          // Contact Enrichment Data Tab
-          emails: emailAddresses.map((email: any) => typeof email === 'string' ? email : email?.email).filter(Boolean),
-          phoneNumbers: phoneNumbers.map((phone: any) => ({
-            number: phone?.number || phone,
-            reachable: phone?.reachable || phone?.status === 'verified' || false,
-            dnc: phone?.dnc || phone?.type === 'dnc' || false,
-            type: phone?.type || 'unknown'
-          })),
-          
-          // Legacy fields for compatibility
-          email: emailAddresses[0]?.email || emailAddresses[0] || null,
-          phone: phoneNumbers[0]?.number || phoneNumbers[0] || null,
-          dncPhone: phoneNumbers.find((p: any) => p.dnc || p.type === 'dnc')?.number || null,
-          landLine: phoneNumbers.find((p: any) => p.type === 'landline')?.number || null,
-          mobilePhone: phoneNumbers.find((p: any) => p.type === 'mobile' || p.type === 'cell')?.number || null
-        },
+      // Extract contact information and format according to user's specifications
+      const extractedContacts = {
+        // Primary contact info
+        ownerPhone: phoneNumbers.length > 0 ? phoneNumbers[0]?.number || phoneNumbers[0] : null,
+        ownerEmail: emailAddresses.length > 0 ? emailAddresses[0] : null,
         
-        // Additional fields as specified
-        ownerOccupied: (ownershipData as any)?.ownerOccupied || "Contact for details",
-        intel: {
-          lengthOfResidenceYears: (ownershipData as any)?.lengthOfResidence || "Contact for details"
-        },
-        sale: {
-          lastTransfer: {
-            Price: null // Will be populated for inherited leads
-          }
+        // Enhanced contact arrays as specified in migration requirements
+        phoneNumbers: phoneNumbers.map((phone: any) => ({
+          number: phone?.number || phone,
+          reachable: phone?.reachable !== false, // Default to true unless explicitly false
+          dnc: phone?.dnc === true || owner.dnc?.tcpa === true, // Check DNC flags
+          type: phone?.type || 'unknown'
+        })),
+        emails: emailAddresses.filter(Boolean), // Remove any null/undefined emails
+        
+        // DNC and contact flags
+        ownerDNCPhone: owner.dnc?.tcpa === true ? 'DNC registered' : null,
+        hasValidEmail: emailAddresses.length > 0,
+        hasValidPhone: phoneNumbers.length > 0
+      };
+      
+      console.log(`📞 Final extracted contact data:`, extractedContacts);
+
+      // Return contact enrichment data merged with existing owner data
+      return {
+        ...extractedContacts,
+        owner: {
+          ...owner,
+          ...extractedContacts
         }
       };
-    } catch (error) {
-      console.log(`❌ CONTACT ENRICHMENT API ERROR for ${propertyId}:`, error);
+
+    } catch (error: any) {
       console.log(`⚠️ Contact enrichment failed, using quicklist data only`);
       return { owner: quicklistProperty.owner || {} };
     }
   }
-
-  // Get next valid property with error handling and filtering
-  async getNextValidProperty(criteria: any, sessionState?: any): Promise<{
-    property: any | null;
-    sessionState: any;
-    hasMore: boolean;
-    totalChecked: number;
-    filtered: number;
-  }> {
-    let page = sessionState?.currentPage || 1;
-    let totalChecked = 0;
-    let filtered = 0;
-    const maxPages = 10; // Prevent infinite loops
-    const excludePropertyIds = sessionState?.excludePropertyIds || [];
-
-    while (page <= maxPages) {
-      try {
-        const response = await this.searchProperties(criteria, page, 50);
-
-        if (!response.data || response.data.length === 0) {
-          console.log(`📄 Page ${page}: No more properties available`);
-          break;
-        }
-
-        console.log(`📄 Page ${page}: Found ${response.data.length} raw properties`);
-
-        for (const rawProperty of response.data) {
-          totalChecked++;
-
-          // Generate property ID for deduplication
-          const propertyId = rawProperty._id || `${rawProperty.address?.street}_${rawProperty.owner?.fullName}`;
-
-          // Skip if already shown
-          if (excludePropertyIds.includes(propertyId)) {
-            console.log(`⏭️ Skipping already shown property: ${propertyId}`);
-            filtered++;
-            continue;
-          }
-
-          const convertedProperty = this.convertToProperty(rawProperty, 'demo-user', criteria);
-
-          if (convertedProperty !== null) {
-            return {
-              property: rawProperty,
-              sessionState: {
-                ...sessionState,
-                currentPage: page,
-                searchCriteria: criteria,
-                excludePropertyIds: [...excludePropertyIds, propertyId]
-              },
-              hasMore: true,
-              totalChecked,
-              filtered
-            };
-          } else {
-            filtered++;
-          }
-        }
-
-        page++;
-      } catch (error) {
-        console.error(`❌ Error on page ${page}:`, error);
-        break;
-      }
-    }
-
-    console.log(`📊 No more valid properties found.`);
-    return {
-      property: null,
-      sessionState: {
-        ...sessionState,
-        currentPage: page,
-        searchCriteria: criteria,
-        excludePropertyIds
-      },
-      hasMore: false,
-      totalChecked,
-      filtered
-    };
-  }
-
 
   // Convert BatchData property with comprehensive data integration from all sources
   convertToProperty(batchProperty: any, userId: string, criteria?: SearchCriteria): any {
@@ -963,53 +640,11 @@ class BatchLeadsService {
       bathrooms: bathrooms !== null ? bathrooms : 'API data not available',
       squareFeet: squareFeet !== null ? squareFeet : 'API data not available'
     });
-    
-    // Only filter out properties with completely invalid basic info
+
+    // Reject properties without basic property info
     if (!hasBasicPropertyInfo) {
-      console.log(`❌ FILTERED OUT: Property lacks basic required information`);
+      console.log(`❌ FILTERED OUT - Missing basic property data: address, city, state, or reasonable value`);
       return null;
-    }
-    
-    // Properties with missing contact info still pass through but get lower confidence scores
-    console.log(`✅ PASSED FILTER: Property has sufficient basic information`);
-
-    // Apply state filtering based on location criteria - DISABLED for UI demonstration
-    // Note: API often returns incomplete location data, so we'll use fallback values instead of filtering
-    if (criteria?.location && state) {
-      const locationLower = criteria.location.toLowerCase();
-      const stateLower = state.toLowerCase();
-      
-      // Log state mismatches but don't filter out - use fallbacks instead
-      if (locationLower.includes(', pa') && stateLower !== 'pa') {
-        console.log(`⚠️ State mismatch detected (property in ${state}, search for PA) - using fallback data`);
-      }
-      if (locationLower.includes(', ca') && stateLower !== 'ca') {
-        console.log(`⚠️ State mismatch detected (property in ${state}, search for CA) - using fallback data`);
-      }
-      // Continue processing with fallback values instead of rejecting
-    }
-
-    // Apply bedroom filter if provided in criteria - DISABLED for UI demonstration
-    if (criteria?.minBedrooms && bedrooms !== null && bedrooms !== undefined) {
-      // Log bedroom mismatches but don't filter out - allow for UI demonstration
-      if (bedrooms < criteria.minBedrooms) {
-        console.log(`⚠️ Bedroom requirement not met (${bedrooms} bedrooms found, ${criteria.minBedrooms} required) - keeping for UI demonstration`);
-      }
-    }
-    // Note: We allow properties with missing bedroom data to pass through since API often lacks this info
-
-    // Apply price filter if provided in criteria - DISABLED for UI demonstration  
-    // Note: We'll use fallback pricing so all properties pass through for beautiful UI display
-    if (criteria?.maxPrice && estimatedValue > 10000 && estimatedValue > criteria.maxPrice) {
-      console.log(`⚠️ Price over budget (Est. Value: $${estimatedValue.toLocaleString()} > Max: $${criteria.maxPrice.toLocaleString()}) - using fallback pricing for UI`);
-    }
-    
-    // Additional wholesaling logic - DISABLED for UI demonstration
-    if (criteria?.maxPrice && estimatedValue > 10000) {
-      const maxOffer = Math.floor(estimatedValue * 0.7);
-      if (maxOffer > (criteria.maxPrice * 0.7)) {
-        console.log(`⚠️ Max offer over budget (Max Offer: $${maxOffer.toLocaleString()} > 70% of budget: $${Math.floor(criteria.maxPrice * 0.7).toLocaleString()}) - using fallback for UI`);
-      }
     }
 
     // Extremely permissive validation - provide comprehensive fallbacks for UI demonstration
@@ -1257,7 +892,7 @@ class BatchLeadsService {
       // Take only the requested limit from filtered results
       const buyers = filteredBuyers.slice(0, limit);
       
-      
+
 
       return {
         buyers: buyers,
