@@ -496,7 +496,13 @@ class BatchLeadsService {
       console.log(`📞 Making actual API request to: ${this.baseUrl}/api/v1/contact/enrichment`);
       const enrichmentResponse = await this.makeRequest('/api/v1/contact/enrichment', contactEnrichmentRequest);
       
-      console.log(`📞 FULL CONTACT ENRICHMENT API RESPONSE:`, JSON.stringify(enrichmentResponse, null, 2));
+      // Check if the API returned an error status
+      if (enrichmentResponse.status?.code !== 200) {
+        console.log(`❌ CONTACT ENRICHMENT API ERROR - Status: ${enrichmentResponse.status?.code}, Message: ${enrichmentResponse.status?.message}`);
+        throw new Error(`Contact enrichment failed: ${enrichmentResponse.status?.message || 'Unknown error'}`);
+      }
+      
+      console.log(`📞 CONTACT ENRICHMENT API SUCCESS - Status: ${enrichmentResponse.status?.code}`);
       
       // Extract enriched contact data from BatchData Contact Enrichment API response
       const owner = enrichmentResponse.results?.owner || enrichmentResponse.results?.persons?.[0] || {};
