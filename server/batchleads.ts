@@ -67,11 +67,11 @@ interface SearchCriteria {
 
 class BatchLeadsService {
   private apiKey: string;
-  private baseUrl = 'https://api.batchdata.com';
+  private baseUrl = "https://api.batchdata.com";
 
   constructor() {
     if (!process.env.BATCHLEADS_API_KEY) {
-      throw new Error('BATCHLEADS_API_KEY is required');
+      throw new Error("BATCHLEADS_API_KEY is required");
     }
     this.apiKey = process.env.BATCHLEADS_API_KEY;
   }
@@ -80,31 +80,39 @@ class BatchLeadsService {
     const url = `${this.baseUrl}${endpoint}`;
 
     const response = await fetch(url, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.apiKey}`,
-        'Accept': 'application/json',
-        'User-Agent': '10HourAi/1.0'
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${this.apiKey}`,
+        Accept: "application/json",
+        "User-Agent": "10HourAi/1.0",
       },
-      body: JSON.stringify(requestBody)
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`BatchData API error: ${response.status} ${response.statusText} - ${errorText}`);
+      throw new Error(
+        `BatchData API error: ${response.status} ${response.statusText} - ${errorText}`,
+      );
     }
 
     return response.json();
   }
 
-  async searchProperties(criteria: SearchCriteria, page = 1, perPage = 50): Promise<BatchLeadsResponse> {
-    console.log(`🔍 STARTING BatchLeads API search for: "${criteria.location}"`);
+  async searchProperties(
+    criteria: SearchCriteria,
+    page = 1,
+    perPage = 50,
+  ): Promise<BatchLeadsResponse> {
+    console.log(
+      `🔍 STARTING BatchLeads API search for: "${criteria.location}"`,
+    );
     console.log(`🔍 SEARCH CRITERIA:`, JSON.stringify(criteria, null, 2));
 
     const requestBody: any = {
       searchCriteria: {
-        query: criteria.location
+        query: criteria.location,
       },
       options: {
         skip: (page - 1) * perPage,
@@ -114,42 +122,45 @@ class BatchLeadsService {
         includeBuilding: true,
         includeTaxAssessor: true,
         includePropertyDetails: true,
-        includeAssessment: true
-      }
+        includeAssessment: true,
+      },
     };
 
     // Apply quicklists from search criteria (mapped from wizard step 2)
     if (criteria.quickLists && criteria.quickLists.length > 0) {
       requestBody.searchCriteria.quickLists = criteria.quickLists;
-      console.log(`🎯 Using quicklists: ${criteria.quickLists.join(', ')}`);
+      console.log(`🎯 Using quicklists: ${criteria.quickLists.join(", ")}`);
     }
 
     // Add property type filters
-    if (criteria.propertyType === 'single_family') {
+    if (criteria.propertyType === "single_family") {
       // Don't override quicklists, just ensure we're looking for residential
       if (!requestBody.searchCriteria.property) {
         requestBody.searchCriteria.property = {};
       }
-      requestBody.searchCriteria.property.propertyType = 'single-family';
-    } else if (criteria.propertyType === 'multi_family') {
+      requestBody.searchCriteria.property.propertyType = "single-family";
+    } else if (criteria.propertyType === "multi_family") {
       if (!requestBody.searchCriteria.property) {
         requestBody.searchCriteria.property = {};
       }
-      requestBody.searchCriteria.property.propertyType = 'multi-family';
-    } else if (criteria.propertyType === 'condo') {
+      requestBody.searchCriteria.property.propertyType = "multi-family";
+    } else if (criteria.propertyType === "condo") {
       if (!requestBody.searchCriteria.property) {
         requestBody.searchCriteria.property = {};
       }
-      requestBody.searchCriteria.property.propertyType = 'condominium';
+      requestBody.searchCriteria.property.propertyType = "condominium";
     }
 
     // Add equity filter if specified
-    if (criteria.minEquity || (criteria.quickLists && criteria.quickLists.includes('high-equity'))) {
+    if (
+      criteria.minEquity ||
+      (criteria.quickLists && criteria.quickLists.includes("high-equity"))
+    ) {
       if (!requestBody.searchCriteria.valuation) {
         requestBody.searchCriteria.valuation = {};
       }
       requestBody.searchCriteria.valuation.equityPercent = {
-        min: criteria.minEquity || 70
+        min: criteria.minEquity || 70,
       };
     }
 
@@ -161,13 +172,15 @@ class BatchLeadsService {
       // Try multiple filter approaches for better API compatibility
       requestBody.searchCriteria.building.bedrooms = {
         min: criteria.minBedrooms,
-        gte: criteria.minBedrooms  // Also try "greater than or equal" syntax
+        gte: criteria.minBedrooms, // Also try "greater than or equal" syntax
       };
-      
+
       // Also try filtering out null/empty bedroom data
       requestBody.searchCriteria.building.bedroomsExists = true;
-      
-      console.log(`🛏️ Added comprehensive bedroom filter: min ${criteria.minBedrooms} bedrooms (with existence check)`);
+
+      console.log(
+        `🛏️ Added comprehensive bedroom filter: min ${criteria.minBedrooms} bedrooms (with existence check)`,
+      );
     }
 
     // Add equity filter
@@ -176,7 +189,7 @@ class BatchLeadsService {
         requestBody.searchCriteria.valuation = {};
       }
       requestBody.searchCriteria.valuation.equityPercent = {
-        min: criteria.minEquity
+        min: criteria.minEquity,
       };
     }
 
@@ -186,24 +199,27 @@ class BatchLeadsService {
         requestBody.searchCriteria.valuation = {};
       }
       requestBody.searchCriteria.valuation.estimatedValue = {
-        max: criteria.maxPrice
+        max: criteria.maxPrice,
       };
-      }
+    }
 
     console.log(`📋 Full request body:`, JSON.stringify(requestBody, null, 2));
 
-    const response = await this.makeRequest('/api/v1/property/search', requestBody);
+    const response = await this.makeRequest(
+      "/api/v1/property/search",
+      requestBody,
+    );
 
     console.log(`📊 BatchLeads API response:`, {
       propertiesFound: response.results?.properties?.length || 0,
       totalResults: response.meta?.totalResults || 0,
-      page: page
+      page: page,
     });
-    
+
     // Debug the complete raw API response structure
     console.log(`🔍 COMPLETE RAW BATCHDATA API RESPONSE:`);
     console.log(JSON.stringify(response, null, 2));
-    
+
     // Debug first property specifically
     if (response.results?.properties?.length > 0) {
       const firstProperty = response.results.properties[0];
@@ -218,7 +234,7 @@ class BatchLeadsService {
         assessment: Object.keys(firstProperty.assessment || {}),
         taxAssessor: Object.keys(firstProperty.taxAssessor || {}),
         propertyDetails: Object.keys(firstProperty.propertyDetails || {}),
-        allFields: firstProperty
+        allFields: firstProperty,
       });
     }
 
@@ -228,27 +244,40 @@ class BatchLeadsService {
       data: response.results?.properties || [],
       total_results: response.meta?.totalResults || 0,
       page: page,
-      per_page: perPage
+      per_page: perPage,
     };
   }
 
   async getPropertyDetails(propertyId: string): Promise<BatchLeadsProperty> {
     // BatchData doesn't have individual property lookup by ID in this endpoint
-    throw new Error('Property details lookup by ID not implemented for BatchData API');
+    throw new Error(
+      "Property details lookup by ID not implemented for BatchData API",
+    );
   }
 
-  async getDistressedProperties(location: string, limit = 25): Promise<BatchLeadsProperty[]> {
-    const response = await this.searchProperties({
-      location,
-      distressedOnly: true,
-      propertyType: 'single_family'
-    }, 1, limit);
+  async getDistressedProperties(
+    location: string,
+    limit = 25,
+  ): Promise<BatchLeadsProperty[]> {
+    const response = await this.searchProperties(
+      {
+        location,
+        distressedOnly: true,
+        propertyType: "single_family",
+      },
+      1,
+      limit,
+    );
 
     return response.data;
   }
 
   // 3-Step BatchLeads Integration: Quicklists → Core Property → Contact Enrichment
-  async searchValidProperties(criteria: any, count: number = 5, excludePropertyIds: string[] = []): Promise<{
+  async searchValidProperties(
+    criteria: any,
+    count: number = 5,
+    excludePropertyIds: string[] = [],
+  ): Promise<{
     data: any[];
     totalChecked: number;
     filtered: number;
@@ -261,15 +290,21 @@ class BatchLeadsService {
     const maxPages = 10;
 
     console.log(`🚀 SEARCHVALIDPROPERTIES FUNCTION CALLED - DEBUGGING START`);
-    console.log(`🔥🔥🔥 CONTACT ENRICHMENT SHOULD WORK NOW - FIXED PROPERTYADDRESS FORMAT 🔥🔥🔥`);
+    console.log(
+      `🔥🔥🔥 CONTACT ENRICHMENT SHOULD WORK NOW - FIXED PROPERTYADDRESS FORMAT 🔥🔥🔥`,
+    );
     console.log(`🚀 Parameters: count=${count}, criteria=`, criteria);
-    console.log(`🔍 Starting 3-step BatchLeads integration for ${count} properties`);
+    console.log(
+      `🔍 Starting 3-step BatchLeads integration for ${count} properties`,
+    );
     console.log(`📋 Search criteria:`, JSON.stringify(criteria, null, 2));
 
     while (validProperties.length < count && page <= maxPages) {
       try {
         // STEP 1: Get property search results from BatchData
-        console.log(`📊 STEP 1: Getting property search results from BatchData API...`);
+        console.log(
+          `📊 STEP 1: Getting property search results from BatchData API...`,
+        );
         const searchResponse = await this.searchProperties(criteria, page, 50);
 
         if (!searchResponse.data || searchResponse.data.length === 0) {
@@ -277,13 +312,18 @@ class BatchLeadsService {
           break;
         }
 
-        console.log(`📄 Page ${page}: Found ${searchResponse.data.length} properties from search`);
-        
+        console.log(
+          `📄 Page ${page}: Found ${searchResponse.data.length} properties from search`,
+        );
+
         // Debug the first property response structure
         if (page === 1 && searchResponse.data.length > 0) {
           const firstProperty = searchResponse.data[0];
           console.log(`🔍 DEBUGGING FIRST PROPERTY STRUCTURE:`);
-          console.log(`📋 COMPLETE API RESPONSE:`, JSON.stringify(firstProperty, null, 2));
+          console.log(
+            `📋 COMPLETE API RESPONSE:`,
+            JSON.stringify(firstProperty, null, 2),
+          );
           console.log(`📋 TOP LEVEL KEYS:`, Object.keys(firstProperty));
           console.log(`📋 NESTED STRUCTURE:`, {
             address: Object.keys(firstProperty.address || {}),
@@ -293,21 +333,26 @@ class BatchLeadsService {
             assessment: Object.keys(firstProperty.assessment || {}),
             taxAssessor: Object.keys(firstProperty.taxAssessor || {}),
             property: Object.keys(firstProperty.property || {}),
-            propertyDetails: Object.keys(firstProperty.propertyDetails || {})
+            propertyDetails: Object.keys(firstProperty.propertyDetails || {}),
           });
         }
 
         for (const quicklistProperty of searchResponse.data) {
           totalChecked++;
-          
-          const propertyId = quicklistProperty._id || `${quicklistProperty.address?.street}_${quicklistProperty.owner?.fullName}`;
+
+          const propertyId =
+            quicklistProperty._id ||
+            `${quicklistProperty.address?.street}_${quicklistProperty.owner?.fullName}`;
           const propertyAddress = quicklistProperty.address?.street;
-          
+
           // Debug the first property's complete API response
           if (totalChecked === 1) {
             console.log(`🔍 LIVE PROPERTY 1 - COMPLETE API OUTPUT:`);
             console.log(`📋 PROPERTY ID: ${propertyId}`);
-            console.log(`📋 FULL API RESPONSE:`, JSON.stringify(quicklistProperty, null, 2));
+            console.log(
+              `📋 FULL API RESPONSE:`,
+              JSON.stringify(quicklistProperty, null, 2),
+            );
             console.log(`📋 AVAILABLE KEYS:`, Object.keys(quicklistProperty));
             console.log(`📋 NESTED STRUCTURE:`, {
               address: Object.keys(quicklistProperty.address || {}),
@@ -316,9 +361,11 @@ class BatchLeadsService {
               valuation: Object.keys(quicklistProperty.valuation || {}),
               assessment: Object.keys(quicklistProperty.assessment || {}),
               taxAssessor: Object.keys(quicklistProperty.taxAssessor || {}),
-              propertyDetails: Object.keys(quicklistProperty.propertyDetails || {}),
+              propertyDetails: Object.keys(
+                quicklistProperty.propertyDetails || {},
+              ),
               sale: Object.keys(quicklistProperty.sale || {}),
-              quickLists: Object.keys(quicklistProperty.quickLists || {})
+              quickLists: Object.keys(quicklistProperty.quickLists || {}),
             });
           }
 
@@ -329,32 +376,46 @@ class BatchLeadsService {
           }
 
           // STEP 1: Use quicklist data as base
-          console.log(`🏠 Processing property: ${quicklistProperty.address?.street}`);
-          
+          console.log(
+            `🏠 Processing property: ${quicklistProperty.address?.street}`,
+          );
+
           // STEP 2: Get detailed property data (bedrooms, bathrooms, year built)
           console.log(`🏗️ Getting detailed building data for ${propertyId}`);
-          const corePropertyData = await this.getCorePropertyData(propertyId, quicklistProperty);
-          
+          const corePropertyData = await this.getCorePropertyData(
+            propertyId,
+            quicklistProperty,
+          );
+
           // STEP 3: Get contact enrichment data (this is what provides email/phone)
           console.log(`🔍 About to call contact enrichment for ${propertyId}`);
-          const contactEnrichment = await this.getContactEnrichment(propertyId, quicklistProperty);
+          const contactEnrichment = await this.getContactEnrichment(
+            propertyId,
+            quicklistProperty,
+          );
           console.log(`📞 Contact enrichment result:`, contactEnrichment);
-          
+
           // Merge all data sources
           const enrichedProperty = {
             ...quicklistProperty,
             ...corePropertyData,
-            ...contactEnrichment
+            ...contactEnrichment,
           };
 
-          const convertedProperty = this.convertToProperty(enrichedProperty, 'demo-user', criteria);
+          const convertedProperty = this.convertToProperty(
+            enrichedProperty,
+            "demo-user",
+            criteria,
+          );
 
           if (convertedProperty !== null) {
             // For now, display properties without building data to show the system is working
             // The user needs to provide API credentials for complete building data
             convertedProperty.id = propertyId;
             validProperties.push(convertedProperty);
-            console.log(`✅ Added property ${validProperties.length}/${count}: ${convertedProperty.address} (building data unavailable)`);
+            console.log(
+              `✅ Added property ${validProperties.length}/${count}: ${convertedProperty.address} (building data unavailable)`,
+            );
 
             if (validProperties.length >= count) {
               break;
@@ -371,71 +432,101 @@ class BatchLeadsService {
       }
     }
 
-    console.log(`📊 3-step integration complete: ${validProperties.length} valid properties, ${totalChecked} checked, ${filtered} filtered`);
-    console.log(`🔍 BatchLeads: Returning validProperties array:`, validProperties);
-    console.log(`🔍 BatchLeads: First property in validProperties:`, validProperties[0]);
+    console.log(
+      `📊 3-step integration complete: ${validProperties.length} valid properties, ${totalChecked} checked, ${filtered} filtered`,
+    );
+    console.log(
+      `🔍 BatchLeads: Returning validProperties array:`,
+      validProperties,
+    );
+    console.log(
+      `🔍 BatchLeads: First property in validProperties:`,
+      validProperties[0],
+    );
 
     return {
       data: validProperties,
       totalChecked,
       filtered,
-      hasMore: page <= maxPages && totalChecked > 0
+      hasMore: page <= maxPages && totalChecked > 0,
     };
   }
 
   // STEP 2: Get detailed property data - Extract from search response and provide intelligent defaults
-  async getCorePropertyData(propertyId: string, quicklistProperty: any): Promise<any> {
+  async getCorePropertyData(
+    propertyId: string,
+    quicklistProperty: any,
+  ): Promise<any> {
     console.log(`🔍 STEP 2: Extracting building data from search response`);
-    
+
     // First, check if building data is already available in the search response
     const existingBuilding = quicklistProperty.building || {};
     const existingAssessment = quicklistProperty.assessment || {};
     const existingTaxAssessor = quicklistProperty.taxAssessor || {};
-    
+
     console.log(`🏗️ Available building data in search response:`, {
       buildingKeys: Object.keys(existingBuilding),
       assessmentKeys: Object.keys(existingAssessment),
       taxAssessorKeys: Object.keys(existingTaxAssessor),
       buildingData: existingBuilding,
-      assessmentData: existingAssessment
+      assessmentData: existingAssessment,
     });
-    
+
     // Try to extract building data from any available source
-    let bedrooms = existingBuilding.bedroomCount || existingBuilding.bedrooms || existingTaxAssessor.bedrooms || null;
-    let bathrooms = existingBuilding.bathroomCount || existingBuilding.bathrooms || existingTaxAssessor.bathrooms || null;
-    let squareFeet = existingBuilding.totalBuildingAreaSquareFeet || existingBuilding.livingArea || existingTaxAssessor.livingArea || null;
-    let yearBuilt = existingBuilding.effectiveYearBuilt || existingBuilding.yearBuilt || existingTaxAssessor.yearBuilt || null;
-    
+    let bedrooms =
+      existingBuilding.bedroomCount ||
+      existingBuilding.bedrooms ||
+      existingTaxAssessor.bedrooms ||
+      null;
+    let bathrooms =
+      existingBuilding.bathroomCount ||
+      existingBuilding.bathrooms ||
+      existingTaxAssessor.bathrooms ||
+      null;
+    let squareFeet =
+      existingBuilding.totalBuildingAreaSquareFeet ||
+      existingBuilding.livingArea ||
+      existingTaxAssessor.livingArea ||
+      null;
+    let yearBuilt =
+      existingBuilding.effectiveYearBuilt ||
+      existingBuilding.yearBuilt ||
+      existingTaxAssessor.yearBuilt ||
+      null;
+
     // If no building data from search response, provide intelligent defaults based on property value
-    const estimatedValue = quicklistProperty.valuation?.estimatedValue || 300000;
-    
+    const estimatedValue =
+      quicklistProperty.valuation?.estimatedValue || 300000;
+
     if (!bedrooms || !bathrooms || !squareFeet || !yearBuilt) {
-      console.log(`🏠 Missing building data, applying intelligent defaults based on property value: $${estimatedValue.toLocaleString()}`);
-      
+      console.log(
+        `🏠 Missing building data, applying intelligent defaults based on property value: $${estimatedValue.toLocaleString()}`,
+      );
+
       // Provide realistic defaults based on property value and location
       if (!bedrooms) {
         if (estimatedValue >= 500000) bedrooms = 4;
         else if (estimatedValue >= 350000) bedrooms = 3;
         else bedrooms = 3; // Default for most single-family homes
       }
-      
+
       if (!bathrooms) {
         if (estimatedValue >= 500000) bathrooms = 3;
         else if (estimatedValue >= 350000) bathrooms = 2;
         else bathrooms = 2; // Default for most homes
       }
-      
+
       if (!squareFeet) {
         if (estimatedValue >= 500000) squareFeet = 2200;
         else if (estimatedValue >= 350000) squareFeet = 1800;
         else squareFeet = 1500; // Reasonable default
       }
-      
+
       if (!yearBuilt) {
         yearBuilt = 1985; // Reasonable default for many areas
       }
     }
-    
+
     const enrichedBuilding = {
       ...existingBuilding,
       bedroomCount: bedrooms,
@@ -445,107 +536,142 @@ class BatchLeadsService {
       totalBuildingAreaSquareFeet: squareFeet,
       livingArea: squareFeet,
       effectiveYearBuilt: yearBuilt,
-      yearBuilt: yearBuilt
+      yearBuilt: yearBuilt,
     };
-    
+
     console.log(`🏗️ Final building data (with intelligent defaults):`, {
       bedrooms: enrichedBuilding.bedrooms,
       bathrooms: enrichedBuilding.bathrooms,
       squareFeet: enrichedBuilding.livingArea,
       yearBuilt: enrichedBuilding.yearBuilt,
-      source: 'search_response_with_intelligent_defaults'
+      source: "search_response_with_intelligent_defaults",
     });
-    
+
     return {
       building: enrichedBuilding,
       assessment: existingAssessment,
-      rawData: quicklistProperty
+      rawData: quicklistProperty,
     };
   }
 
   // STEP 3: BatchData Contact Enrichment API Integration
-  async getContactEnrichment(propertyId: string, quicklistProperty: any): Promise<any> {
+  async getContactEnrichment(
+    propertyId: string,
+    quicklistProperty: any,
+  ): Promise<any> {
     try {
       const ownerName = quicklistProperty.owner?.fullName;
       const address = quicklistProperty.address;
-      
+
       if (!ownerName || !address?.street) {
-        console.log(`⚠️ Insufficient data for contact enrichment: ${propertyId}`);
+        console.log(
+          `⚠️ Insufficient data for contact enrichment: ${propertyId}`,
+        );
         return { owner: quicklistProperty.owner || {} };
       }
 
-      console.log(`👤 STEP 3: Making Contact Enrichment API call (BatchData Contact Enrichment)`);
-      console.log(`📋 API Request URL: ${this.baseUrl}/api/v1/contact/enrichment`);
-      
+      console.log(
+        `👤 STEP 3: Making Contact Enrichment API call (BatchData Contact Enrichment)`,
+      );
+      console.log(
+        `📋 API Request URL: ${this.baseUrl}/api/v1/contact/enrichment`,
+      );
+
       // Use BatchData Property Lookup API format for contact enrichment
       const contactEnrichmentRequest = {
-        requests: [{
-          address: {
-            street: address.street,
-            city: address.city,
-            state: address.state,
-            zip: address.zip
-          }
-        }]
+        requests: [
+          {
+            address: {
+              street: address.street,
+              city: address.city,
+              state: address.state,
+              zip: address.zip,
+            },
+          },
+        ],
       };
-      
-      console.log(`📋 Contact Enrichment Request:`, JSON.stringify(contactEnrichmentRequest, null, 2));
+
+      console.log(
+        `📋 Contact Enrichment Request:`,
+        JSON.stringify(contactEnrichmentRequest, null, 2),
+      );
 
       // Use BatchData Property Lookup API for contact enrichment data (contains owner contact info)
-      console.log(`📞 Making actual API request to: ${this.baseUrl}/api/v1/property/lookup`);
-      const enrichmentResponse = await this.makeRequest('/api/v1/property/lookup', contactEnrichmentRequest);
-      
+      console.log(
+        `📞 Making actual API request to: ${this.baseUrl}/api/v1/property/lookup`,
+      );
+      const enrichmentResponse = await this.makeRequest(
+        "/api/v1/property/lookup",
+        contactEnrichmentRequest,
+      );
+
       // Check if the API returned an error status
       if (enrichmentResponse.status?.code !== 200) {
-        console.log(`❌ CONTACT ENRICHMENT API ERROR - Status: ${enrichmentResponse.status?.code}, Message: ${enrichmentResponse.status?.message}`);
-        throw new Error(`Contact enrichment failed: ${enrichmentResponse.status?.message || 'Unknown error'}`);
+        console.log(
+          `❌ CONTACT ENRICHMENT API ERROR - Status: ${enrichmentResponse.status?.code}, Message: ${enrichmentResponse.status?.message}`,
+        );
+        throw new Error(
+          `Contact enrichment failed: ${enrichmentResponse.status?.message || "Unknown error"}`,
+        );
       }
-      
-      console.log(`📞 CONTACT ENRICHMENT API SUCCESS - Status: ${enrichmentResponse.status?.code}`);
-      
+
+      console.log(
+        `📞 CONTACT ENRICHMENT API SUCCESS - Status: ${enrichmentResponse.status?.code}`,
+      );
+
       // Extract enriched contact data from BatchData Contact Enrichment API response
-      const owner = enrichmentResponse.results?.owner || enrichmentResponse.results?.persons?.[0] || {};
+      const owner =
+        enrichmentResponse.results?.owner ||
+        enrichmentResponse.results?.persons?.[0] ||
+        {};
       const phoneNumbers = owner?.phoneNumbers || [];
       const emailAddresses = owner?.emails || [];
-      
+
       console.log(`📞 Contact enrichment fields available:`, {
         hasEmails: emailAddresses.length > 0,
         hasPhones: phoneNumbers.length > 0,
         emailCount: emailAddresses.length,
         phoneCount: phoneNumbers.length,
         firstPhone: phoneNumbers[0]?.number,
-        firstEmail: emailAddresses[0]?.email || emailAddresses[0]
+        firstEmail: emailAddresses[0]?.email || emailAddresses[0],
       });
 
       // STEP 3B: Get building data and ownership history from Property Lookup API (same path as contact enrichment)
       let buildingData = {};
       let ownershipData = {};
       try {
-        console.log(`🏗️ CONTACT ENRICHMENT: Adding Property Lookup call for building data and ownership history`);
+        console.log(
+          `🏗️ CONTACT ENRICHMENT: Adding Property Lookup call for building data and ownership history`,
+        );
         const lookupRequest = {
-          requests: [{
-            address: {
-              street: address.street,
-              city: address.city,
-              state: address.state,
-              zip: address.zip
-            }
-          }]
+          requests: [
+            {
+              address: {
+                street: address.street,
+                city: address.city,
+                state: address.state,
+                zip: address.zip,
+              },
+            },
+          ],
         };
-        
-        const lookupResponse = await this.makeRequest('/api/v1/property/lookup', lookupRequest);
-        
+
+        const lookupResponse = await this.makeRequest(
+          "/api/v1/property/lookup",
+          lookupRequest,
+        );
+
         // First, examine the actual response structure for ownership data
         const result = lookupResponse.results?.[0] || {};
         const property = result.property || {};
         const building = property.building || {};
-        
+
         // Log the complete structure to understand the actual field paths
         console.log(`🏗️ PROPERTY LOOKUP RESPONSE STRUCTURE ANALYSIS:`);
         console.log(`📋 Top level keys:`, Object.keys(result));
         console.log(`📋 Property level keys:`, Object.keys(property));
         console.log(`📋 Building keys:`, Object.keys(building));
-        
+
         // Check multiple possible locations for ownership data based on actual API structure
         // Option 1: Direct on result object
         const deed = result.deed || property.deed || {};
@@ -554,32 +680,34 @@ class BatchLeadsService {
         const transaction = result.transaction || property.transaction || {};
         const sale = result.sale || property.sale || {};
         const taxAssessor = result.taxAssessor || property.taxAssessor || {};
-        const propertyDetails = result.propertyDetails || property.propertyDetails || {};
-        
+        const propertyDetails =
+          result.propertyDetails || property.propertyDetails || {};
+
         // Log what we found at each level
         console.log(`📅 OWNERSHIP DATA STRUCTURE FOUND:`, {
           deed: Object.keys(deed),
-          assessment: Object.keys(assessment), 
+          assessment: Object.keys(assessment),
           ownership: Object.keys(ownership),
           transaction: Object.keys(transaction),
           sale: Object.keys(sale),
           taxAssessor: Object.keys(taxAssessor),
-          propertyDetails: Object.keys(propertyDetails)
+          propertyDetails: Object.keys(propertyDetails),
         });
-        
+
         buildingData = {
           bedrooms: building.bedroomCount || building.bedrooms || null,
           bathrooms: building.bathroomCount || building.bathrooms || null,
-          squareFeet: building.totalBuildingAreaSquareFeet || building.livingArea || null,
-          yearBuilt: building.effectiveYearBuilt || building.yearBuilt || null
+          squareFeet:
+            building.totalBuildingAreaSquareFeet || building.livingArea || null,
+          yearBuilt: building.effectiveYearBuilt || building.yearBuilt || null,
         };
-        
+
         // Extract ownership history data
         const currentDate = new Date();
         let ownershipStartDate = null;
         let lengthOfResidence = "Contact for details";
         let ownerOccupied = "Contact for details";
-        
+
         // Try comprehensive paths for ownership start date based on actual API structure
         // Check all possible locations where ownership dates might be stored
         const possibleDates = [
@@ -592,67 +720,74 @@ class BatchLeadsService {
           transaction.recordingDate,
           transaction.transferDate,
           transaction.closingDate,
-          
+
           // Assessment and tax records
           assessment.saleDate,
           assessment.lastSaleDate,
           assessment.transferDate,
           taxAssessor.lastSaleDate,
           taxAssessor.saleDate,
-          
+
           // Ownership records
           ownership.purchaseDate,
           ownership.acquisitionDate,
           ownership.startDate,
           ownership.dateAcquired,
-          
+
           // Sale history
           sale.lastSaleDate,
           sale.saleDate,
           sale.mostRecentSaleDate,
           propertyDetails.lastSaleDate,
-          
+
           // Additional possible paths
           result.lastSaleDate,
           property.lastSaleDate,
-          property.mostRecentTransferDate
+          property.mostRecentTransferDate,
         ];
-        
+
         // Find the first valid date
         for (const dateStr of possibleDates) {
-          if (dateStr && typeof dateStr === 'string') {
+          if (dateStr && typeof dateStr === "string") {
             const testDate = new Date(dateStr);
             if (!isNaN(testDate.getTime()) && testDate.getFullYear() > 1900) {
               ownershipStartDate = testDate;
-              console.log(`📅 Found ownership start date: ${dateStr} from field`);
+              console.log(
+                `📅 Found ownership start date: ${dateStr} from field`,
+              );
               break;
             }
           }
         }
-        
+
         // Calculate length of residence if we have a start date
         if (ownershipStartDate && !isNaN(ownershipStartDate.getTime())) {
-          const diffTime = Math.abs(currentDate.getTime() - ownershipStartDate.getTime());
+          const diffTime = Math.abs(
+            currentDate.getTime() - ownershipStartDate.getTime(),
+          );
           const diffYears = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 365));
-          const diffMonths = Math.floor((diffTime % (1000 * 60 * 60 * 24 * 365)) / (1000 * 60 * 60 * 24 * 30));
-          
+          const diffMonths = Math.floor(
+            (diffTime % (1000 * 60 * 60 * 24 * 365)) /
+              (1000 * 60 * 60 * 24 * 30),
+          );
+
           if (diffYears > 0) {
-            lengthOfResidence = `${diffYears} year${diffYears > 1 ? 's' : ''}`;
+            lengthOfResidence = `${diffYears} year${diffYears > 1 ? "s" : ""}`;
             if (diffMonths > 0) {
-              lengthOfResidence += `, ${diffMonths} month${diffMonths > 1 ? 's' : ''}`;
+              lengthOfResidence += `, ${diffMonths} month${diffMonths > 1 ? "s" : ""}`;
             }
           } else if (diffMonths > 0) {
-            lengthOfResidence = `${diffMonths} month${diffMonths > 1 ? 's' : ''}`;
+            lengthOfResidence = `${diffMonths} month${diffMonths > 1 ? "s" : ""}`;
           } else {
             lengthOfResidence = "Less than 1 month";
           }
         }
-        
+
         // Try comprehensive paths for owner occupied status
         const possibleOwnerOccupiedValues = [
           ownership.ownerOccupied,
           ownership.isOwnerOccupied,
-          deed.ownerOccupied, 
+          deed.ownerOccupied,
           deed.isOwnerOccupied,
           transaction.ownerOccupied,
           transaction.isOwnerOccupied,
@@ -664,11 +799,11 @@ class BatchLeadsService {
           propertyDetails.isOwnerOccupied,
           result.ownerOccupied,
           property.ownerOccupied,
-          
+
           // Check quicklist data from original search response if available
-          quicklistProperty.quickLists?.ownerOccupied
+          quicklistProperty.quickLists?.ownerOccupied,
         ];
-        
+
         // Find the first defined boolean value
         for (const value of possibleOwnerOccupiedValues) {
           if (value !== undefined && value !== null) {
@@ -677,89 +812,133 @@ class BatchLeadsService {
             break;
           }
         }
-        
+
         // If still no value, try address comparison logic
         if (ownerOccupied === "Contact for details") {
-          const propertyAddress = `${address.street}, ${address.city}, ${address.state}`.toLowerCase();
+          const propertyAddress =
+            `${address.street}, ${address.city}, ${address.state}`.toLowerCase();
           const mailingAddress = quicklistProperty.owner?.mailingAddress;
-          
+
           if (mailingAddress) {
-            const ownerAddress = `${mailingAddress.street}, ${mailingAddress.city}, ${mailingAddress.state}`.toLowerCase();
+            const ownerAddress =
+              `${mailingAddress.street}, ${mailingAddress.city}, ${mailingAddress.state}`.toLowerCase();
             if (propertyAddress === ownerAddress) {
               ownerOccupied = "Yes";
               console.log(`🏠 Determined owner occupied by address match`);
             } else {
               ownerOccupied = "No";
-              console.log(`🏠 Determined not owner occupied by address mismatch`);
+              console.log(
+                `🏠 Determined not owner occupied by address mismatch`,
+              );
             }
           }
         }
-        
+
         ownershipData = {
-          ownershipStartDate: ownershipStartDate ? ownershipStartDate.toISOString().split('T')[0] : null,
+          ownershipStartDate: ownershipStartDate
+            ? ownershipStartDate.toISOString().split("T")[0]
+            : null,
           lengthOfResidence,
-          ownerOccupied
+          ownerOccupied,
         };
-        
-        console.log(`🏗️ CONTACT ENRICHMENT: Extracted building data:`, buildingData);
-        console.log(`📅 CONTACT ENRICHMENT: Extracted ownership data:`, ownershipData);
-        
+
+        console.log(
+          `🏗️ CONTACT ENRICHMENT: Extracted building data:`,
+          buildingData,
+        );
+        console.log(
+          `📅 CONTACT ENRICHMENT: Extracted ownership data:`,
+          ownershipData,
+        );
+
         // Only log specific ownership-related fields that were found (avoid full JSON dumps)
         console.log(`📅 OWNERSHIP EXTRACTION SUMMARY:`, {
           foundOwnershipDate: !!ownershipStartDate,
-          ownershipDateSource: ownershipStartDate ? 'found' : 'none',
+          ownershipDateSource: ownershipStartDate ? "found" : "none",
           lengthOfResidence: lengthOfResidence,
           ownerOccupiedStatus: ownerOccupied,
-          ownerOccupiedSource: ownerOccupied !== 'Contact for details' ? 'found' : 'none'
+          ownerOccupiedSource:
+            ownerOccupied !== "Contact for details" ? "found" : "none",
         });
       } catch (error) {
         console.log(`❌ CONTACT ENRICHMENT: Property Lookup failed:`, error);
       }
-      
+
       return {
         ...buildingData, // Add building data directly to the return object
         ...ownershipData, // Add ownership history data directly to the return object
         owner: {
           ...quicklistProperty.owner,
           // Contact Enrichment Data structure as specified
-          fullName: quicklistProperty.owner?.fullName || owner?.name?.full || `${owner?.name?.first} ${owner?.name?.last}`.trim() || null,
-          
+          fullName:
+            quicklistProperty.owner?.fullName ||
+            owner?.name?.full ||
+            `${owner?.name?.first} ${owner?.name?.last}`.trim() ||
+            null,
+
           // Mailing Address fields
-          Street: quicklistProperty.owner?.mailingAddress?.street || owner?.mailingAddress?.street || null,
-          City: quicklistProperty.owner?.mailingAddress?.city || owner?.mailingAddress?.city || null,
-          State: quicklistProperty.owner?.mailingAddress?.state || owner?.mailingAddress?.state || null,
-          Zip: quicklistProperty.owner?.mailingAddress?.zip || owner?.mailingAddress?.zip || null,
-          
+          Street:
+            quicklistProperty.owner?.mailingAddress?.street ||
+            owner?.mailingAddress?.street ||
+            null,
+          City:
+            quicklistProperty.owner?.mailingAddress?.city ||
+            owner?.mailingAddress?.city ||
+            null,
+          State:
+            quicklistProperty.owner?.mailingAddress?.state ||
+            owner?.mailingAddress?.state ||
+            null,
+          Zip:
+            quicklistProperty.owner?.mailingAddress?.zip ||
+            owner?.mailingAddress?.zip ||
+            null,
+
           // Ownership details
-          ownershipStartDate: (ownershipData as any)?.ownershipStartDate || null,
-          
+          ownershipStartDate:
+            (ownershipData as any)?.ownershipStartDate || null,
+
           // Contact Enrichment Data Tab
-          emails: emailAddresses.map((email: any) => typeof email === 'string' ? email : email?.email).filter(Boolean),
+          emails: emailAddresses
+            .map((email: any) =>
+              typeof email === "string" ? email : email?.email,
+            )
+            .filter(Boolean),
           phoneNumbers: phoneNumbers.map((phone: any) => ({
             number: phone?.number || phone,
-            reachable: phone?.reachable || phone?.status === 'verified' || false,
-            dnc: phone?.dnc || phone?.type === 'dnc' || false,
-            type: phone?.type || 'unknown'
+            reachable:
+              phone?.reachable || phone?.status === "verified" || false,
+            dnc: phone?.dnc || phone?.type === "dnc" || false,
+            type: phone?.type || "unknown",
           })),
-          
+
           // Legacy fields for compatibility
           email: emailAddresses[0]?.email || emailAddresses[0] || null,
           phone: phoneNumbers[0]?.number || phoneNumbers[0] || null,
-          dncPhone: phoneNumbers.find((p: any) => p.dnc || p.type === 'dnc')?.number || null,
-          landLine: phoneNumbers.find((p: any) => p.type === 'landline')?.number || null,
-          mobilePhone: phoneNumbers.find((p: any) => p.type === 'mobile' || p.type === 'cell')?.number || null
+          dncPhone:
+            phoneNumbers.find((p: any) => p.dnc || p.type === "dnc")?.number ||
+            null,
+          landLine:
+            phoneNumbers.find((p: any) => p.type === "landline")?.number ||
+            null,
+          mobilePhone:
+            phoneNumbers.find(
+              (p: any) => p.type === "mobile" || p.type === "cell",
+            )?.number || null,
         },
-        
+
         // Additional fields as specified
-        ownerOccupied: (ownershipData as any)?.ownerOccupied || "Contact for details",
+        ownerOccupied:
+          (ownershipData as any)?.ownerOccupied || "Contact for details",
         intel: {
-          lengthOfResidenceYears: (ownershipData as any)?.lengthOfResidence || "Contact for details"
+          lengthOfResidenceYears:
+            (ownershipData as any)?.lengthOfResidence || "Contact for details",
         },
         sale: {
           lastTransfer: {
-            Price: null // Will be populated for inherited leads
-          }
-        }
+            Price: null, // Will be populated for inherited leads
+          },
+        },
       };
     } catch (error) {
       console.log(`❌ CONTACT ENRICHMENT API ERROR for ${propertyId}:`, error);
@@ -769,7 +948,10 @@ class BatchLeadsService {
   }
 
   // Get next valid property with error handling and filtering
-  async getNextValidProperty(criteria: any, sessionState?: any): Promise<{
+  async getNextValidProperty(
+    criteria: any,
+    sessionState?: any,
+  ): Promise<{
     property: any | null;
     sessionState: any;
     hasMore: boolean;
@@ -791,13 +973,17 @@ class BatchLeadsService {
           break;
         }
 
-        console.log(`📄 Page ${page}: Found ${response.data.length} raw properties`);
+        console.log(
+          `📄 Page ${page}: Found ${response.data.length} raw properties`,
+        );
 
         for (const rawProperty of response.data) {
           totalChecked++;
 
           // Generate property ID for deduplication
-          const propertyId = rawProperty._id || `${rawProperty.address?.street}_${rawProperty.owner?.fullName}`;
+          const propertyId =
+            rawProperty._id ||
+            `${rawProperty.address?.street}_${rawProperty.owner?.fullName}`;
 
           // Skip if already shown
           if (excludePropertyIds.includes(propertyId)) {
@@ -806,7 +992,11 @@ class BatchLeadsService {
             continue;
           }
 
-          const convertedProperty = this.convertToProperty(rawProperty, 'demo-user', criteria);
+          const convertedProperty = this.convertToProperty(
+            rawProperty,
+            "demo-user",
+            criteria,
+          );
 
           if (convertedProperty !== null) {
             return {
@@ -815,11 +1005,11 @@ class BatchLeadsService {
                 ...sessionState,
                 currentPage: page,
                 searchCriteria: criteria,
-                excludePropertyIds: [...excludePropertyIds, propertyId]
+                excludePropertyIds: [...excludePropertyIds, propertyId],
               },
               hasMore: true,
               totalChecked,
-              filtered
+              filtered,
             };
           } else {
             filtered++;
@@ -840,19 +1030,26 @@ class BatchLeadsService {
         ...sessionState,
         currentPage: page,
         searchCriteria: criteria,
-        excludePropertyIds
+        excludePropertyIds,
       },
       hasMore: false,
       totalChecked,
-      filtered
+      filtered,
     };
   }
 
-
   // Convert BatchData property with comprehensive data integration from all sources
-  convertToProperty(batchProperty: any, userId: string, criteria?: SearchCriteria): any {
+  convertToProperty(
+    batchProperty: any,
+    userId: string,
+    criteria?: SearchCriteria,
+  ): any {
     // Handle different ID field names from BatchData API
-    const propertyId = batchProperty._id || batchProperty.id || batchProperty.propertyId || 'unknown';
+    const propertyId =
+      batchProperty._id ||
+      batchProperty.id ||
+      batchProperty.propertyId ||
+      "unknown";
     console.log(`🔍 Converting property with ID: ${propertyId}`);
 
     const estimatedValue = batchProperty.valuation?.estimatedValue || 0;
@@ -862,114 +1059,184 @@ class BatchLeadsService {
     const building = batchProperty.building || {};
     const taxAssessor = batchProperty.taxAssessor || {};
     const propertyDetails = batchProperty.propertyDetails || {};
-    
+
     // Debug: Log all available building-related fields
     console.log(`🏗️ Available building data fields:`, {
       buildingKeys: Object.keys(building),
       taxAssessorKeys: Object.keys(taxAssessor),
       propertyDetailsKeys: Object.keys(propertyDetails),
       buildingData: building,
-      taxAssessorData: taxAssessor
+      taxAssessorData: taxAssessor,
     });
-    
+
     // Extract building data using correct BatchData field names
     const assessment = batchProperty.assessment || {};
-    
+
     // Use the exact field names from BatchData Property Lookup API
-    const bedrooms = building.bedroomCount || building.bedrooms || taxAssessor.bedrooms || null;
-    const bathrooms = building.bathroomCount || building.bathrooms || taxAssessor.bathrooms || null;
-    const squareFeet = building.totalBuildingAreaSquareFeet || building.livingArea || 
-                      building.totalLivingArea || taxAssessor.livingArea || null;
-    const yearBuilt = building.effectiveYearBuilt || building.yearBuilt || taxAssessor.yearBuilt || null;
+    const bedrooms =
+      building.bedroomCount ||
+      building.bedrooms ||
+      taxAssessor.bedrooms ||
+      null;
+    const bathrooms =
+      building.bathroomCount ||
+      building.bathrooms ||
+      taxAssessor.bathrooms ||
+      null;
+    const squareFeet =
+      building.totalBuildingAreaSquareFeet ||
+      building.livingArea ||
+      building.totalLivingArea ||
+      taxAssessor.livingArea ||
+      null;
+    const yearBuilt =
+      building.effectiveYearBuilt ||
+      building.yearBuilt ||
+      taxAssessor.yearBuilt ||
+      null;
     const buildingType = building.buildingType || building.propertyType || null;
     const marketValue = assessment.totalMarketValue || estimatedValue || null;
-    
+
     console.log(`🏗️ Extracted building data:`, {
-      bedrooms, bathrooms, squareFeet, yearBuilt,
-      bedroomsSources: [building.bedrooms, building.bedroomCount, taxAssessor.bedrooms],
-      bathroomsSources: [building.bathrooms, building.bathroomCount, taxAssessor.bathrooms],
-      squareFeetSources: [building.livingArea, building.totalLivingArea, building.squareFeet]
+      bedrooms,
+      bathrooms,
+      squareFeet,
+      yearBuilt,
+      bedroomsSources: [
+        building.bedrooms,
+        building.bedroomCount,
+        taxAssessor.bedrooms,
+      ],
+      bathroomsSources: [
+        building.bathrooms,
+        building.bathroomCount,
+        taxAssessor.bathrooms,
+      ],
+      squareFeetSources: [
+        building.livingArea,
+        building.totalLivingArea,
+        building.squareFeet,
+      ],
     });
-    
+
     // STEP 2: Address and Owner Data (Core Property + Contact Enrichment)
     // Handle different address field structures from BatchData API
-    const addressObj = batchProperty.address || batchProperty.propertyAddress || batchProperty.location || {};
-    const address = addressObj.street || addressObj.streetAddress || addressObj.address || 
-                   `${addressObj.houseNumber || ''} ${addressObj.streetName || ''}`.trim();
+    const addressObj =
+      batchProperty.address ||
+      batchProperty.propertyAddress ||
+      batchProperty.location ||
+      {};
+    const address =
+      addressObj.street ||
+      addressObj.streetAddress ||
+      addressObj.address ||
+      `${addressObj.houseNumber || ""} ${addressObj.streetName || ""}`.trim();
     const city = addressObj.city;
     const state = addressObj.state || addressObj.stateCode;
-    const zipCode = addressObj.zip || addressObj.zipCode || addressObj.postalCode;
-    
+    const zipCode =
+      addressObj.zip || addressObj.zipCode || addressObj.postalCode;
+
     // STEP 3: Contact Enrichment - Enhanced owner information extraction
-    const owner = batchProperty.owner || batchProperty.ownerInfo || batchProperty.contact || {};
-    const firstName = owner.firstName || owner.first_name || '';
-    const lastName = owner.lastName || owner.last_name || '';
-    const ownerName = owner.fullName || owner.full_name || owner.name || 
-                     (firstName && lastName ? `${firstName} ${lastName}` : '') ||
-                     'Owner information available via skip trace';
-    
+    const owner =
+      batchProperty.owner ||
+      batchProperty.ownerInfo ||
+      batchProperty.contact ||
+      {};
+    const firstName = owner.firstName || owner.first_name || "";
+    const lastName = owner.lastName || owner.last_name || "";
+    const ownerName =
+      owner.fullName ||
+      owner.full_name ||
+      owner.name ||
+      (firstName && lastName ? `${firstName} ${lastName}` : "") ||
+      "Owner information available via skip trace";
+
     // Enhanced mailing address extraction with multiple fallbacks
     const mailingAddr = owner.mailingAddress || owner.address || {};
-    let ownerMailingAddress = 'Same as property address';
-    
+    let ownerMailingAddress = "Same as property address";
+
     if (mailingAddr.street && mailingAddr.city && mailingAddr.state) {
-      ownerMailingAddress = `${mailingAddr.street}, ${mailingAddr.city}, ${mailingAddr.state} ${mailingAddr.zip || ''}`.trim();
+      ownerMailingAddress =
+        `${mailingAddr.street}, ${mailingAddr.city}, ${mailingAddr.state} ${mailingAddr.zip || ""}`.trim();
     } else if (owner.mailingStreet || owner.mailingCity) {
-      ownerMailingAddress = `${owner.mailingStreet || ''} ${owner.mailingCity || ''} ${owner.mailingState || ''} ${owner.mailingZip || ''}`.trim();
+      ownerMailingAddress =
+        `${owner.mailingStreet || ""} ${owner.mailingCity || ""} ${owner.mailingState || ""} ${owner.mailingZip || ""}`.trim();
     }
-    
+
     // Contact Enrichment - Extract REAL contact information from BatchData
     // Based on Contact Enrichment tab structure: Email(s), Phone(s), DNC Phone(s)
-    const ownerPhone = owner.phone || owner.primaryPhone || owner.homePhone || 
-                      owner.cellPhone || owner.mobilePhone || null;
-    const ownerEmail = owner.email || owner.primaryEmail || owner.workEmail || null;
-    
+    const ownerPhone =
+      owner.phone ||
+      owner.primaryPhone ||
+      owner.homePhone ||
+      owner.cellPhone ||
+      owner.mobilePhone ||
+      null;
+    const ownerEmail =
+      owner.email || owner.primaryEmail || owner.workEmail || null;
+
     // Extract additional contact fields from BatchData Contact Enrichment
     const ownerDNCPhone = owner.dncPhone || owner.dncNumbers || null;
     const ownerLandLine = owner.landLine || owner.homePhone || null;
     const ownerMobilePhone = owner.mobilePhone || owner.cellPhone || null;
-    
+
     console.log(`📞 Contact enrichment data:`, {
-      ownerPhone, ownerEmail, ownerDNCPhone, 
-      hasValidEmail: !!ownerEmail && !ownerEmail.includes('@example.com'),
-      hasValidPhone: !!ownerPhone && ownerPhone.length >= 10
+      ownerPhone,
+      ownerEmail,
+      ownerDNCPhone,
+      hasValidEmail: !!ownerEmail && !ownerEmail.includes("@example.com"),
+      hasValidPhone: !!ownerPhone && ownerPhone.length >= 10,
     });
 
     // REASONABLE QUALITY FILTER: Basic property validation only
-    const hasBasicPropertyInfo = (
-      address && address.trim() !== '' &&
-      city && city.trim() !== '' &&
-      state && state.trim() !== '' &&
-      estimatedValue > 25000 // Minimum reasonable property value
-    );
-    
+    const hasBasicPropertyInfo =
+      address &&
+      address.trim() !== "" &&
+      city &&
+      city.trim() !== "" &&
+      state &&
+      state.trim() !== "" &&
+      estimatedValue > 25000; // Minimum reasonable property value
+
     // Contact enrichment info is available but not required to pass initial filter
     const contactQuality = {
-      hasEmail: ownerEmail && ownerEmail !== 'Available via skip trace' && ownerEmail.includes('@'),
-      hasPhone: ownerPhone && ownerPhone !== 'Available via skip trace' && ownerPhone.length >= 10,
-      hasOwnerName: ownerName && ownerName !== 'Property Owner' && !ownerName.includes('undefined')
+      hasEmail:
+        ownerEmail &&
+        ownerEmail !== "Available via skip trace" &&
+        ownerEmail.includes("@"),
+      hasPhone:
+        ownerPhone &&
+        ownerPhone !== "Available via skip trace" &&
+        ownerPhone.length >= 10,
+      hasOwnerName:
+        ownerName &&
+        ownerName !== "Property Owner" &&
+        !ownerName.includes("undefined"),
     };
-    
+
     console.log(`📋 Property Quality Check:`, {
       estimatedValue,
       equityPercent,
-      address, city, state, zipCode,
+      address,
+      city,
+      state,
+      zipCode,
       ownerName,
-      ownerEmail: ownerEmail || 'Available via skip trace',
-      ownerPhone: ownerPhone || 'Available via skip trace', 
+      ownerEmail: ownerEmail || "Available via skip trace",
+      ownerPhone: ownerPhone || "Available via skip trace",
       contactQuality,
       hasBasicPropertyInfo,
-      bedrooms: bedrooms !== null ? bedrooms : 'API data not available',
-      bathrooms: bathrooms !== null ? bathrooms : 'API data not available',
-      squareFeet: squareFeet !== null ? squareFeet : 'API data not available'
+      bedrooms: bedrooms !== null ? bedrooms : "API data not available",
+      bathrooms: bathrooms !== null ? bathrooms : "API data not available",
+      squareFeet: squareFeet !== null ? squareFeet : "API data not available",
     });
-    
+
     // Only filter out properties with completely invalid basic info
     if (!hasBasicPropertyInfo) {
       console.log(`❌ FILTERED OUT: Property lacks basic required information`);
       return null;
     }
-    
+
     // Properties with missing contact info still pass through but get lower confidence scores
     console.log(`✅ PASSED FILTER: Property has sufficient basic information`);
 
@@ -978,13 +1245,17 @@ class BatchLeadsService {
     if (criteria?.location && state) {
       const locationLower = criteria.location.toLowerCase();
       const stateLower = state.toLowerCase();
-      
+
       // Log state mismatches but don't filter out - use fallbacks instead
-      if (locationLower.includes(', pa') && stateLower !== 'pa') {
-        console.log(`⚠️ State mismatch detected (property in ${state}, search for PA) - using fallback data`);
+      if (locationLower.includes(", pa") && stateLower !== "pa") {
+        console.log(
+          `⚠️ State mismatch detected (property in ${state}, search for PA) - using fallback data`,
+        );
       }
-      if (locationLower.includes(', ca') && stateLower !== 'ca') {
-        console.log(`⚠️ State mismatch detected (property in ${state}, search for CA) - using fallback data`);
+      if (locationLower.includes(", ca") && stateLower !== "ca") {
+        console.log(
+          `⚠️ State mismatch detected (property in ${state}, search for CA) - using fallback data`,
+        );
       }
       // Continue processing with fallback values instead of rejecting
     }
@@ -993,66 +1264,105 @@ class BatchLeadsService {
     if (criteria?.minBedrooms && bedrooms !== null && bedrooms !== undefined) {
       // Log bedroom mismatches but don't filter out - allow for UI demonstration
       if (bedrooms < criteria.minBedrooms) {
-        console.log(`⚠️ Bedroom requirement not met (${bedrooms} bedrooms found, ${criteria.minBedrooms} required) - keeping for UI demonstration`);
+        console.log(
+          `⚠️ Bedroom requirement not met (${bedrooms} bedrooms found, ${criteria.minBedrooms} required) - keeping for UI demonstration`,
+        );
       }
     }
     // Note: We allow properties with missing bedroom data to pass through since API often lacks this info
 
-    // Apply price filter if provided in criteria - DISABLED for UI demonstration  
+    // Apply price filter if provided in criteria - DISABLED for UI demonstration
     // Note: We'll use fallback pricing so all properties pass through for beautiful UI display
-    if (criteria?.maxPrice && estimatedValue > 10000 && estimatedValue > criteria.maxPrice) {
-      console.log(`⚠️ Price over budget (Est. Value: $${estimatedValue.toLocaleString()} > Max: $${criteria.maxPrice.toLocaleString()}) - using fallback pricing for UI`);
+    if (
+      criteria?.maxPrice &&
+      estimatedValue > 10000 &&
+      estimatedValue > criteria.maxPrice
+    ) {
+      console.log(
+        `⚠️ Price over budget (Est. Value: $${estimatedValue.toLocaleString()} > Max: $${criteria.maxPrice.toLocaleString()}) - using fallback pricing for UI`,
+      );
     }
-    
+
     // Additional wholesaling logic - DISABLED for UI demonstration
     if (criteria?.maxPrice && estimatedValue > 10000) {
       const maxOffer = Math.floor(estimatedValue * 0.7);
-      if (maxOffer > (criteria.maxPrice * 0.7)) {
-        console.log(`⚠️ Max offer over budget (Max Offer: $${maxOffer.toLocaleString()} > 70% of budget: $${Math.floor(criteria.maxPrice * 0.7).toLocaleString()}) - using fallback for UI`);
+      if (maxOffer > criteria.maxPrice * 0.7) {
+        console.log(
+          `⚠️ Max offer over budget (Max Offer: $${maxOffer.toLocaleString()} > 70% of budget: $${Math.floor(criteria.maxPrice * 0.7).toLocaleString()}) - using fallback for UI`,
+        );
       }
     }
 
     // Extremely permissive validation - provide comprehensive fallbacks for UI demonstration
-    const finalAddress = address && address.trim() !== '' ? address : '1234 Example St';
-    const finalCity = city && city.trim() !== '' ? city : 
-                      (criteria?.location ? criteria.location.split(',')[0].trim() : 'Phoenix');
-    const finalState = state && state.trim() !== '' ? state : 
-                       (criteria?.location && criteria.location.includes(',') ? 
-                        criteria.location.split(',')[1].trim() : 'AZ');
-    const finalZipCode = zipCode && zipCode.trim() !== '' ? zipCode : '85001';
+    const finalAddress =
+      address && address.trim() !== "" ? address : "1234 Example St";
+    const finalCity =
+      city && city.trim() !== ""
+        ? city
+        : criteria?.location
+          ? criteria.location.split(",")[0].trim()
+          : "Phoenix";
+    const finalState =
+      state && state.trim() !== ""
+        ? state
+        : criteria?.location && criteria.location.includes(",")
+          ? criteria.location.split(",")[1].trim()
+          : "AZ";
+    const finalZipCode = zipCode && zipCode.trim() !== "" ? zipCode : "85001";
 
     // Provide reasonable fallbacks for missing data instead of rejecting
-    const finalEstimatedValue = estimatedValue && estimatedValue > 10000 ? estimatedValue : 285000; // Reasonable fallback
-    const finalOwnerName = ownerName && ownerName.trim() !== '' && !ownerName.includes('undefined') ? 
-                           ownerName : 'Property Owner';
-    const finalMailingAddress = ownerMailingAddress && !ownerMailingAddress.includes('undefined') ? 
-                                ownerMailingAddress : `${finalAddress}, ${finalCity}, ${finalState} ${finalZipCode}`;
+    const finalEstimatedValue =
+      estimatedValue && estimatedValue > 10000 ? estimatedValue : 285000; // Reasonable fallback
+    const finalOwnerName =
+      ownerName && ownerName.trim() !== "" && !ownerName.includes("undefined")
+        ? ownerName
+        : "Property Owner";
+    const finalMailingAddress =
+      ownerMailingAddress && !ownerMailingAddress.includes("undefined")
+        ? ownerMailingAddress
+        : `${finalAddress}, ${finalCity}, ${finalState} ${finalZipCode}`;
 
-    console.log(`✅ Using fallback values where needed: address=${finalAddress}, city=${finalCity}, state=${finalState}, value=${finalEstimatedValue}`);
+    console.log(
+      `✅ Using fallback values where needed: address=${finalAddress}, city=${finalCity}, state=${finalState}, value=${finalEstimatedValue}`,
+    );
 
     // Only filter out if we have building data AND it's invalid (0 or negative) - DISABLED for UI demonstration
-    if ((bedrooms !== null && bedrooms <= 0) || (squareFeet !== null && squareFeet <= 0)) {
-      console.log(`⚠️ Invalid building data detected (0 bedrooms or 0 sq ft) - using fallback values for UI demonstration`);
+    if (
+      (bedrooms !== null && bedrooms <= 0) ||
+      (squareFeet !== null && squareFeet <= 0)
+    ) {
+      console.log(
+        `⚠️ Invalid building data detected (0 bedrooms or 0 sq ft) - using fallback values for UI demonstration`,
+      );
     }
 
     // Use actual equity data from BatchData valuation
-    const finalEquityPercent = equityPercent !== undefined && equityPercent !== null ? equityPercent : 50;
-    
+    const finalEquityPercent =
+      equityPercent !== undefined && equityPercent !== null
+        ? equityPercent
+        : 50;
+
     // Extract additional valuation details from BatchData
     const equityBalance = batchProperty.valuation?.equityBalance || null;
-    const lastSalePrice = batchProperty.sale?.lastSale?.salePrice || 
-                         batchProperty.propertyDetails?.lastSalePrice || null;
+    const lastSalePrice =
+      batchProperty.sale?.lastSale?.salePrice ||
+      batchProperty.propertyDetails?.lastSalePrice ||
+      null;
 
     // Extract ownership history data from enriched property (added via contact enrichment)
     const ownershipStartDate = batchProperty.ownershipStartDate || null;
-    const lengthOfResidence = batchProperty.lengthOfResidence || "Contact for details";
+    const lengthOfResidence =
+      batchProperty.lengthOfResidence || "Contact for details";
     const ownerOccupied = batchProperty.ownerOccupied || "Contact for details";
-    
+
     console.log(`📅 CONVERT PROPERTY: Ownership history data:`, {
       ownershipStartDate,
       lengthOfResidence,
       ownerOccupied,
-      hasOwnershipData: !!(ownershipStartDate || (lengthOfResidence && lengthOfResidence !== "Contact for details"))
+      hasOwnershipData: !!(
+        ownershipStartDate ||
+        (lengthOfResidence && lengthOfResidence !== "Contact for details")
+      ),
     });
 
     const convertedProperty = {
@@ -1066,19 +1376,26 @@ class BatchLeadsService {
       squareFeet: squareFeet !== null ? squareFeet : null, // Preserve null for missing data
       arv: finalEstimatedValue.toString(),
       maxOffer: Math.floor(finalEstimatedValue * 0.7).toString(),
-      status: 'new',
+      status: "new",
       leadType: this.getLeadType(batchProperty),
-      propertyType: batchProperty.building?.propertyType || 'single_family',
+      propertyType: batchProperty.building?.propertyType || "single_family",
       yearBuilt: batchProperty.building?.yearBuilt || null,
-      lastSalePrice: batchProperty.sale?.lastSale?.salePrice?.toString() || 
-                     batchProperty.sale?.priorSale?.salePrice?.toString() || 
-                     batchProperty.propertyDetails?.lastSalePrice?.toString() || null,
-      lastSaleDate: batchProperty.sale?.lastSale?.saleDate || 
-                    batchProperty.sale?.priorSale?.saleDate || 
-                    batchProperty.propertyDetails?.lastSaleDate || null,
+      lastSalePrice:
+        batchProperty.sale?.lastSale?.salePrice?.toString() ||
+        batchProperty.sale?.priorSale?.salePrice?.toString() ||
+        batchProperty.propertyDetails?.lastSalePrice?.toString() ||
+        null,
+      lastSaleDate:
+        batchProperty.sale?.lastSale?.saleDate ||
+        batchProperty.sale?.priorSale?.saleDate ||
+        batchProperty.propertyDetails?.lastSaleDate ||
+        null,
       ownerName: finalOwnerName,
       ownerPhone: ownerPhone,
-      ownerEmail: ownerEmail,
+      ownerEmails: owner.emails || [], // Map the entire emails array
+      ownerPhoneNumbers: owner.phoneNumbers || [], // Map the entire phoneNumbers array
+
+      equityPercentage: Math.round(finalEquityPercent),
       ownerDNCPhone: ownerDNCPhone,
       ownerLandLine: ownerLandLine,
       ownerMobilePhone: ownerMobilePhone,
@@ -1090,7 +1407,7 @@ class BatchLeadsService {
       equityPercentage: Math.round(finalEquityPercent),
       equityBalance: batchProperty.valuation?.equityBalance || null,
       confidenceScore: this.calculateConfidenceScore(batchProperty),
-      distressedIndicator: this.getDistressedIndicator(batchProperty)
+      distressedIndicator: this.getDistressedIndicator(batchProperty),
     };
 
     console.log(`✅ Successfully converted property:`, convertedProperty);
@@ -1104,21 +1421,21 @@ class BatchLeadsService {
     const isPreforeclosure = property.quickLists?.preforeclosure || false;
 
     if (isPreforeclosure) {
-      return 'preforeclosure';
+      return "preforeclosure";
     }
     if (equityPercent >= 70) {
-      return 'high_equity';
+      return "high_equity";
     }
     if (isAbsenteeOwner) {
-      return 'absentee_owner';
+      return "absentee_owner";
     }
     if (isVacant) {
-      return 'vacant';
+      return "vacant";
     }
     if (equityPercent >= 50) {
-      return 'motivated_seller';
+      return "motivated_seller";
     }
-    return 'standard';
+    return "standard";
   }
 
   private calculateConfidenceScore(property: any): number {
@@ -1126,25 +1443,30 @@ class BatchLeadsService {
     let score = 30; // Lower base score since contact enrichment may be incomplete
 
     const equityPercent = property.valuation?.equityPercent || 0;
-    const owner = property.owner || property.ownerInfo || property.contact || {};
-    
+    const owner =
+      property.owner || property.ownerInfo || property.contact || {};
+
     // Boost confidence based on available data
-    if (owner.email && !owner.email.includes('skip trace') && owner.email.includes('@')) {
+    if (
+      owner.email &&
+      !owner.email.includes("skip trace") &&
+      owner.email.includes("@")
+    ) {
       score += 20; // Real email significantly increases confidence
     } else {
       score += 5; // Contact enrichment available via skip trace
     }
-    
+
     if (owner.phone && owner.phone.length >= 10) {
-      score += 20; // Valid phone significantly increases confidence  
+      score += 20; // Valid phone significantly increases confidence
     } else {
       score += 5; // Phone available via skip trace
     }
-    
+
     if (owner.mailingAddress || owner.ownerOccupied === false) {
       score += 15; // Clear mailing address increases confidence
     }
-    
+
     // Property completeness factors
     if (property.building?.bedrooms) score += 10;
     if (property.building?.bathrooms) score += 10;
@@ -1174,27 +1496,31 @@ class BatchLeadsService {
   private getDistressedIndicator(property: any): string {
     const quickLists = property.quickLists || {};
 
-    if (quickLists.preforeclosure) return 'preforeclosure';
-    if (quickLists.vacant) return 'vacant';
-    if (quickLists.highEquity && quickLists.absenteeOwner) return 'high_equity_absentee';
-    if (quickLists.highEquity) return 'high_equity';
-    if (quickLists.absenteeOwner) return 'absentee_owner';
-    if (quickLists.freeAndClear) return 'free_and_clear';
-    return 'standard';
+    if (quickLists.preforeclosure) return "preforeclosure";
+    if (quickLists.vacant) return "vacant";
+    if (quickLists.highEquity && quickLists.absenteeOwner)
+      return "high_equity_absentee";
+    if (quickLists.highEquity) return "high_equity";
+    if (quickLists.absenteeOwner) return "absentee_owner";
+    if (quickLists.freeAndClear) return "free_and_clear";
+    return "standard";
   }
 
   // NEW: Simple raw cash buyer search - returns all data as-is from BatchData API
-  async searchCashBuyersRaw(criteria: { location: string; limit?: number }): Promise<{
+  async searchCashBuyersRaw(criteria: {
+    location: string;
+    limit?: number;
+  }): Promise<{
     buyers: any[];
     totalFound: number;
     location: string;
   }> {
     const limit = criteria.limit || 5;
-    
+
     const requestBody = {
       searchCriteria: {
         query: criteria.location,
-        quickLists: ["cash-buyer"]
+        quickLists: ["cash-buyer"],
       },
       options: {
         skip: 0,
@@ -1203,39 +1529,40 @@ class BatchLeadsService {
         includeBuilding: true,
         includePropertyDetails: true,
         includeAssessment: true,
-        images: false
-      }
+        images: false,
+      },
     };
 
-
     try {
-      const response = await this.makeRequest('/api/v1/property/search', requestBody);
-      
+      const response = await this.makeRequest(
+        "/api/v1/property/search",
+        requestBody,
+      );
+
       console.log(`💰 RAW RESPONSE SUMMARY:`, {
         propertiesFound: response.results?.properties?.length || 0,
-        totalResults: response.meta?.totalResults || 0
+        totalResults: response.meta?.totalResults || 0,
       });
-      
+
       // Filter buyers to only include those with at least 3 properties
       const allBuyers = response.results?.properties || [];
-      
-      
-      
+
       // Filter to only include cash buyers with at least 3 properties AND recent sale activity
       const filteredBuyers = allBuyers.filter((buyer: any) => {
         const propertyCount = buyer.propertyOwnerProfile?.propertiesCount;
         const hasMinProperties = propertyCount && propertyCount >= 3;
-        
+
         // Check for last sale date within 12 months - check multiple possible fields
-        const lastSaleDate = buyer.salesHistory?.lastSaleDate || 
-                            buyer.lastSaleDate || 
-                            buyer.deed?.recordingDate ||
-                            buyer.sales?.lastSaleDate ||
-                            buyer.propertyOwnerProfile?.lastSaleDate ||
-                            buyer.saleHistory?.mostRecentSaleDate;
-        
+        const lastSaleDate =
+          buyer.salesHistory?.lastSaleDate ||
+          buyer.lastSaleDate ||
+          buyer.deed?.recordingDate ||
+          buyer.sales?.lastSaleDate ||
+          buyer.propertyOwnerProfile?.lastSaleDate ||
+          buyer.saleHistory?.mostRecentSaleDate;
+
         let hasRecentSale = false;
-        
+
         if (lastSaleDate) {
           const saleDate = new Date(lastSaleDate);
           const twelveMonthsAgo = new Date();
@@ -1246,23 +1573,19 @@ class BatchLeadsService {
           // This ensures we still get results while the sale date field is located
           hasRecentSale = propertyCount >= 5;
         }
-        
+
         const qualifies = hasMinProperties && hasRecentSale;
-        
-        
+
         return qualifies;
       });
-      
-      
+
       // Take only the requested limit from filtered results
       const buyers = filteredBuyers.slice(0, limit);
-      
-      
 
       return {
         buyers: buyers,
         totalFound: filteredBuyers.length, // Return count of qualified buyers, not total raw results
-        location: criteria.location
+        location: criteria.location,
       };
     } catch (error) {
       console.error(`💰 RAW SEARCH ERROR:`, error);
@@ -1271,17 +1594,19 @@ class BatchLeadsService {
   }
 
   // Search for cash buyers using BatchLeads quicklists.cashbuyer API
-  async searchCashBuyers(criteria: { location: string }, limit = 5): Promise<{
+  async searchCashBuyers(
+    criteria: { location: string },
+    limit = 5,
+  ): Promise<{
     data: any[];
     totalChecked: number;
     filtered: number;
     hasMore: boolean;
   }> {
-      
     const requestBody: any = {
       searchCriteria: {
         query: criteria.location,
-        quickLists: ["cash-buyer"] // Use the quicklists.cash-buyer endpoint
+        quickLists: ["cash-buyer"], // Use the quicklists.cash-buyer endpoint
       },
       options: {
         skip: 0,
@@ -1289,34 +1614,40 @@ class BatchLeadsService {
         skipTrace: true,
         includeBuilding: true,
         includePropertyDetails: true,
-        includeAssessment: true
-      }
+        includeAssessment: true,
+      },
     };
 
-  
     try {
-      const response = await this.makeRequest('/api/v1/property/search', requestBody);
-      
+      const response = await this.makeRequest(
+        "/api/v1/property/search",
+        requestBody,
+      );
+
       console.log(`💰 Cash Buyer API response:`, {
         propertiesFound: response.results?.properties?.length || 0,
-        totalResults: response.meta?.totalResults || 0
+        totalResults: response.meta?.totalResults || 0,
       });
-      
-      
+
       // Log first buyer for debugging
       if (response.results?.properties?.length > 0) {
         const firstBuyer = response.results.properties[0];
       }
 
-      const buyers = (response.results?.properties || []).slice(0, limit).map((buyer: any, index: number) => {
-        return this.convertToCashBuyer(buyer, index + 1);
-      });
+      const buyers = (response.results?.properties || [])
+        .slice(0, limit)
+        .map((buyer: any, index: number) => {
+          return this.convertToCashBuyer(buyer, index + 1);
+        });
 
       return {
         data: buyers,
         totalChecked: response.results?.properties?.length || 0,
-        filtered: Math.max(0, (response.results?.properties?.length || 0) - buyers.length),
-        hasMore: (response.results?.properties?.length || 0) > limit
+        filtered: Math.max(
+          0,
+          (response.results?.properties?.length || 0) - buyers.length,
+        ),
+        hasMore: (response.results?.properties?.length || 0) > limit,
       };
     } catch (error) {
       console.error(`💰 Cash Buyer search error:`, error);
@@ -1328,83 +1659,88 @@ class BatchLeadsService {
   private convertToCashBuyer(buyerData: any, index: number): any {
     // Extract address information
     const address = buyerData.address || {};
-    const fullAddress = `${address.houseNumber || ''} ${address.street || ''}`.trim();
-    
+    const fullAddress =
+      `${address.houseNumber || ""} ${address.street || ""}`.trim();
+
     // Extract owner information
     const owner = buyerData.owner || {};
-    const ownerName = owner.fullName || owner.name || 'Unknown Owner';
-    
+    const ownerName = owner.fullName || owner.name || "Unknown Owner";
+
     // Extract financial information
     const valuation = buyerData.valuation || {};
     const estimatedValue = valuation.estimatedValue || valuation.value || 0;
-    
+
     // Extract property details
     const building = buyerData.building || {};
     const propertyDetails = buyerData.propertyDetails || {};
-    
+
     // Calculate buyer metrics
     const equityPercent = valuation.equityPercent || valuation.equity || 0;
     const buyerScore = this.calculateBuyerScore(buyerData);
-    
+
     const convertedBuyer = {
       id: buyerData._id || `buyer-${index}`,
       name: ownerName,
       address: fullAddress,
-      city: address.city || 'N/A',
-      state: address.state || 'N/A',
-      zipCode: address.zip || address.zipCode || 'N/A',
-      
+      city: address.city || "N/A",
+      state: address.state || "N/A",
+      zipCode: address.zip || address.zipCode || "N/A",
+
       // Contact Information
-      phone: buyerData.phone || 'Available via skip trace',
-      email: buyerData.email || 'Available via skip trace',
-      mailingAddress: owner.mailingAddress ? 
-        `${owner.mailingAddress.street || ''}, ${owner.mailingAddress.city || ''}, ${owner.mailingAddress.state || ''}`.trim() :
-        'Same as property address',
-      
+      phone: buyerData.phone || "Available via skip trace",
+      email: buyerData.email || "Available via skip trace",
+      mailingAddress: owner.mailingAddress
+        ? `${owner.mailingAddress.street || ""}, ${owner.mailingAddress.city || ""}, ${owner.mailingAddress.state || ""}`.trim()
+        : "Same as property address",
+
       // Property Portfolio Information
       estimatedValue: estimatedValue,
       propertyCount: buyerData.propertyCount || 1,
       totalPortfolioValue: buyerData.totalPortfolioValue || estimatedValue,
-      
+
       // Property Details
-      propertyType: building.propertyType || propertyDetails.propertyType || 'Single Family',
+      propertyType:
+        building.propertyType ||
+        propertyDetails.propertyType ||
+        "Single Family",
       bedrooms: building.bedrooms || building.bedroomCount || null,
       bathrooms: building.bathrooms || building.bathroomCount || null,
-      squareFeet: building.livingArea || building.totalBuildingAreaSquareFeet || null,
+      squareFeet:
+        building.livingArea || building.totalBuildingAreaSquareFeet || null,
       yearBuilt: building.yearBuilt || building.effectiveYearBuilt || null,
-      
+
       // Financial Metrics
       equityPercentage: Math.round(equityPercent * 100) / 100,
       buyerScore: buyerScore,
       investmentType: this.determineBuyerType(buyerData),
-      
+
       // Activity Indicators
       lastTransactionDate: buyerData.sale?.lastSaleDate || null,
       lastTransactionPrice: buyerData.sale?.lastSalePrice || null,
       activeInvestor: buyerScore > 70,
       cashBuyer: true, // Since we're searching specifically for cash buyers
-      
+
       // Additional Flags
       outOfStateOwner: this.isOutOfStateOwner(address, owner.mailingAddress),
       portfolioInvestor: (buyerData.propertyCount || 1) > 1,
-      
+
       // Additional buyer context
-      rawDataAvailable: true
+      rawDataAvailable: true,
     };
-    
+
     return convertedBuyer;
   }
-  
+
   private calculateBuyerScore(buyerData: any): number {
     let score = 50; // Base score
-    
+
     // Increase score for cash transactions
     if (buyerData.quickLists?.cashbuyer) score += 30;
-    
+
     // Increase score for multiple properties
     const propertyCount = buyerData.propertyCount || 1;
     if (propertyCount > 1) score += Math.min(20, propertyCount * 5);
-    
+
     // Increase score for recent transactions
     const lastSaleDate = buyerData.sale?.lastSaleDate;
     if (lastSaleDate) {
@@ -1412,28 +1748,31 @@ class BatchLeadsService {
       const currentYear = new Date().getFullYear();
       if (currentYear - saleYear <= 2) score += 15;
     }
-    
+
     // Increase score for high-value properties
     const estimatedValue = buyerData.valuation?.estimatedValue || 0;
     if (estimatedValue > 500000) score += 10;
     if (estimatedValue > 1000000) score += 10;
-    
+
     return Math.min(100, Math.max(0, score));
   }
-  
+
   private determineBuyerType(buyerData: any): string {
     const propertyCount = buyerData.propertyCount || 1;
     const estimatedValue = buyerData.valuation?.estimatedValue || 0;
-    
-    if (propertyCount > 5) return 'Portfolio Investor';
-    if (propertyCount > 1) return 'Small Investor';
-    if (estimatedValue > 1000000) return 'High-End Investor';
-    if (buyerData.quickLists?.cashbuyer) return 'Cash Buyer';
-    
-    return 'Individual Investor';
+
+    if (propertyCount > 5) return "Portfolio Investor";
+    if (propertyCount > 1) return "Small Investor";
+    if (estimatedValue > 1000000) return "High-End Investor";
+    if (buyerData.quickLists?.cashbuyer) return "Cash Buyer";
+
+    return "Individual Investor";
   }
-  
-  private isOutOfStateOwner(propertyAddress: any, mailingAddress: any): boolean {
+
+  private isOutOfStateOwner(
+    propertyAddress: any,
+    mailingAddress: any,
+  ): boolean {
     if (!propertyAddress?.state || !mailingAddress?.state) return false;
     return propertyAddress.state !== mailingAddress.state;
   }

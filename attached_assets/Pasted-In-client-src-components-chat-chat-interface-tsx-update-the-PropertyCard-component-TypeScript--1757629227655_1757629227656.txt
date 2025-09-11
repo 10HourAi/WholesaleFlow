@@ -1,0 +1,44 @@
+In client/src/components/chat/chat-interface.tsx, update the PropertyCard component:
+
+TypeScript
+
+// client/src/components/chat/chat-interface.tsx
+
+// ... inside the PropertyCard component
+
+// ... (keep existing data extraction logic)
+
+const ownerPhoneMatch = content.match(/Phone\(s\)\s+(.+?)\n/) || content.match(/📱 Phone: (.+?)\n/);
+const ownerEmailMatch = content.match(/Email\(s\)\s+(.+?)\n/) || content.match(/✉️ Email: (.+?)\n/);
+const dncPhoneMatch = content.match(/DNC Phone\(s\)\s+(.+?)\n/);
+
+// ...
+
+return {
+  // ... (existing extracted data)
+  ownerPhone: ownerPhoneMatch && !isPlaceholderValue(ownerPhoneMatch[1]) 
+    ? ownerPhoneMatch[1].trim() : null,
+  ownerEmail: ownerEmailMatch && !isPlaceholderValue(ownerEmailMatch[1]) 
+    ? ownerEmailMatch[1].trim() : null,
+  ownerDNCPhone: dncPhoneMatch ? dncPhoneMatch[1].trim() : null,
+  // ...
+};
+
+// ... inside the handleWizardSubmit function where the property card content is generated
+
+// ... (after fetching properties from /api/properties/batch)
+
+const propertyCard = `
+// ... (existing card format)
+
+📞 CONTACT INFORMATION
+   Email(s)                     ${property.ownerEmails && property.ownerEmails.length > 0 ? property.ownerEmails.map((e: any) => e.email).join(', ') : 'Available via skip trace'}
+   Phone(s)                     ${property.ownerPhoneNumbers && property.ownerPhoneNumbers.length > 0 ? property.ownerPhoneNumbers.filter((p: any) => !p.dnc).map((p: any) => `${p.number} (${p.type})`).join(', ') : 'Available via skip trace'}
+   DNC Phone(s)                 ${property.ownerPhoneNumbers && property.ownerPhoneNumbers.filter((p: any) => p.dnc).length > 0 ? property.ownerPhoneNumbers.filter((p: any) => p.dnc).map((p: any) => `${p.number} (${p.type})`).join(', ') : 'None on record'}
+   Mailing Address              ${property.ownerMailingAddress}
+
+// ... (rest of the card)
+`;
+
+// ...
+By following these steps, you will resolve the server routing issue, correctly structure your database to hold the enriched data, and display the live contact information in your application's UI.
