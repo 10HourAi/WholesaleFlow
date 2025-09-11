@@ -109,7 +109,7 @@ class BatchLeadsService {
       options: {
         skip: (page - 1) * perPage,
         take: Math.min(perPage, 500),
-        skipTrace: false,
+        skipTrace: true,
         // Explicitly request building data in response
         includeBuilding: true,
         includeTaxAssessor: true,
@@ -477,24 +477,23 @@ class BatchLeadsService {
       console.log(`👤 STEP 3: Making Contact Enrichment API call (BatchData Contact Enrichment)`);
       console.log(`📋 API Request URL: ${this.baseUrl}/api/v1/contact/enrichment`);
       
-      // Use BatchData Contact Enrichment API format
+      // Use BatchData Property Lookup API format for contact enrichment
       const contactEnrichmentRequest = {
         requests: [{
-          propertyAddress: {
+          address: {
             street: address.street,
             city: address.city,
             state: address.state,
             zip: address.zip
-          },
-          ownerName: ownerName
+          }
         }]
       };
       
       console.log(`📋 Contact Enrichment Request:`, JSON.stringify(contactEnrichmentRequest, null, 2));
 
-      // Use BatchData Contact Enrichment API for email/phone data (official endpoint)
-      console.log(`📞 Making actual API request to: ${this.baseUrl}/api/v1/contact/enrichment`);
-      const enrichmentResponse = await this.makeRequest('/api/v1/contact/enrichment', contactEnrichmentRequest);
+      // Use BatchData Property Lookup API for contact enrichment data (contains owner contact info)
+      console.log(`📞 Making actual API request to: ${this.baseUrl}/api/v1/property/lookup`);
+      const enrichmentResponse = await this.makeRequest('/api/v1/property/lookup', contactEnrichmentRequest);
       
       // Check if the API returned an error status
       if (enrichmentResponse.status?.code !== 200) {
@@ -1287,7 +1286,7 @@ class BatchLeadsService {
       options: {
         skip: 0,
         take: Math.min(limit * 2, 100), // Get more than needed in case some are filtered
-        skipTrace: false,
+        skipTrace: true,
         includeBuilding: true,
         includePropertyDetails: true,
         includeAssessment: true
