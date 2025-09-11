@@ -557,25 +557,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // TEST ENDPOINT TO GET ACTUAL SKIP TRACE RESPONSE (NO AUTH FOR TESTING)
-  app.post("/api/test/skip-trace", async (req: any, res) => {
-    console.log("🟢 TEST ROUTE HIT - MAKING REAL SKIP TRACE CALL!");
+  // TEST ENDPOINT TO GET ACTUAL CONTACT ENRICHMENT RESPONSE (NO AUTH FOR TESTING)
+  app.post("/api/test/contact-enrichment", async (req: any, res) => {
+    console.log("🟢 TEST ROUTE HIT - MAKING REAL CONTACT ENRICHMENT CALL!");
     
     try {
       // Test with one of the actual Phoenix properties
       const testRequest = {
         requests: [{
-          address: {
+          propertyAddress: {
             street: "13402 S 38th Pl",
             city: "Phoenix", 
             state: "AZ",
             zip: "85044"
-          }
+          },
+          ownerName: "Test Owner"
         }]
       };
       
-      console.log("📞 Making BatchData Property Skip Trace API call...");
-      const response = await fetch('https://api.batchdata.com/api/v1/property/skip-trace', {
+      console.log("📞 Making BatchData Contact Enrichment API call...");
+      const response = await fetch('https://api.batchdata.com/api/v1/contact/enrichment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -584,19 +585,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         body: JSON.stringify(testRequest)
       });
       
-      console.log("📞 BatchData Skip Trace Response Status:", response.status);
-      const skipTraceData = await response.json();
-      console.log("📞 FULL BATCHDATA SKIP TRACE RESPONSE:", JSON.stringify(skipTraceData, null, 2));
+      console.log("📞 BatchData Contact Enrichment Response Status:", response.status);
+      const enrichmentData = await response.json();
+      console.log("📞 FULL BATCHDATA CONTACT ENRICHMENT RESPONSE:", JSON.stringify(enrichmentData, null, 2));
       
       res.json({ 
-        message: "Skip trace test completed", 
+        message: "Contact enrichment test completed", 
         status: response.status,
-        data: skipTraceData,
+        data: enrichmentData,
         timestamp: new Date().toISOString() 
       });
       
     } catch (error: any) {
-      console.log("❌ Skip trace test error:", error);
+      console.log("❌ Contact enrichment test error:", error);
       res.status(500).json({ error: error.message || 'Unknown error occurred' });
     }
   });
@@ -615,45 +616,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerName: "Kosani Gerard"
       };
       
-      console.log("📞 Making direct BatchData Property Skip Trace call...");
-      const skipTraceRequest = {
+      console.log("📞 Making direct BatchData Contact Enrichment call...");
+      const contactEnrichmentRequest = {
         requests: [{
           propertyAddress: {
             street: testProperty.address,
             city: testProperty.city,
             state: testProperty.state,
             zip: testProperty.zipCode
-          }
+          },
+          ownerName: testProperty.ownerName
         }]
       };
       
-      const response = await fetch('https://api.batchdata.com/api/v1/property/skip-trace', {
+      const response = await fetch('https://api.batchdata.com/api/v1/contact/enrichment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.BATCHLEADS_API_KEY}`
         },
-        body: JSON.stringify(skipTraceRequest)
+        body: JSON.stringify(contactEnrichmentRequest)
       });
       
-      const skipTraceData = await response.json();
-      console.log("📞 CONTACT ENRICHMENT SUCCESS:", JSON.stringify(skipTraceData, null, 2));
+      const enrichmentData = await response.json();
+      console.log("📞 CONTACT ENRICHMENT SUCCESS:", JSON.stringify(enrichmentData, null, 2));
       
-      // Extract contact data
-      const person = skipTraceData.results?.persons?.[0];
+      // Extract contact data from new contact enrichment response structure
+      const owner = enrichmentData.results?.owner || enrichmentData.results?.persons?.[0] || {};
       const enrichedProperty = {
         ...testProperty,
-        ownerPhone: person?.phoneNumbers?.[0]?.number || null,
-        ownerEmail: person?.emails?.[0]?.email || null,
-        phoneNumbers: person?.phoneNumbers || [],
-        emails: person?.emails || []
+        // Contact Enrichment Data structure as specified
+        ownerPhone: owner?.phoneNumbers?.[0]?.number || null,
+        ownerEmail: owner?.emails?.[0]?.email || owner?.emails?.[0] || null,
+        phoneNumbers: owner?.phoneNumbers?.map((phone: any) => ({
+          number: phone?.number || phone,
+          reachable: phone?.reachable || phone?.status === 'verified' || false,
+          dnc: phone?.dnc || phone?.type === 'dnc' || false,
+          type: phone?.type || 'unknown'
+        })) || [],
+        emails: owner?.emails?.map((email: any) => typeof email === 'string' ? email : email?.email).filter(Boolean) || []
       };
       
       res.json({
         success: true,
         originalProperty: testProperty,
         enrichedProperty: enrichedProperty,
-        fullSkipTraceResponse: skipTraceData
+        fullContactEnrichmentResponse: enrichmentData
       });
       
     } catch (error: any) {
