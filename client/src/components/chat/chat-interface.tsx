@@ -52,13 +52,25 @@ const PropertyCard = ({ content }: { content: string }) => {
   
   const cardType = isSellerLead ? 'Property' : 'Buyer';
   
+  // Helper function to check if a value is a placeholder
+  const isPlaceholderValue = (value: string): boolean => {
+    if (!value) return true;
+    const trimmedValue = value.trim().toLowerCase();
+    return trimmedValue === '' ||
+           trimmedValue === 'n/a' ||
+           trimmedValue.includes('contact for details') ||
+           trimmedValue.includes('available via skip trace') ||
+           trimmedValue.includes('not available') ||
+           trimmedValue.includes('none on record');
+  };
+  
   // Function to extract property data from seller lead content
   const extractPropertyData = (content: string) => {
     if (!isSellerLead) return null;
     
     try {
-      // Extract address information
-      const addressMatch = content.match(/📍 LOCATION\s+(.+?)\n/);
+      // Extract address information - handle both new format (address on next line) and old format (same line)
+      const addressMatch = content.match(/📍 LOCATION[ \t]*\n[ \t]+(.+?)\n/) || content.match(/📍 LOCATION\s+(.+?)\n/);
       const address = addressMatch ? addressMatch[1].trim() : '';
       
       // Parse address components
@@ -81,11 +93,11 @@ const PropertyCard = ({ content }: { content: string }) => {
       const maxOfferMatch = content.match(/Max Offer \(70% Rule\)\s*\$([0-9,]+)/);
       const equityMatch = content.match(/Equity Percent\s*(\d+)%/);
       
-      // Extract owner information
-      const ownerNameMatch = content.match(/Owner: (.+?)\n/);
-      const ownerPhoneMatch = content.match(/📱 Phone: (.+?)\n/);
-      const ownerEmailMatch = content.match(/✉️ Email: (.+?)\n/);
-      const ownerMailingMatch = content.match(/📬 Mailing: (.+?)\n/);
+      // Extract owner information - updated to handle both old and new formats
+      const ownerNameMatch = content.match(/Owner Name\s+(.+?)\n/) || content.match(/Owner: (.+?)\n/);
+      const ownerPhoneMatch = content.match(/Phone\(s\)\s+(.+?)\n/) || content.match(/📱 Phone: (.+?)\n/);
+      const ownerEmailMatch = content.match(/Email\(s\)\s+(.+?)\n/) || content.match(/✉️ Email: (.+?)\n/);
+      const ownerMailingMatch = content.match(/Mailing Address\s+(.+?)\n/) || content.match(/📬 Mailing: (.+?)\n/);
       
       // Extract confidence score - updated for new format (no emoji, no "/100")
       const confidenceScoreMatch = content.match(/Confidence Score\s*(\d+)/);
@@ -104,9 +116,9 @@ const PropertyCard = ({ content }: { content: string }) => {
         maxOffer: maxOfferMatch ? maxOfferMatch[1].replace(/,/g, '') : null,
         equityPercentage: equityMatch ? parseInt(equityMatch[1]) : null,
         ownerName: ownerNameMatch ? ownerNameMatch[1].trim() : null,
-        ownerPhone: ownerPhoneMatch && !ownerPhoneMatch[1].includes('Contact for details') 
+        ownerPhone: ownerPhoneMatch && !isPlaceholderValue(ownerPhoneMatch[1]) 
           ? ownerPhoneMatch[1].trim() : null,
-        ownerEmail: ownerEmailMatch && !ownerEmailMatch[1].includes('Contact for details') 
+        ownerEmail: ownerEmailMatch && !isPlaceholderValue(ownerEmailMatch[1]) 
           ? ownerEmailMatch[1].trim() : null,
         ownerMailingAddress: ownerMailingMatch ? ownerMailingMatch[1].trim() : null,
         confidenceScore: confidenceScoreMatch ? parseInt(confidenceScoreMatch[1]) : null,
@@ -432,11 +444,25 @@ export default function ChatInterface() {
 
 ${buildingDetails}
 
-👤 OWNER INFO
-   Owner: ${property.ownerName}
-   📱 Phone: ${property.ownerPhone || 'Contact for details'}
-   ✉️ Email: ${property.ownerEmail || 'Contact for details'}
-   📬 Mailing: ${property.ownerMailingAddress}
+🏠 PROPERTY DETAILS
+   Total Area                   ${property.squareFeet ? property.squareFeet.toLocaleString() + ' sqft' : 'Contact for details'}
+   Property Type                ${property.propertyType?.replace(/_/g, ' ') || 'Single Family'}
+   Bedrooms                     ${property.bedrooms || 'Contact seller'}
+   Bathrooms                    ${property.bathrooms || 'Contact seller'}
+   Last Sale Price              ${property.lastSalePrice ? '$' + parseInt(property.lastSalePrice).toLocaleString() : 'Not available'}
+
+👤 OWNER INFORMATION
+   Owner Name                   ${property.ownerName}
+   Mailing Address              ${property.ownerMailingAddress}
+   Owner Occupied               ${property.ownerOccupied || 'No'}
+   Length of Residence          Contact for details
+   Ownership Start Date         Contact for details
+
+📞 CONTACT INFORMATION
+   Email(s)                     ${property.ownerEmail || 'Available via skip trace'}
+   Phone(s)                     ${property.ownerPhone || 'Available via skip trace'}
+   DNC Phone(s)                 ${property.ownerDNCPhone || 'None on record'}
+   Mailing Address              ${property.ownerMailingAddress}
 
 💰 Valuation Details
 
@@ -787,11 +813,25 @@ Would you like to adjust your search criteria and try again?`;
 
 ${buildingDetails}
 
-👤 OWNER INFO
-   Owner: ${property.ownerName}
-   📱 Phone: ${property.ownerPhone || 'Contact for details'}
-   ✉️ Email: ${property.ownerEmail || 'Contact for details'}
-   📬 Mailing: ${property.ownerMailingAddress}
+🏠 PROPERTY DETAILS
+   Total Area                   ${property.squareFeet ? property.squareFeet.toLocaleString() + ' sqft' : 'Contact for details'}
+   Property Type                ${property.propertyType?.replace(/_/g, ' ') || 'Single Family'}
+   Bedrooms                     ${property.bedrooms || 'Contact seller'}
+   Bathrooms                    ${property.bathrooms || 'Contact seller'}
+   Last Sale Price              ${property.lastSalePrice ? '$' + parseInt(property.lastSalePrice).toLocaleString() : 'Not available'}
+
+👤 OWNER INFORMATION
+   Owner Name                   ${property.ownerName}
+   Mailing Address              ${property.ownerMailingAddress}
+   Owner Occupied               ${property.ownerOccupied || 'No'}
+   Length of Residence          Contact for details
+   Ownership Start Date         Contact for details
+
+📞 CONTACT INFORMATION
+   Email(s)                     ${property.ownerEmail || 'Available via skip trace'}
+   Phone(s)                     ${property.ownerPhone || 'Available via skip trace'}
+   DNC Phone(s)                 ${property.ownerDNCPhone || 'None on record'}
+   Mailing Address              ${property.ownerMailingAddress}
 
 💰 Valuation Details
 
