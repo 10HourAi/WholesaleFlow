@@ -474,41 +474,42 @@ class BatchLeadsService {
         return { owner: quicklistProperty.owner || {} };
       }
 
-      console.log(`👤 STEP 3: Making Property Skip Trace API call (BatchData Contact Enrichment)`);
-      console.log(`📋 API Request URL: ${this.baseUrl}/api/v1/property/skip-trace`);
+      console.log(`👤 STEP 3: Making Contact Enrichment API call (BatchData Contact Enrichment)`);
+      console.log(`📋 API Request URL: ${this.baseUrl}/api/v1/contact/enrichment`);
       
-      // Use BatchData Property Skip Trace API format (official documentation)
-      const skipTraceRequest = {
+      // Use BatchData Contact Enrichment API format
+      const contactEnrichmentRequest = {
         requests: [{
           propertyAddress: {
             street: address.street,
             city: address.city,
             state: address.state,
             zip: address.zip
-          }
+          },
+          ownerName: ownerName
         }]
       };
       
-      console.log(`📋 Property Skip Trace Request:`, JSON.stringify(skipTraceRequest, null, 2));
+      console.log(`📋 Contact Enrichment Request:`, JSON.stringify(contactEnrichmentRequest, null, 2));
 
-      // Use BatchData Property Skip Trace API for email/phone data (official endpoint)
-      console.log(`📞 Making actual API request to: ${this.baseUrl}/api/v1/property/skip-trace`);
-      const enrichmentResponse = await this.makeRequest('/api/v1/property/skip-trace', skipTraceRequest);
+      // Use BatchData Contact Enrichment API for email/phone data (official endpoint)
+      console.log(`📞 Making actual API request to: ${this.baseUrl}/api/v1/contact/enrichment`);
+      const enrichmentResponse = await this.makeRequest('/api/v1/contact/enrichment', contactEnrichmentRequest);
       
-      console.log(`📞 FULL PROPERTY SKIP TRACE API RESPONSE:`, JSON.stringify(enrichmentResponse, null, 2));
+      console.log(`📞 FULL CONTACT ENRICHMENT API RESPONSE:`, JSON.stringify(enrichmentResponse, null, 2));
       
-      // Extract enriched contact data from BatchData Property Skip Trace API response
-      const person = enrichmentResponse.results?.persons?.[0];
-      const phoneNumbers = person?.phoneNumbers || [];
-      const emailAddresses = person?.emails || [];
+      // Extract enriched contact data from BatchData Contact Enrichment API response
+      const owner = enrichmentResponse.results?.owner || enrichmentResponse.results?.persons?.[0] || {};
+      const phoneNumbers = owner?.phoneNumbers || [];
+      const emailAddresses = owner?.emails || [];
       
-      console.log(`📞 Skip trace contact fields available:`, {
+      console.log(`📞 Contact enrichment fields available:`, {
         hasEmails: emailAddresses.length > 0,
         hasPhones: phoneNumbers.length > 0,
         emailCount: emailAddresses.length,
         phoneCount: phoneNumbers.length,
         firstPhone: phoneNumbers[0]?.number,
-        firstEmail: emailAddresses[0]?.email
+        firstEmail: emailAddresses[0]?.email || emailAddresses[0]
       });
 
       // STEP 3B: Get building data and ownership history from Property Lookup API (same path as contact enrichment)
@@ -715,12 +716,44 @@ class BatchLeadsService {
         ...ownershipData, // Add ownership history data directly to the return object
         owner: {
           ...quicklistProperty.owner,
-          // Merge enriched contact data from BatchData Property Skip Trace  
-          email: emailAddresses[0]?.email || null,
-          phone: phoneNumbers[0]?.number || null,
-          dncPhone: phoneNumbers.find((p: any) => p.type === 'dnc')?.number || null,
+          // Contact Enrichment Data structure as specified
+          fullName: quicklistProperty.owner?.fullName || owner?.name?.full || `${owner?.name?.first} ${owner?.name?.last}`.trim() || null,
+          
+          // Mailing Address fields
+          Street: quicklistProperty.owner?.mailingAddress?.street || owner?.mailingAddress?.street || null,
+          City: quicklistProperty.owner?.mailingAddress?.city || owner?.mailingAddress?.city || null,
+          State: quicklistProperty.owner?.mailingAddress?.state || owner?.mailingAddress?.state || null,
+          Zip: quicklistProperty.owner?.mailingAddress?.zip || owner?.mailingAddress?.zip || null,
+          
+          // Ownership details
+          ownershipStartDate: (ownershipData as any)?.ownershipStartDate || null,
+          
+          // Contact Enrichment Data Tab
+          emails: emailAddresses.map((email: any) => typeof email === 'string' ? email : email?.email).filter(Boolean),
+          phoneNumbers: phoneNumbers.map((phone: any) => ({
+            number: phone?.number || phone,
+            reachable: phone?.reachable || phone?.status === 'verified' || false,
+            dnc: phone?.dnc || phone?.type === 'dnc' || false,
+            type: phone?.type || 'unknown'
+          })),
+          
+          // Legacy fields for compatibility
+          email: emailAddresses[0]?.email || emailAddresses[0] || null,
+          phone: phoneNumbers[0]?.number || phoneNumbers[0] || null,
+          dncPhone: phoneNumbers.find((p: any) => p.dnc || p.type === 'dnc')?.number || null,
           landLine: phoneNumbers.find((p: any) => p.type === 'landline')?.number || null,
-          mobilePhone: phoneNumbers.find((p: any) => p.type === 'mobile')?.number || phoneNumbers.find((p: any) => p.type === 'cell')?.number || null
+          mobilePhone: phoneNumbers.find((p: any) => p.type === 'mobile' || p.type === 'cell')?.number || null
+        },
+        
+        // Additional fields as specified
+        ownerOccupied: (ownershipData as any)?.ownerOccupied || "Contact for details",
+        intel: {
+          lengthOfResidenceYears: (ownershipData as any)?.lengthOfResidence || "Contact for details"
+        },
+        sale: {
+          lastTransfer: {
+            Price: null // Will be populated for inherited leads
+          }
         }
       };
     } catch (error) {
