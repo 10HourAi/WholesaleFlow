@@ -576,7 +576,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
       
       console.log("📞 Making BatchData Contact Enrichment API call...");
-      const response = await fetch('https://api.batchdata.com/api/v1/contact/enrichment', {
+      const response = await fetch('https://api.batchdata.com/api/v1/property/lookup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -586,13 +586,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       console.log("📞 BatchData Contact Enrichment Response Status:", response.status);
-      const enrichmentData = await response.json();
-      console.log("📞 FULL BATCHDATA CONTACT ENRICHMENT RESPONSE:", JSON.stringify(enrichmentData, null, 2));
+      const originalEnrichmentData = await response.json();
+      console.log("📞 FULL BATCHDATA CONTACT ENRICHMENT RESPONSE:", JSON.stringify(originalEnrichmentData, null, 2));
       
       res.json({ 
         message: "Contact enrichment test completed", 
         status: response.status,
-        data: enrichmentData,
+        data: originalEnrichmentData,
         timestamp: new Date().toISOString() 
       });
       
@@ -616,44 +616,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ownerName: "Kosani Gerard"
       };
       
-      console.log("📞 Making direct BatchData Contact Enrichment call...");
-      const contactEnrichmentRequest = {
+      console.log("📞 Testing both Property Lookup and Contact Enrichment endpoints...");
+      
+      // Test 1: Try Property Lookup API (as shown in your documentation)
+      const propertyLookupRequest = {
         requests: [{
-          propertyAddress: {
+          address: {
             street: testProperty.address,
             city: testProperty.city,
             state: testProperty.state,
             zip: testProperty.zipCode
-          },
-          ownerName: testProperty.ownerName
+          }
         }]
       };
       
-      const response = await fetch('https://api.batchdata.com/api/v1/contact/enrichment', {
+      console.log("📞 Testing Property Lookup API first...");
+      const propertyLookupResponse = await fetch('https://api.batchdata.com/api/v1/property/lookup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.BATCHLEADS_API_KEY}`
         },
-        body: JSON.stringify(contactEnrichmentRequest)
+        body: JSON.stringify(propertyLookupRequest)
       });
       
-      const enrichmentData = await response.json();
+      const lookupData = await propertyLookupResponse.json();
       
-      // Check if the API returned an error
-      const isSuccess = enrichmentData.status?.code === 200;
+      console.log("📞 Property Lookup API Response:", JSON.stringify(lookupData, null, 2));
       
-      if (!isSuccess) {
-        console.log("❌ CONTACT ENRICHMENT ERROR:", JSON.stringify(enrichmentData, null, 2));
-        return res.json({
-          success: false,
-          error: {
-            code: enrichmentData.status?.code,
-            message: enrichmentData.status?.message || 'Contact enrichment failed'
+      // Check if the API returned an error in the response body
+      const isLookupSuccess = lookupData.status?.code === 200;
+      let enrichmentData;
+      
+      if (!isLookupSuccess) {
+        console.log("❌ Property Lookup failed, trying Contact Enrichment API...");
+        
+        // Test 2: Try Contact Enrichment API with propertyAddress format
+        const contactEnrichmentRequest = {
+          requests: [{
+            propertyAddress: {
+              street: testProperty.address,
+              city: testProperty.city,
+              state: testProperty.state,
+              zip: testProperty.zipCode
+            },
+            ownerName: testProperty.ownerName
+          }]
+        };
+        
+        console.log("📞 Testing Contact Enrichment API...");
+        const contactEnrichmentResponse = await fetch('https://api.batchdata.com/api/v1/contact/enrichment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.BATCHLEADS_API_KEY}`
           },
-          originalProperty: testProperty,
-          fullContactEnrichmentResponse: enrichmentData
+          body: JSON.stringify(contactEnrichmentRequest)
         });
+        
+        const contactData = await contactEnrichmentResponse.json();
+        console.log("📞 Contact Enrichment API Response:", JSON.stringify(contactData, null, 2));
+        
+        if (contactData.status?.code !== 200) {
+          console.log("❌ BOTH APIs FAILED");
+          return res.json({
+            success: false,
+            error: {
+              code: contactData.status?.code || lookupData.status?.code,
+              message: `Both APIs failed. Property Lookup: ${lookupData.status?.message}, Contact Enrichment: ${contactData.status?.message}`
+            },
+            originalProperty: testProperty,
+            propertyLookupResponse: lookupData,
+            contactEnrichmentResponse: contactData
+          });
+        }
+        
+        // Use contact enrichment data
+        enrichmentData = contactData;
+      } else {
+        // Use property lookup data
+        enrichmentData = lookupData;
       }
       
       console.log("📞 CONTACT ENRICHMENT SUCCESS");
