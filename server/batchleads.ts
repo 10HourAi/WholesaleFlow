@@ -511,10 +511,11 @@ class BatchLeadsService {
         firstEmail: emailAddresses[0]?.email
       });
 
-      // STEP 3B: Get building data from Property Lookup API (same path as contact enrichment)
+      // STEP 3B: Get building data and ownership history from Property Lookup API (same path as contact enrichment)
       let buildingData = {};
+      let ownershipData = {};
       try {
-        console.log(`🏗️ CONTACT ENRICHMENT: Adding Property Lookup call for building data`);
+        console.log(`🏗️ CONTACT ENRICHMENT: Adding Property Lookup call for building data and ownership history`);
         const lookupRequest = {
           requests: [{
             address: {
@@ -527,9 +528,39 @@ class BatchLeadsService {
         };
         
         const lookupResponse = await this.makeRequest('/api/v1/property/lookup', lookupRequest);
-        console.log(`🏗️ CONTACT ENRICHMENT: Property Lookup response:`, JSON.stringify(lookupResponse, null, 2));
         
-        const building = lookupResponse.results?.[0]?.property?.building || {};
+        // First, examine the actual response structure for ownership data
+        const result = lookupResponse.results?.[0] || {};
+        const property = result.property || {};
+        const building = property.building || {};
+        
+        // Log the complete structure to understand the actual field paths
+        console.log(`🏗️ PROPERTY LOOKUP RESPONSE STRUCTURE ANALYSIS:`);
+        console.log(`📋 Top level keys:`, Object.keys(result));
+        console.log(`📋 Property level keys:`, Object.keys(property));
+        console.log(`📋 Building keys:`, Object.keys(building));
+        
+        // Check multiple possible locations for ownership data based on actual API structure
+        // Option 1: Direct on result object
+        const deed = result.deed || property.deed || {};
+        const assessment = result.assessment || property.assessment || {};
+        const ownership = result.ownership || property.ownership || {};
+        const transaction = result.transaction || property.transaction || {};
+        const sale = result.sale || property.sale || {};
+        const taxAssessor = result.taxAssessor || property.taxAssessor || {};
+        const propertyDetails = result.propertyDetails || property.propertyDetails || {};
+        
+        // Log what we found at each level
+        console.log(`📅 OWNERSHIP DATA STRUCTURE FOUND:`, {
+          deed: Object.keys(deed),
+          assessment: Object.keys(assessment), 
+          ownership: Object.keys(ownership),
+          transaction: Object.keys(transaction),
+          sale: Object.keys(sale),
+          taxAssessor: Object.keys(taxAssessor),
+          propertyDetails: Object.keys(propertyDetails)
+        });
+        
         buildingData = {
           bedrooms: building.bedroomCount || building.bedrooms || null,
           bathrooms: building.bathroomCount || building.bathrooms || null,
@@ -537,13 +568,151 @@ class BatchLeadsService {
           yearBuilt: building.effectiveYearBuilt || building.yearBuilt || null
         };
         
+        // Extract ownership history data
+        const currentDate = new Date();
+        let ownershipStartDate = null;
+        let lengthOfResidence = "Contact for details";
+        let ownerOccupied = "Contact for details";
+        
+        // Try comprehensive paths for ownership start date based on actual API structure
+        // Check all possible locations where ownership dates might be stored
+        const possibleDates = [
+          // Primary deed/transaction dates
+          deed.recordingDate,
+          deed.saleDate,
+          deed.grantDate,
+          deed.transferDate,
+          transaction.saleDate,
+          transaction.recordingDate,
+          transaction.transferDate,
+          transaction.closingDate,
+          
+          // Assessment and tax records
+          assessment.saleDate,
+          assessment.lastSaleDate,
+          assessment.transferDate,
+          taxAssessor.lastSaleDate,
+          taxAssessor.saleDate,
+          
+          // Ownership records
+          ownership.purchaseDate,
+          ownership.acquisitionDate,
+          ownership.startDate,
+          ownership.dateAcquired,
+          
+          // Sale history
+          sale.lastSaleDate,
+          sale.saleDate,
+          sale.mostRecentSaleDate,
+          propertyDetails.lastSaleDate,
+          
+          // Additional possible paths
+          result.lastSaleDate,
+          property.lastSaleDate,
+          property.mostRecentTransferDate
+        ];
+        
+        // Find the first valid date
+        for (const dateStr of possibleDates) {
+          if (dateStr && typeof dateStr === 'string') {
+            const testDate = new Date(dateStr);
+            if (!isNaN(testDate.getTime()) && testDate.getFullYear() > 1900) {
+              ownershipStartDate = testDate;
+              console.log(`📅 Found ownership start date: ${dateStr} from field`);
+              break;
+            }
+          }
+        }
+        
+        // Calculate length of residence if we have a start date
+        if (ownershipStartDate && !isNaN(ownershipStartDate.getTime())) {
+          const diffTime = Math.abs(currentDate.getTime() - ownershipStartDate.getTime());
+          const diffYears = Math.floor(diffTime / (1000 * 60 * 60 * 24 * 365));
+          const diffMonths = Math.floor((diffTime % (1000 * 60 * 60 * 24 * 365)) / (1000 * 60 * 60 * 24 * 30));
+          
+          if (diffYears > 0) {
+            lengthOfResidence = `${diffYears} year${diffYears > 1 ? 's' : ''}`;
+            if (diffMonths > 0) {
+              lengthOfResidence += `, ${diffMonths} month${diffMonths > 1 ? 's' : ''}`;
+            }
+          } else if (diffMonths > 0) {
+            lengthOfResidence = `${diffMonths} month${diffMonths > 1 ? 's' : ''}`;
+          } else {
+            lengthOfResidence = "Less than 1 month";
+          }
+        }
+        
+        // Try comprehensive paths for owner occupied status
+        const possibleOwnerOccupiedValues = [
+          ownership.ownerOccupied,
+          ownership.isOwnerOccupied,
+          deed.ownerOccupied, 
+          deed.isOwnerOccupied,
+          transaction.ownerOccupied,
+          transaction.isOwnerOccupied,
+          assessment.ownerOccupied,
+          assessment.isOwnerOccupied,
+          taxAssessor.ownerOccupied,
+          taxAssessor.isOwnerOccupied,
+          propertyDetails.ownerOccupied,
+          propertyDetails.isOwnerOccupied,
+          result.ownerOccupied,
+          property.ownerOccupied,
+          
+          // Check quicklist data from original search response if available
+          quicklistProperty.quickLists?.ownerOccupied
+        ];
+        
+        // Find the first defined boolean value
+        for (const value of possibleOwnerOccupiedValues) {
+          if (value !== undefined && value !== null) {
+            ownerOccupied = value ? "Yes" : "No";
+            console.log(`🏠 Found owner occupied status: ${ownerOccupied}`);
+            break;
+          }
+        }
+        
+        // If still no value, try address comparison logic
+        if (ownerOccupied === "Contact for details") {
+          const propertyAddress = `${address.street}, ${address.city}, ${address.state}`.toLowerCase();
+          const mailingAddress = quicklistProperty.owner?.mailingAddress;
+          
+          if (mailingAddress) {
+            const ownerAddress = `${mailingAddress.street}, ${mailingAddress.city}, ${mailingAddress.state}`.toLowerCase();
+            if (propertyAddress === ownerAddress) {
+              ownerOccupied = "Yes";
+              console.log(`🏠 Determined owner occupied by address match`);
+            } else {
+              ownerOccupied = "No";
+              console.log(`🏠 Determined not owner occupied by address mismatch`);
+            }
+          }
+        }
+        
+        ownershipData = {
+          ownershipStartDate: ownershipStartDate ? ownershipStartDate.toISOString().split('T')[0] : null,
+          lengthOfResidence,
+          ownerOccupied
+        };
+        
         console.log(`🏗️ CONTACT ENRICHMENT: Extracted building data:`, buildingData);
+        console.log(`📅 CONTACT ENRICHMENT: Extracted ownership data:`, ownershipData);
+        
+        // Only log specific ownership-related fields that were found (avoid full JSON dumps)
+        console.log(`📅 OWNERSHIP EXTRACTION SUMMARY:`, {
+          foundOwnershipDate: !!ownershipStartDate,
+          ownershipDateSource: ownershipStartDate ? 'found' : 'none',
+          lengthOfResidence: lengthOfResidence,
+          ownerOccupiedStatus: ownerOccupied,
+          ownerOccupiedSource: ownerOccupied !== 'Contact for details' ? 'found' : 'none'
+        });
       } catch (error) {
         console.log(`❌ CONTACT ENRICHMENT: Property Lookup failed:`, error);
       }
       
       return {
         ...buildingData, // Add building data directly to the return object
+        ...ownershipData, // Add ownership history data directly to the return object
         owner: {
           ...quicklistProperty.owner,
           // Merge enriched contact data from BatchData Property Skip Trace  
@@ -836,6 +1005,18 @@ class BatchLeadsService {
     const lastSalePrice = batchProperty.sale?.lastSale?.salePrice || 
                          batchProperty.propertyDetails?.lastSalePrice || null;
 
+    // Extract ownership history data from enriched property (added via contact enrichment)
+    const ownershipStartDate = batchProperty.ownershipStartDate || null;
+    const lengthOfResidence = batchProperty.lengthOfResidence || "Contact for details";
+    const ownerOccupied = batchProperty.ownerOccupied || "Contact for details";
+    
+    console.log(`📅 CONVERT PROPERTY: Ownership history data:`, {
+      ownershipStartDate,
+      lengthOfResidence,
+      ownerOccupied,
+      hasOwnershipData: !!(ownershipStartDate || (lengthOfResidence && lengthOfResidence !== "Contact for details"))
+    });
+
     const convertedProperty = {
       userId,
       address: finalAddress,
@@ -864,6 +1045,10 @@ class BatchLeadsService {
       ownerLandLine: ownerLandLine,
       ownerMobilePhone: ownerMobilePhone,
       ownerMailingAddress: finalMailingAddress,
+      // Add ownership history fields from Property Lookup API
+      ownershipStartDate: ownershipStartDate,
+      lengthOfResidence: lengthOfResidence,
+      ownerOccupied: ownerOccupied,
       equityPercentage: Math.round(finalEquityPercent),
       equityBalance: batchProperty.valuation?.equityBalance || null,
       confidenceScore: this.calculateConfidenceScore(batchProperty),

@@ -455,8 +455,8 @@ ${buildingDetails}
    Owner Name                   ${property.ownerName}
    Mailing Address              ${property.ownerMailingAddress}
    Owner Occupied               ${property.ownerOccupied || 'No'}
-   Length of Residence          Contact for details
-   Ownership Start Date         Contact for details
+   Length of Residence          ${property.lengthOfResidence || 'Contact for details'}
+   Ownership Start Date         ${property.ownershipStartDate || 'Contact for details'}
 
 📞 CONTACT INFORMATION
    Email(s)                     ${property.ownerEmail || 'Available via skip trace'}
@@ -824,8 +824,8 @@ ${buildingDetails}
    Owner Name                   ${property.ownerName}
    Mailing Address              ${property.ownerMailingAddress}
    Owner Occupied               ${property.ownerOccupied || 'No'}
-   Length of Residence          Contact for details
-   Ownership Start Date         Contact for details
+   Length of Residence          ${property.lengthOfResidence || 'Contact for details'}
+   Ownership Start Date         ${property.ownershipStartDate || 'Contact for details'}
 
 📞 CONTACT INFORMATION
    Email(s)                     ${property.ownerEmail || 'Available via skip trace'}
