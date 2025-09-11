@@ -142,15 +142,17 @@ const PropertyCard = ({ content }: { content: string }) => {
     }
     
     try {
-      await apiRequest("POST", "/api/properties", propertyData);
+      const result = await apiRequest("POST", "/api/properties", propertyData);
+      console.log('🏠 Property successfully added to CRM:', result);
       
       toast({
         title: "Added to CRM",
         description: `Property at ${propertyData.address} has been added to your CRM system.`,
       });
       
-      // Invalidate properties cache to refresh the CRM
-      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      // Force refresh the properties cache to ensure CRM updates immediately
+      await queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/properties"] });
       
     } catch (error: any) {
       console.error('Error adding property to CRM:', error);
@@ -432,10 +434,14 @@ export default function ChatInterface() {
    ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
 ${buildingDetails}
 
-💰 INVESTMENT ANALYSIS
-   📊 ARV: $${parseInt(property.arv).toLocaleString()}
-   💰 Max Offer: $${parseInt(property.maxOffer).toLocaleString()}
-   💎 Equity: ${property.equityPercentage}%
+💰 Valuation Details
+
+As of Date                    ${new Date().toLocaleDateString()}
+Confidence Score             ${property.confidenceScore}
+Equity Balance               $${(parseInt(property.arv) * (property.equityPercentage / 100)).toLocaleString()}
+Equity Percent               ${property.equityPercentage}%
+Estimated Value              $${parseInt(property.arv).toLocaleString()}
+Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
 
 👤 OWNER INFO
    Owner: ${property.ownerName}
@@ -444,9 +450,8 @@ ${buildingDetails}
    📬 Mailing: ${property.ownerMailingAddress}
 
 📈 LEAD ANALYSIS
-   🎯 Confidence Score: ${property.confidenceScore}/100
-   🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
-   📈 Lead Type: ${property.leadType.replace(/_/g, ' ')}
+   Lead Type: ${property.leadType.replace(/_/g, ' ')}
+   Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
 
 🎯 ACTIONS
    📋 Add to CRM        📊 Analyze Deal        📞 Contact Owner
@@ -787,10 +792,14 @@ Would you like to adjust your search criteria and try again?`;
    ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
 ${buildingDetails}
 
-💰 INVESTMENT ANALYSIS
-   📊 ARV: $${parseInt(property.arv).toLocaleString()}
-   💰 Max Offer: $${parseInt(property.maxOffer).toLocaleString()}
-   💎 Equity: ${property.equityPercentage}%
+💰 Valuation Details
+
+As of Date                    ${new Date().toLocaleDateString()}
+Confidence Score             ${property.confidenceScore}
+Equity Balance               $${(parseInt(property.arv) * (property.equityPercentage / 100)).toLocaleString()}
+Equity Percent               ${property.equityPercentage}%
+Estimated Value              $${parseInt(property.arv).toLocaleString()}
+Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
 
 👤 OWNER INFO
    Owner: ${property.ownerName}
@@ -799,9 +808,8 @@ ${buildingDetails}
    📬 Mailing: ${property.ownerMailingAddress}
 
 📈 LEAD ANALYSIS
-   🎯 Confidence Score: ${property.confidenceScore}/100
-   🚨 Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
-   📈 Lead Type: ${property.leadType.replace(/_/g, ' ')}
+   Lead Type: ${property.leadType.replace(/_/g, ' ')}
+   Distress Indicator: ${property.distressedIndicator.replace(/_/g, ' ')}
 
 🎯 ACTIONS
    📋 Add to CRM        📊 Analyze Deal        📞 Contact Owner
