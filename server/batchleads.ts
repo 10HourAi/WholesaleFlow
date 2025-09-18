@@ -305,62 +305,6 @@ class BatchLeadsService {
 
 
 
-    // Add equity filter
-    if (criteria.minEquity) {
-      if (!requestBody.searchCriteria.valuation) {
-        requestBody.searchCriteria.valuation = {};
-      }
-      requestBody.searchCriteria.valuation.equityPercent = {
-        min: criteria.minEquity,
-      };
-    }
-
-    // Add price filter
-    if (criteria.maxPrice) {
-      if (!requestBody.searchCriteria.valuation) {
-        requestBody.searchCriteria.valuation = {};
-      }
-      requestBody.searchCriteria.valuation.estimatedValue = {
-        max: criteria.maxPrice,
-      };
-    }
-
-    console.log(`📋 Full request body:`, JSON.stringify(requestBody, null, 2));
-
-    const response = await this.makeRequest(
-      "/api/v1/property/search",
-      requestBody,
-    );
-
-    console.log(`📊 BatchLeads API response:`, {
-      propertiesFound: response.results?.properties?.length || 0,
-      totalResults: response.meta?.totalResults || 0,
-      page: page,
-    });
-
-    // Debug the complete raw API response structure
-    console.log(`🔍 COMPLETE RAW BATCHDATA API RESPONSE:`);
-    console.log(JSON.stringify(response, null, 2));
-
-    // Debug first property specifically
-    if (response.results?.properties?.length > 0) {
-      const firstProperty = response.results.properties[0];
-      console.log(`🏠 FIRST PROPERTY RAW DATA:`);
-      console.log(JSON.stringify(firstProperty, null, 2));
-      console.log(`🏠 FIRST PROPERTY FIELD ANALYSIS:`, {
-        topLevel: Object.keys(firstProperty),
-        address: Object.keys(firstProperty.address || {}),
-        building: Object.keys(firstProperty.building || {}),
-        owner: Object.keys(firstProperty.owner || {}),
-        valuation: Object.keys(firstProperty.valuation || {}),
-        assessment: Object.keys(firstProperty.assessment || {}),
-        taxAssessor: Object.keys(firstProperty.taxAssessor || {}),
-        propertyDetails: Object.keys(firstProperty.propertyDetails || {}),
-        allFields: firstProperty,
-      });
-    }
-
-    // Transform response to match expected format
     return {
       success: true,
       data: response.results?.properties || [],
