@@ -568,9 +568,24 @@ ${buildingDetails}
    Mailing Address              ${property.ownerMailingAddress}
 
 📞 CONTACT INFORMATION
-   Email(s)                     ${property.ownerEmails && property.ownerEmails.length > 0 ? property.ownerEmails.join(', ') : 'Contact for details'}
-   Phone(s)                     ${property.ownerPhoneNumbers && property.ownerPhoneNumbers.length > 0 ? property.ownerPhoneNumbers.filter((p: any) => !p.dnc).map((p: any) => `${p.number} (${p.type})`).join(', ') || 'Contact for details' : 'Contact for details'}
-   DNC Phone(s)                 ${property.ownerPhoneNumbers && property.ownerPhoneNumbers.filter((p: any) => p.dnc).length > 0 ? property.ownerPhoneNumbers.filter((p: any) => p.dnc).map((p: any) => `${p.number} (${p.type})`).join(', ') : 'None on record'}
+   Email(s)                     ${property.ownerEmails && property.ownerEmails.length > 0 ? property.ownerEmails.join(", ") : "Contact for details"}
+   Phone(s)                     ${
+     property.ownerPhoneNumbers && property.ownerPhoneNumbers.length > 0
+       ? property.ownerPhoneNumbers
+           .filter((p: any) => !p.dnc)
+           .map((p: any) => `${p.number} (${p.type})`)
+           .join(", ") || "Contact for details"
+       : "Contact for details"
+   }
+   DNC Phone(s)                 ${
+     property.ownerPhoneNumbers &&
+     property.ownerPhoneNumbers.filter((p: any) => p.dnc).length > 0
+       ? property.ownerPhoneNumbers
+           .filter((p: any) => p.dnc)
+           .map((p: any) => `${p.number} (${p.type})`)
+           .join(", ")
+       : "None on record"
+   }
    Mailing Address              ${property.ownerMailingAddress}
 
 💰 Valuation Details
@@ -809,10 +824,9 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
     },
     { value: "absentee", label: "Absentee Owners (Out-of-state/Non-resident)" },
     { value: "high_equity", label: "High Equity Owners (70%+ equity)" },
-    { value: "motivated", label: "Motivated Sellers (Multiple indicators)" },
+    { value: "inherited", label: "Inherited Properties" },
     { value: "corporate", label: "Corporate Owned Properties" },
     { value: "tired_landlord", label: "Tired Landlords" },
-    { value: "any", label: "Any Seller Type" },
   ];
 
   const propertyTypes = [
@@ -820,15 +834,24 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
     { value: "multi_family", label: "Multi-Family (2-4 units)" },
     { value: "condo", label: "Condominiums" },
     { value: "townhouse", label: "Townhouses" },
-    { value: "any", label: "Any Property Type" },
   ];
 
   const handleWizardSubmit = async () => {
     let location = "";
     const cityInput = wizardData.city.trim();
     const zipPattern = /^\d{5}$/;
+    const partsRaw = cityInput
+      .split(",")
+      .map((p) => p.trim())
+      .filter(Boolean);
+    const allZips = partsRaw.every((p) => zipPattern.test(p));
+    let locations: string[] | undefined;
 
-    if (zipPattern.test(cityInput)) {
+    if (allZips && partsRaw.length > 1) {
+      // Multiple comma-separated ZIP codes
+      locations = partsRaw;
+      location = locations[0]; // Primary location for display
+    } else if (zipPattern.test(cityInput)) {
       location = cityInput;
     } else if (cityInput.includes(",")) {
       const parts = cityInput.split(",").map((p) => p.trim());
@@ -842,18 +865,22 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
     }
 
     let searchQuery = "Find";
-    if (wizardData.propertyType !== "any") {
+    if (wizardData.propertyType) {
       const propertyTypeLabel = propertyTypes.find(
         (p) => p.value === wizardData.propertyType,
       )?.label;
-      searchQuery += ` ${propertyTypeLabel?.toLowerCase()}`;
+      if (propertyTypeLabel) {
+        searchQuery += ` ${propertyTypeLabel.toLowerCase()}`;
+      } else {
+        searchQuery += ` properties`;
+      }
     } else {
       searchQuery += ` properties`;
     }
 
     searchQuery += ` in ${location}`;
 
-    if (wizardData.sellerType !== "any") {
+    if (wizardData.sellerType) {
       const sellerTypeLabel = sellerTypes.find(
         (s) => s.value === wizardData.sellerType,
       )?.label;
@@ -880,7 +907,7 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
 
     // Call real BatchData API for seller leads
     try {
-      const searchCriteria = {
+      const searchCriteria: any = {
         location: location,
         sellerType: wizardData.sellerType,
         propertyType: wizardData.propertyType,
@@ -888,6 +915,9 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
         maxPrice: wizardData.maxPrice,
         minPrice: wizardData.minPrice,
       };
+      if (locations && locations.length > 0) {
+        searchCriteria.locations = locations;
+      }
 
       console.log(
         "🔍 Calling BatchData API for seller leads with criteria:",
@@ -1042,9 +1072,24 @@ ${buildingDetails}
    Mailing Address              ${property.ownerMailingAddress}
 
 📞 CONTACT INFORMATION
-   Email(s)                     ${property.ownerEmails && property.ownerEmails.length > 0 ? property.ownerEmails.join(', ') : 'Contact for details'}
-   Phone(s)                     ${property.ownerPhoneNumbers && property.ownerPhoneNumbers.length > 0 ? property.ownerPhoneNumbers.filter((p: any) => !p.dnc).map((p: any) => `${p.number} (${p.type})`).join(', ') || 'Contact for details' : 'Contact for details'}
-   DNC Phone(s)                 ${property.ownerPhoneNumbers && property.ownerPhoneNumbers.filter((p: any) => p.dnc).length > 0 ? property.ownerPhoneNumbers.filter((p: any) => p.dnc).map((p: any) => `${p.number} (${p.type})`).join(', ') : 'None on record'}
+   Email(s)                     ${property.ownerEmails && property.ownerEmails.length > 0 ? property.ownerEmails.join(", ") : "Contact for details"}
+   Phone(s)                     ${
+     property.ownerPhoneNumbers && property.ownerPhoneNumbers.length > 0
+       ? property.ownerPhoneNumbers
+           .filter((p: any) => !p.dnc)
+           .map((p: any) => `${p.number} (${p.type})`)
+           .join(", ") || "Contact for details"
+       : "Contact for details"
+   }
+   DNC Phone(s)                 ${
+     property.ownerPhoneNumbers &&
+     property.ownerPhoneNumbers.filter((p: any) => p.dnc).length > 0
+       ? property.ownerPhoneNumbers
+           .filter((p: any) => p.dnc)
+           .map((p: any) => `${p.number} (${p.type})`)
+           .join(", ")
+       : "None on record"
+   }
    Mailing Address              ${property.ownerMailingAddress}
 
 💰 Valuation Details
@@ -2062,7 +2107,7 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
                     <div>
                       <Label htmlFor="minBedrooms">Minimum Bedrooms</Label>
                       <Select
-                        value={wizardData.minBedrooms?.toString() || ""}
+                        value={(wizardData.minBedrooms ?? 1).toString()}
                         onValueChange={(value) =>
                           setWizardData({
                             ...wizardData,
@@ -2071,7 +2116,7 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Any" />
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="1">1+</SelectItem>
@@ -2085,7 +2130,7 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
                     <div>
                       <Label htmlFor="maxPrice">Maximum Price</Label>
                       <Select
-                        value={wizardData.maxPrice?.toString() || ""}
+                        value={(wizardData.maxPrice ?? 3000000).toString()}
                         onValueChange={(value) =>
                           setWizardData({
                             ...wizardData,
@@ -2094,15 +2139,21 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
                         }
                       >
                         <SelectTrigger>
-                          <SelectValue placeholder="Any" />
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="3000000">
+                            Up to $3M (default)
+                          </SelectItem>
                           <SelectItem value="100000">Under $100k</SelectItem>
                           <SelectItem value="200000">Under $200k</SelectItem>
                           <SelectItem value="300000">Under $300k</SelectItem>
                           <SelectItem value="500000">Under $500k</SelectItem>
                           <SelectItem value="750000">Under $750k</SelectItem>
                           <SelectItem value="1000000">Under $1M</SelectItem>
+                          <SelectItem value="1500000">$1–1.5M</SelectItem>
+                          <SelectItem value="2000000">$1–2M</SelectItem>
+                          <SelectItem value="3000000">$1–3M</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>

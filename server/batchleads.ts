@@ -100,88 +100,210 @@ class BatchLeadsService {
     return response.json();
   }
 
-  async searchProperties(
-    criteria: SearchCriteria,
-    page = 1,
-    perPage = 50,
-  ): Promise<BatchLeadsResponse> {
-    console.log(
-      `🔍 STARTING BatchLeads API search for: "${criteria.location}"`,
-    );
-    console.log(`🔍 SEARCH CRITERIA:`, JSON.stringify(criteria, null, 2));
+  private normalizeQuickLists(input: any[]): string[] {
+    if (!Array.isArray(input)) return [];
 
-    const requestBody: any = {
-      searchCriteria: {
-        query: criteria.location,
-      },
-      options: {
-        skip: (page - 1) * perPage,
-        take: Math.min(perPage, 500),
-        skipTrace: true,
-        // Explicitly request building data in response
-        includeBuilding: true,
-        includeTaxAssessor: true,
-        includePropertyDetails: true,
-        includeAssessment: true,
-      },
+    const map: Record<string, string> = {
+      // absentee aliases -> canonical
+      "out-of-state-absentee-owner": "absenteeOwner",
+      "absentee-owner": "absenteeOwner",
+      absentee: "absenteeOwner",
+      absenteeOwner: "absenteeOwner",
+
+      // equity
+      "high-equity": "highEquity",
+      highEquity: "highEquity",
+
+      // listing flags (keep as-is where expected)
+      "not-active-listing": "not-active-listing",
+      "not-pending-listing": "not-pending-listing",
+
+      // preforeclosure / vacant
+      preforeclosure: "preforeclosure",
+      vacant: "vacant",
+
+      // cash buyer
+      "cash-buyer": "cash-buyer",
+      cashbuyer: "cash-buyer",
+
+      // free and clear
+      "free-and-clear": "freeAndClear",
+      freeAndClear: "freeAndClear",
+
+      // inherited / corporate
+      inherited: "inherited",
+      "corporate-owned": "corporate-owned",
+      corporateOwned: "corporate-owned",
     };
 
-    // Apply quicklists from search criteria (mapped from wizard step 2)
-    if (criteria.quickLists && criteria.quickLists.length > 0) {
-      requestBody.searchCriteria.quickLists = criteria.quickLists;
-      console.log(`🎯 Using quicklists: ${criteria.quickLists.join(", ")}`);
+    const normalized = input
+      .map((q) => (typeof q === "string" ? q.trim() : ""))
+      .filter(Boolean)
+      .map((q) => map[q] ?? q)
+      .filter(Boolean);
+
+    return Array.from(new Set(normalized)); // dedupe
+  }
+
+  private sellerTypeToQuicklistsMap(): Record<string, string[]> {
+    return {
+      absentee: ["out-of-state-absentee-owner"],
+      distressed: ["preforeclosure"],
+      vacant: ["vacant"],
+      high_equity: ["high-equity"],
+      cash_buyer: ["cash-buyer"],
+      inherited: ["inherited"],
+      corporate: ["corporate-owned"],
+    };
+  }
+
+  private mergeSellerTypesToQuicklists(criteria: any): string[] {
+    const baseQuicklists: string[] = Array.isArray(criteria.quickLists) ? [...criteria.quickLists] : [];
+    if (Array.isArray(criteria.sellerTypes)) {
+      const map = this.sellerTypeToQuicklistsMap();
+      for (const s of criteria.sellerTypes) {
+        const additions = map[s];
+        if (Array.isArray(additions)) baseQuicklists.push(...additions);
+      }
+    }
+    return Array.from(new Set(baseQuicklists));
+  }
+
+
+  public async searchProperties(
+  criteria: any,
+  page = 1,
+  perPage = 20,
+  options: any = {}
+): Promise<any> {
+  // 1) Merge sellerTypes -> quickLists (if sellerTypes present) and include any incoming quickLists
+  const mergedFromSellerTypes = Array.isArray(criteria.sellerTypes)
+    ? this.mergeSellerTypesToQuicklists(criteria)
+    : [];
+
+  const incomingQuicklists = Array.isArray(criteria.quickLists) ? [...criteria.quickLists] : [];
+
+  // Combine incoming quicklists and those derived from sellerTypes
+  const combinedQuicklists = Array.from(new Set([...incomingQuicklists, ...mergedFromSellerTypes]));
+
+  // 2) Normalize aliases to canonical keys (e.g., "out-of-state-absentee-owner" -> "absenteeOwner")
+  const normalizedQuicklists = this.normalizeQuickLists(combinedQuicklists);
+
+  // 3) Build searchCriteria
+  const searchCriteria: any = {
+    query: criteria.location || criteria.query || "",
+  };
+
+  // Attach normalized quickLists only if present
+  if (Array.isArray(normalizedQuicklists) && normalizedQuicklists.length > 0) {
+    searchCriteria.quickLists = normalizedQuicklists;
+  }
+
+  // Bedrooms handling (prefer bedroomCount shape)
+  if (typeof criteria.minBedrooms === "number") {
+    searchCriteria.building = { bedroomCount: { min: criteria.minBedrooms } };
+  } else if (criteria.building && criteria.building.bedrooms) {
+    const b = criteria.building.bedrooms;
+    searchCriteria.building = { bedroomCount: { min: b.min ?? b.gte } };
+  }
+
+  // Valuation / estimatedValue handling (support minPrice/maxPrice)
+  if (typeof criteria.minPrice === "number" || typeof criteria.maxPrice === "number") {
+    searchCriteria.valuation = searchCriteria.valuation || { estimatedValue: {} as any };
+    if (typeof criteria.minPrice === "number") {
+      searchCriteria.valuation.estimatedValue.min = criteria.minPrice;
+    }
+    if (typeof criteria.maxPrice === "number") {
+      searchCriteria.valuation.estimatedValue.max = criteria.maxPrice;
+    }
+  }
+
+  // Add equity filter (minEquity -> valuation.equityPercent.min)
+  if (typeof criteria.minEquity === "number") {
+    searchCriteria.valuation = searchCriteria.valuation || {};
+    searchCriteria.valuation.equityPercent = { min: criteria.minEquity };
+  }
+
+  // General property type handling
+  if (Array.isArray(criteria.propertyTypeList) && criteria.propertyTypeList.length > 0) {
+    searchCriteria.general = { propertyTypeDetail: { inList: criteria.propertyTypeList } };
+  } else if (criteria.propertyType) {
+    const labels: Record<string, string> = {
+      single_family: "Single Family",
+      condominium: "Condominium Unit",
+      townhouse: "Townhouse",
+      multi_family: "Multi Family",
+    };
+    searchCriteria.general = {
+      propertyTypeDetail: { inList: [labels[criteria.propertyType] ?? criteria.propertyType] },
+    };
+  }
+
+  // 4) Build options (preserve skipTrace boolean behavior)
+  const skip = options.skip ?? (page - 1) * perPage;
+  const take = options.take ?? perPage;
+  const requestOptions: any = {
+    skip,
+    take,
+    skipTrace: options.skipTrace ?? true,
+    includeBuilding: true,
+    includeTaxAssessor: true,
+    includePropertyDetails: true,
+    includeAssessment: true,
+  };
+
+  // Final request body
+  const requestBody = { searchCriteria, options: requestOptions };
+
+  // 5) Logging for verification
+  console.log("➡️ Final quickLists sent to BatchData:", requestBody.searchCriteria.quickLists ?? "(none)");
+  console.log(`📋 Full request body:`, JSON.stringify(requestBody, null, 2));
+
+  // 6) Make the request — use unified endpoint once
+  try {
+    const response = await this.makeRequest("/api/v1/property/search", requestBody);
+
+    // Logging summary
+    console.log(`📊 BatchLeads API response:`, {
+      propertiesFound: response.results?.properties?.length || 0,
+      totalResults: response.meta?.totalResults || 0,
+      page: page,
+    });
+
+    // Debug first property specifically (if any)
+    if (response.results?.properties?.length > 0) {
+      const firstProperty = response.results.properties[0];
+      console.log(`🏠 FIRST PROPERTY RAW DATA:`);
+      console.log(JSON.stringify(firstProperty, null, 2));
+      console.log(`🏠 FIRST PROPERTY FIELD ANALYSIS:`, {
+        topLevel: Object.keys(firstProperty),
+        address: Object.keys(firstProperty.address || {}),
+        building: Object.keys(firstProperty.building || {}),
+        owner: Object.keys(firstProperty.owner || {}),
+        valuation: Object.keys(firstProperty.valuation || {}),
+        assessment: Object.keys(firstProperty.assessment || {}),
+        taxAssessor: Object.keys(firstProperty.taxAssessor || {}),
+        propertyDetails: Object.keys(firstProperty.propertyDetails || {}),
+        quickLists: Object.keys(firstProperty.quickLists || {}),
+      });
     }
 
-    // Add property type filters
-    if (criteria.propertyType === "single_family") {
-      // Don't override quicklists, just ensure we're looking for residential
-      if (!requestBody.searchCriteria.property) {
-        requestBody.searchCriteria.property = {};
-      }
-      requestBody.searchCriteria.property.propertyType = "single-family";
-    } else if (criteria.propertyType === "multi_family") {
-      if (!requestBody.searchCriteria.property) {
-        requestBody.searchCriteria.property = {};
-      }
-      requestBody.searchCriteria.property.propertyType = "multi-family";
-    } else if (criteria.propertyType === "condo") {
-      if (!requestBody.searchCriteria.property) {
-        requestBody.searchCriteria.property = {};
-      }
-      requestBody.searchCriteria.property.propertyType = "condominium";
-    }
+    // 7) Return consistent transformed shape expected by callers
+    return {
+      success: true,
+      data: response.results?.properties || [],
+      total_results: response.meta?.totalResults || 0,
+      page: page,
+      per_page: perPage,
+    };
+  } catch (err: any) {
+    console.error("BatchLeadsClient.searchProperties error:", err?.response?.data ?? err.message ?? err);
+    throw err;
+  }
+}
 
-    // Add equity filter if specified
-    if (
-      criteria.minEquity ||
-      (criteria.quickLists && criteria.quickLists.includes("high-equity"))
-    ) {
-      if (!requestBody.searchCriteria.valuation) {
-        requestBody.searchCriteria.valuation = {};
-      }
-      requestBody.searchCriteria.valuation.equityPercent = {
-        min: criteria.minEquity || 70,
-      };
-    }
 
-    // Add bedroom filter - this should filter at API level
-    if (criteria.minBedrooms) {
-      if (!requestBody.searchCriteria.building) {
-        requestBody.searchCriteria.building = {};
-      }
-      // Try multiple filter approaches for better API compatibility
-      requestBody.searchCriteria.building.bedrooms = {
-        min: criteria.minBedrooms,
-        gte: criteria.minBedrooms, // Also try "greater than or equal" syntax
-      };
 
-      // Also try filtering out null/empty bedroom data
-      requestBody.searchCriteria.building.bedroomsExists = true;
-
-      console.log(
-        `🛏️ Added comprehensive bedroom filter: min ${criteria.minBedrooms} bedrooms (with existence check)`,
-      );
-    }
 
     // Add equity filter
     if (criteria.minEquity) {
