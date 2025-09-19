@@ -31,11 +31,12 @@ interface PropertyCardProps {
 }
 
 export default function PropertyCard({ property, contact, isOpen, onClose }: PropertyCardProps) {
+  // Early return before hooks to avoid hook ordering issues
+  if (!property) return null;
+
   const [analysisResult, setAnalysisResult] = useState<DealAnalysisResult | null>(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const { toast } = useToast();
-
-  if (!property) return null;
 
   // Mutation for deal analysis
   const analyzeDealMutation = useMutation({
