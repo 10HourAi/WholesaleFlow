@@ -3,6 +3,10 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { 
   MapPin, 
   Home, 
@@ -14,9 +18,10 @@ import {
   TrendingUp,
   FileText,
   MessageSquare,
-  Calculator
+  Calculator,
+  Loader2
 } from "lucide-react";
-import type { Property, Contact } from "@shared/schema";
+import type { Property, Contact, DealAnalysisRequest, DealAnalysisResult } from "@shared/schema";
 
 interface PropertyCardProps {
   property: Property | null;
@@ -26,7 +31,55 @@ interface PropertyCardProps {
 }
 
 export default function PropertyCard({ property, contact, isOpen, onClose }: PropertyCardProps) {
+  const [analysisResult, setAnalysisResult] = useState<DealAnalysisResult | null>(null);
+  const [showAnalysis, setShowAnalysis] = useState(false);
+  const { toast } = useToast();
+
   if (!property) return null;
+
+  // Mutation for deal analysis
+  const analyzeDealMutation = useMutation({
+    mutationFn: async (request: DealAnalysisRequest) => {
+      const response = await apiRequest("POST", "/api/deals/analyze", request);
+      return await response.json();
+    },
+    onSuccess: (data: any) => {
+      if (data.success) {
+        setAnalysisResult(data.data);
+        setShowAnalysis(true);
+        toast({
+          title: "Deal Analysis Complete",
+          description: "AI analysis has been generated successfully.",
+        });
+      } else {
+        toast({
+          title: "Analysis Failed",
+          description: data.message || "Failed to analyze deal.",
+          variant: "destructive",
+        });
+      }
+    },
+    onError: (error: any) => {
+      console.error("Analysis error:", error);
+      toast({
+        title: "Analysis Failed",
+        description: "Unable to analyze deal. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAnalyzeDeal = () => {
+    const analysisRequest: DealAnalysisRequest = {
+      propertyId: property.id,
+      analysisOptions: {
+        includeComps: true,
+        includeRepairEstimates: true,
+        includeRentals: false,
+      },
+    };
+    analyzeDealMutation.mutate(analysisRequest);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -280,13 +333,149 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
           </Card>
         </div>
 
-        <Separator className="my-4" />
+        {/* Deal Analysis Results */}
+        {showAnalysis && analysisResult && (
+          <>
+            <Separator className="my-4" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Calculator className="w-5 h-5 text-blue-600" />
+                  AI Deal Analysis
+                </h3>
+                <Badge variant="outline" className="text-xs">
+                  Confidence: {analysisResult.confidence.toUpperCase()}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Summary */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Executive Summary</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-slate-600">{analysisResult.summary}</p>
+                  </CardContent>
+                </Card>
+
+                {/* Offer Range */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <DollarSign className="w-4 h-4" />
+                      Recommended Offers
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span>Conservative:</span>
+                      <span className="font-mono">${analysisResult.offerRange.min.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span>Recommended:</span>
+                      <span className="font-mono font-semibold text-green-600">${analysisResult.offerRange.recommended.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span>Aggressive:</span>
+                      <span className="font-mono">${analysisResult.offerRange.max.toLocaleString()}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Financial Projection */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <TrendingUp className="w-4 h-4" />
+                      Financial Projection
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span>Purchase Price:</span>
+                      <span className="font-mono">${analysisResult.financialProjection.purchasePrice.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span>Repair Costs:</span>
+                      <span className="font-mono">${analysisResult.financialProjection.repairCosts.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span>Total Investment:</span>
+                      <span className="font-mono">${analysisResult.financialProjection.totalInvestment.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-semibold text-green-600 border-t pt-1">
+                      <span>Estimated Profit:</span>
+                      <span className="font-mono">${analysisResult.financialProjection.estimatedProfit.toLocaleString()}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Exit Strategies */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Exit Strategies</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {analysisResult.exitStrategies.map((strategy, index) => (
+                      <div key={index} className="flex justify-between text-xs">
+                        <span className="capitalize">{strategy.strategy.replace(/_/g, " ")}</span>
+                        <span className="font-mono">{strategy.roi}% ROI</span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Risk Factors */}
+              {analysisResult.riskFactors.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm text-amber-600">Risk Factors</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="text-xs text-slate-600 space-y-1">
+                      {analysisResult.riskFactors.map((risk, index) => (
+                        <li key={index} className="flex items-start gap-2">
+                          <span className="text-amber-500 mt-0.5">•</span>
+                          {risk}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              )}
+
+              <div className="flex justify-end">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setShowAnalysis(false)}
+                  data-testid="button-hide-analysis"
+                >
+                  Hide Analysis
+                </Button>
+              </div>
+            </div>
+            <Separator className="my-4" />
+          </>
+        )}
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3">
-          <Button variant="outline" size="sm" data-testid="button-analyze-deal">
-            <Calculator className="w-4 h-4 mr-2" />
-            Analyze Deal
+          <Button 
+            variant="outline" 
+            size="sm" 
+            data-testid="button-analyze-deal"
+            onClick={handleAnalyzeDeal}
+            disabled={analyzeDealMutation.isPending}
+          >
+            {analyzeDealMutation.isPending ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Calculator className="w-4 h-4 mr-2" />
+            )}
+            {analyzeDealMutation.isPending ? "Analyzing..." : "Analyze Deal"}
           </Button>
           <Button variant="outline" size="sm" data-testid="button-generate-contract">
             <FileText className="w-4 h-4 mr-2" />
