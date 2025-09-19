@@ -14,6 +14,19 @@ export interface IStorage {
   getProperty(id: string, userId: string): Promise<Property | undefined>;
   createProperty(property: InsertProperty & { userId: string }): Promise<Property>;
   updateProperty(id: string, userId: string, updates: Partial<Property>): Promise<Property>;
+  updatePropertyAnalysis(propertyId: string, analysisData: {
+    strategy?: string;
+    isDeal?: boolean;
+    analysisArv?: number;
+    rehabCost?: number;
+    analysisMaxOfferPrice?: number;
+    profitMarginPct?: number;
+    riskLevel?: string;
+    analysisConfidence?: number;
+    keyAssumptions?: any;
+    compSummary?: any;
+    nextActions?: any;
+  }): Promise<Property>;
   deleteProperty(id: string, userId: string): Promise<void>;
   searchProperties(userId: string, criteria: { city?: string; state?: string; status?: string; leadType?: string }): Promise<Property[]>;
 
@@ -98,6 +111,31 @@ export class DatabaseStorage implements IStorage {
       .update(properties)
       .set({ ...updates, updatedAt: new Date() })
       .where(and(eq(properties.id, id), eq(properties.userId, userId)))
+      .returning();
+    if (!property) throw new Error("Property not found");
+    return property;
+  }
+
+  async updatePropertyAnalysis(propertyId: string, analysisData: {
+    strategy?: string;
+    isDeal?: boolean;
+    analysisArv?: number;
+    rehabCost?: number;
+    analysisMaxOfferPrice?: number;
+    profitMarginPct?: number;
+    riskLevel?: string;
+    analysisConfidence?: number;
+    keyAssumptions?: any;
+    compSummary?: any;
+    nextActions?: any;
+  }): Promise<Property> {
+    const [property] = await db
+      .update(properties)
+      .set({ 
+        ...analysisData,
+        updatedAt: new Date() 
+      })
+      .where(eq(properties.id, propertyId))
       .returning();
     if (!property) throw new Error("Property not found");
     return property;
