@@ -1,0 +1,67 @@
+import OpenAI from "openai";
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+const schema = {
+  name: "DealAnalysis",
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    properties: {
+      address: { type: "string" },
+      strategy: { type: "string", enum: ["wholesale","flip","rental","wholetail"] },
+      is_deal: { type: "boolean" },
+      arv: { type: "number" },
+      rehab_cost: { type: "number" },
+      max_offer_price: { type: "number" },
+      profit_margin_pct: { type: "number" },
+      risk_level: { type: "string", enum: ["low","medium","high"] },
+      confidence: { type: "number", minimum: 0, maximum: 1 },
+      key_assumptions: { type: "array", items: { type: "string" } },
+      comp_summary: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            addr: { type: "string" },
+            sold_price: { type: "number" },
+            dist_mi: { type: "number" },
+            dom: { type: "number" }
+          },
+          required: ["addr","sold_price"]
+        }
+      },
+      next_actions: { type: "array", items: { type: "string" } }
+    },
+    required: ["address","is_deal","arv","rehab_cost","max_offer_price","confidence"]
+  },
+  strict: true
+};
+
+export async function analyzeDeal({ address, rawBatchData }) {
+  const system = `You are a conservative real-estate acquisitions analyst. 
+Return ONLY JSON that matches the provided schema. 
+Assume missing facts conservatively and state assumptions. 
+If insufficient info, set is_deal=false and explain in key_assumptions.`;
+
+  const user = `
+Address: ${address}
+Source data (verbatim JSON from BatchData): 
+${JSON.stringify(rawBatchData).slice(0, 12000)}
+Task:
+- Estimate ARV, rehab_cost, max_offer_price for a profitable ${"wholesale/flip/rental"} strategy (pick best).
+- Use conservative comps (<=0.7 miles, last 6–9 months) if available, otherwise say "insufficient".
+- Target profit margin ≥ 12% for flips, ≥ $10k assignment wholesale, ≥ 1% rent-to-price monthly for rentals.
+- Fill all fields; never return text outside JSON.
+`;
+
+  const res = await openai.responses.create({
+    model: "gpt-4.1-mini", // or your chosen model
+    input: [{ role: "system", content: system }, { role: "user", content: user }],
+    response_format: { type: "json_schema", json_schema: schema }
+  });
+
+  // Parse and store
+  const json = JSON.parse(res.output[0].content[0].text);
+  return json;
+}

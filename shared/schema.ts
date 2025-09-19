@@ -58,6 +58,20 @@ export const properties = pgTable("properties", {
   confidenceScore: integer("confidence_score"), // Changed from motivationScore to match BatchData
   equityBalance: text("equity_balance"), // Equity balance from BatchData valuation
   distressedIndicator: text("distressed_indicator"),
+  
+  // Deal Analysis Results
+  strategy: text("strategy"), // wholesale, flip, rental, wholetail
+  isDeal: boolean("is_deal"),
+  analysisArv: integer("analysis_arv"), // Separate from the text ARV field
+  rehabCost: integer("rehab_cost"),
+  analysisMaxOfferPrice: integer("analysis_max_offer_price"), // Separate from the text maxOffer field
+  profitMarginPct: decimal("profit_margin_pct", { precision: 5, scale: 2 }),
+  riskLevel: text("risk_level"), // low, medium, high
+  analysisConfidence: decimal("analysis_confidence", { precision: 3, scale: 2 }), // 0.0 to 1.0
+  keyAssumptions: jsonb("key_assumptions"), // Array of strings
+  compSummary: jsonb("comp_summary"), // Array of comp objects
+  nextActions: jsonb("next_actions"), // Array of strings
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -114,59 +128,32 @@ export const deals = pgTable("deals", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Deal Analysis schemas (not database tables, just API types)
+// Deal Analysis schemas (matching OpenAI structured output)
 export const dealAnalysisRequestSchema = z.object({
   propertyId: z.string().uuid(),
-  analysisOptions: z.object({
-    includeComps: z.boolean().optional().default(true),
-    includeRepairEstimates: z.boolean().optional().default(true),
-    includeRentals: z.boolean().optional().default(false),
-  }).optional(),
+});
+
+// Comp summary item schema
+export const compSummaryItemSchema = z.object({
+  addr: z.string(),
+  sold_price: z.number(),
+  dist_mi: z.number().optional(),
+  dom: z.number().optional(), // days on market
 });
 
 export const dealAnalysisResultSchema = z.object({
-  propertyId: z.string().uuid(),
-  summary: z.string(),
-  offerRange: z.object({
-    min: z.number(),
-    max: z.number(),
-    recommended: z.number(),
-  }),
-  repairEstimates: z.object({
-    cosmetic: z.number(),
-    structural: z.number(),
-    total: z.number(),
-    confidence: z.enum(["low", "medium", "high"]),
-  }),
-  financialProjection: z.object({
-    purchasePrice: z.number(),
-    repairCosts: z.number(),
-    totalInvestment: z.number(),
-    arv: z.number(),
-    estimatedProfit: z.number(),
-    profitMargin: z.number(),
-  }),
-  marketAnalysis: z.object({
-    compsSummary: z.string(),
-    marketTrend: z.enum(["declining", "stable", "improving"]),
-    avgDaysOnMarket: z.number().optional(),
-    pricePerSqFt: z.number().optional(),
-  }),
-  riskFactors: z.array(z.string()),
-  timeline: z.object({
-    acquisitionDays: z.number(),
-    repairDays: z.number(),
-    saleDays: z.number(),
-    totalDays: z.number(),
-  }),
-  exitStrategies: z.array(z.object({
-    strategy: z.enum(["wholesale", "fix_and_flip", "rental", "owner_finance"]),
-    roi: z.number(),
-    notes: z.string(),
-  })),
-  notes: z.string(),
-  confidence: z.enum(["low", "medium", "high"]),
-  analysisDate: z.string(),
+  address: z.string(),
+  strategy: z.enum(["wholesale", "flip", "rental", "wholetail"]),
+  is_deal: z.boolean(),
+  arv: z.number(),
+  rehab_cost: z.number(),
+  max_offer_price: z.number(),
+  profit_margin_pct: z.number(),
+  risk_level: z.enum(["low", "medium", "high"]),
+  confidence: z.number().min(0).max(1),
+  key_assumptions: z.array(z.string()),
+  comp_summary: z.array(compSummaryItemSchema),
+  next_actions: z.array(z.string()),
 });
 
 export type DealAnalysisRequest = z.infer<typeof dealAnalysisRequestSchema>;
