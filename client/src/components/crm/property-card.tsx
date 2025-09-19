@@ -13,7 +13,8 @@ import {
   Calendar, 
   TrendingUp,
   FileText,
-  MessageSquare
+  MessageSquare,
+  Calculator
 } from "lucide-react";
 import type { Property, Contact } from "@shared/schema";
 
@@ -283,15 +284,19 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" data-testid="button-analyze-deal">
+            <Calculator className="w-4 h-4 mr-2" />
+            Analyze Deal
+          </Button>
+          <Button variant="outline" size="sm" data-testid="button-generate-contract">
             <FileText className="w-4 h-4 mr-2" />
             Generate Contract
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" data-testid="button-start-conversation">
             <MessageSquare className="w-4 h-4 mr-2" />
             Start Conversation
           </Button>
-          <Button onClick={onClose}>
+          <Button onClick={onClose} data-testid="button-close-property-card">
             Close
           </Button>
         </div>
