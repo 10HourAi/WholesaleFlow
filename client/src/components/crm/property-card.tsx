@@ -344,108 +344,132 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                   <Calculator className="w-5 h-5 text-blue-600" />
                   AI Deal Analysis
                 </h3>
-                <Badge variant="outline" className="text-xs">
-                  Confidence: {analysisResult.confidence.toUpperCase()}
-                </Badge>
+                <div className="flex gap-2">
+                  <Badge variant={analysisResult.is_deal ? "default" : "secondary"} className="text-xs">
+                    {analysisResult.is_deal ? "✓ DEAL" : "✗ NO DEAL"}
+                  </Badge>
+                  <Badge variant="outline" className="text-xs">
+                    {Math.round(analysisResult.confidence * 100)}% Confident
+                  </Badge>
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Summary */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Executive Summary</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-slate-600">{analysisResult.summary}</p>
-                  </CardContent>
-                </Card>
-
-                {/* Offer Range */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <DollarSign className="w-4 h-4" />
-                      Recommended Offers
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex justify-between text-xs">
-                      <span>Conservative:</span>
-                      <span className="font-mono">${analysisResult.offerRange.min.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span>Recommended:</span>
-                      <span className="font-mono font-semibold text-green-600">${analysisResult.offerRange.recommended.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span>Aggressive:</span>
-                      <span className="font-mono">${analysisResult.offerRange.max.toLocaleString()}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Financial Projection */}
+                {/* Strategy & Key Metrics */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-sm flex items-center gap-2">
                       <TrendingUp className="w-4 h-4" />
-                      Financial Projection
+                      Deal Summary
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     <div className="flex justify-between text-xs">
-                      <span>Purchase Price:</span>
-                      <span className="font-mono">${analysisResult.financialProjection.purchasePrice.toLocaleString()}</span>
+                      <span>Strategy:</span>
+                      <span className="font-semibold capitalize">{analysisResult.strategy}</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span>Repair Costs:</span>
-                      <span className="font-mono">${analysisResult.financialProjection.repairCosts.toLocaleString()}</span>
+                      <span>ARV:</span>
+                      <span className="font-mono">${analysisResult.arv.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-xs">
-                      <span>Total Investment:</span>
-                      <span className="font-mono">${analysisResult.financialProjection.totalInvestment.toLocaleString()}</span>
+                      <span>Max Offer:</span>
+                      <span className="font-mono">${analysisResult.max_offer_price.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span>Rehab Cost:</span>
+                      <span className="font-mono">${analysisResult.rehab_cost.toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-xs font-semibold text-green-600 border-t pt-1">
-                      <span>Estimated Profit:</span>
-                      <span className="font-mono">${analysisResult.financialProjection.estimatedProfit.toLocaleString()}</span>
+                      <span>Profit Margin:</span>
+                      <span className="font-mono">{analysisResult.profit_margin_pct}%</span>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Exit Strategies */}
+                {/* Risk Assessment */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-sm">Exit Strategies</CardTitle>
+                    <CardTitle className="text-sm flex items-center gap-2">
+                      <DollarSign className="w-4 h-4" />
+                      Risk Assessment
+                    </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {analysisResult.exitStrategies.map((strategy, index) => (
-                      <div key={index} className="flex justify-between text-xs">
-                        <span className="capitalize">{strategy.strategy.replace(/_/g, " ")}</span>
-                        <span className="font-mono">{strategy.roi}% ROI</span>
+                    <div className="flex justify-between text-xs">
+                      <span>Risk Level:</span>
+                      <Badge 
+                        variant={analysisResult.risk_level === 'low' ? 'default' : analysisResult.risk_level === 'medium' ? 'secondary' : 'destructive'} 
+                        className="text-xs capitalize"
+                      >
+                        {analysisResult.risk_level}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span>Total Investment:</span>
+                      <span className="font-mono">${(analysisResult.max_offer_price + analysisResult.rehab_cost).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-xs">
+                      <span>Estimated Profit:</span>
+                      <span className="font-mono text-green-600">${(analysisResult.arv - analysisResult.max_offer_price - analysisResult.rehab_cost).toLocaleString()}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Key Assumptions */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Key Assumptions</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="text-xs text-slate-600 space-y-1">
+                      {analysisResult.key_assumptions.map((assumption, index) => (
+                        <li key={index} className="flex items-start gap-2">
+                          <span className="text-blue-500 mt-0.5">•</span>
+                          {assumption}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+
+                {/* Comparable Sales */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-sm">Comparable Sales</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {analysisResult.comp_summary.map((comp, index) => (
+                      <div key={index} className="text-xs border-b pb-2 last:border-b-0">
+                        <div className="font-semibold">{comp.addr}</div>
+                        <div className="flex justify-between">
+                          <span>${comp.sold_price.toLocaleString()}</span>
+                          <span className="text-slate-500">
+                            {comp.dist_mi ? `${comp.dist_mi}mi` : ''} {comp.dom ? `• ${comp.dom} DOM` : ''}
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Risk Factors */}
-              {analysisResult.riskFactors.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm text-amber-600">Risk Factors</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ul className="text-xs text-slate-600 space-y-1">
-                      {analysisResult.riskFactors.map((risk, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <span className="text-amber-500 mt-0.5">•</span>
-                          {risk}
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-              )}
+              {/* Next Actions */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm text-blue-600">Next Actions</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="text-xs text-slate-600 space-y-1">
+                    {analysisResult.next_actions.map((action, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="text-blue-500 mt-0.5">→</span>
+                        {action}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
 
               <div className="flex justify-end">
                 <Button 
