@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import path from "path";
 import { storage } from "./storage";
-import { insertPropertySchema, insertContactSchema, insertConversationSchema, insertMessageSchema, insertDocumentSchema, insertDealSchema } from "@shared/schema";
+import { insertPropertySchema, insertContactSchema, insertConversationSchema, insertMessageSchema, insertDocumentSchema, insertDealSchema, dealAnalysisRequestSchema } from "@shared/schema";
 import { generateLeadFinderResponse, generateDealAnalyzerResponse, generateNegotiationResponse, generateClosingResponse, generatePropertyLeads } from "./openai";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 
@@ -375,6 +375,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(deal);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
+    }
+  });
+
+  // Deal Analysis with OpenAI
+  app.post("/api/deals/analyze", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const validatedRequest = dealAnalysisRequestSchema.parse(req.body);
+      
+      // Get the property from storage
+      const property = await storage.getProperty(validatedRequest.propertyId, userId);
+      
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      // Call OpenAI analysis function
+      const { analyzeDealWithOpenAI } = await import("./openai");
+      const analysis = await analyzeDealWithOpenAI(property, validatedRequest.analysisOptions);
+      
+      res.json({
+        success: true,
+        data: analysis
+      });
+    } catch (error: any) {
+      console.error("Deal analysis error:", error);
+      res.status(500).json({ 
+        success: false,
+        message: error.message || "Failed to analyze deal"
+      });
     }
   });
 
