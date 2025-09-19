@@ -114,6 +114,64 @@ export const deals = pgTable("deals", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Deal Analysis schemas (not database tables, just API types)
+export const dealAnalysisRequestSchema = z.object({
+  propertyId: z.string().uuid(),
+  analysisOptions: z.object({
+    includeComps: z.boolean().optional().default(true),
+    includeRepairEstimates: z.boolean().optional().default(true),
+    includeRentals: z.boolean().optional().default(false),
+  }).optional(),
+});
+
+export const dealAnalysisResultSchema = z.object({
+  propertyId: z.string().uuid(),
+  summary: z.string(),
+  offerRange: z.object({
+    min: z.number(),
+    max: z.number(),
+    recommended: z.number(),
+  }),
+  repairEstimates: z.object({
+    cosmetic: z.number(),
+    structural: z.number(),
+    total: z.number(),
+    confidence: z.enum(["low", "medium", "high"]),
+  }),
+  financialProjection: z.object({
+    purchasePrice: z.number(),
+    repairCosts: z.number(),
+    totalInvestment: z.number(),
+    arv: z.number(),
+    estimatedProfit: z.number(),
+    profitMargin: z.number(),
+  }),
+  marketAnalysis: z.object({
+    compsSummary: z.string(),
+    marketTrend: z.enum(["declining", "stable", "improving"]),
+    avgDaysOnMarket: z.number().optional(),
+    pricePerSqFt: z.number().optional(),
+  }),
+  riskFactors: z.array(z.string()),
+  timeline: z.object({
+    acquisitionDays: z.number(),
+    repairDays: z.number(),
+    saleDays: z.number(),
+    totalDays: z.number(),
+  }),
+  exitStrategies: z.array(z.object({
+    strategy: z.enum(["wholesale", "fix_and_flip", "rental", "owner_finance"]),
+    roi: z.number(),
+    notes: z.string(),
+  })),
+  notes: z.string(),
+  confidence: z.enum(["low", "medium", "high"]),
+  analysisDate: z.string(),
+});
+
+export type DealAnalysisRequest = z.infer<typeof dealAnalysisRequestSchema>;
+export type DealAnalysisResult = z.infer<typeof dealAnalysisResultSchema>;
+
 export const insertPropertySchema = createInsertSchema(properties).omit({
   id: true,
   createdAt: true,
