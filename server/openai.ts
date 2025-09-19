@@ -106,7 +106,7 @@ export async function analyzeDealWithOpenAI(property: Property): Promise<DealAna
               dist_mi: { type: "number" },
               dom: { type: "number" }
             },
-            required: ["addr","sold_price"]
+            required: ["addr", "sold_price", "dist_mi", "dom"]
           }
         },
         next_actions: { type: "array", items: { type: "string" } }
