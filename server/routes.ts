@@ -391,9 +391,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Property not found" });
       }
 
-      // Call OpenAI analysis function
+      // Call OpenAI analysis function with new signature
       const { analyzeDealWithOpenAI } = await import("./openai");
-      const analysis = await analyzeDealWithOpenAI(property, validatedRequest.analysisOptions);
+      const analysis = await analyzeDealWithOpenAI(property);
+      
+      // Save analysis results to database
+      await storage.updatePropertyAnalysis(validatedRequest.propertyId, {
+        strategy: analysis.strategy,
+        isDeal: analysis.is_deal,
+        analysisArv: analysis.arv,
+        rehabCost: analysis.rehab_cost,
+        analysisMaxOfferPrice: analysis.max_offer_price,
+        profitMarginPct: analysis.profit_margin_pct,
+        riskLevel: analysis.risk_level,
+        analysisConfidence: analysis.confidence,
+        keyAssumptions: analysis.key_assumptions,
+        compSummary: analysis.comp_summary,
+        nextActions: analysis.next_actions
+      });
       
       res.json({
         success: true,
