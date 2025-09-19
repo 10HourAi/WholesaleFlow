@@ -8,10 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Plus, Download, Eye, MessageSquare, MoreHorizontal } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { Property, Contact } from "@shared/schema";
+import PropertyCard from "./property-card";
 
 export default function LeadsTable() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [isPropertyCardOpen, setIsPropertyCardOpen] = useState(false);
 
   const { data: properties = [] } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
@@ -43,6 +46,16 @@ export default function LeadsTable() {
 
   const getContactForProperty = (propertyId: string) => {
     return contacts.find(contact => contact.propertyId === propertyId);
+  };
+
+  const handleViewProperty = (property: Property) => {
+    setSelectedProperty(property);
+    setIsPropertyCardOpen(true);
+  };
+
+  const handleClosePropertyCard = () => {
+    setIsPropertyCardOpen(false);
+    setSelectedProperty(null);
   };
 
   const stats = {
@@ -183,13 +196,18 @@ export default function LeadsTable() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center space-x-2">
-                        <Button variant="ghost" size="sm">
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => handleViewProperty(property)}
+                          data-testid={`button-view-property-${property.id}`}
+                        >
                           <Eye className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" data-testid={`button-message-${property.id}`}>
                           <MessageSquare className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" data-testid={`button-more-${property.id}`}>
                           <MoreHorizontal className="w-4 h-4" />
                         </Button>
                       </div>
@@ -201,6 +219,14 @@ export default function LeadsTable() {
           </Table>
         )}
       </div>
+      
+      {/* Property Card Modal */}
+      <PropertyCard
+        property={selectedProperty}
+        contact={selectedProperty ? getContactForProperty(selectedProperty.id) : undefined}
+        isOpen={isPropertyCardOpen}
+        onClose={handleClosePropertyCard}
+      />
     </div>
   );
 }
