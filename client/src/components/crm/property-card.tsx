@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -36,7 +36,47 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
 
   const [analysisResult, setAnalysisResult] = useState<DealAnalysisResult | null>(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [hasExistingAnalysis, setHasExistingAnalysis] = useState(false);
   const { toast } = useToast();
+
+  // Helper function to transform database fields to DealAnalysisResult format
+  const transformPropertyToAnalysisResult = (prop: Property): DealAnalysisResult | null => {
+    if (!prop.strategy || prop.isDeal === null || !prop.analysisArv || !prop.rehabCost || 
+        !prop.analysisMaxOfferPrice || !prop.analysisConfidence) {
+      return null;
+    }
+
+    return {
+      address: `${prop.address}, ${prop.city}, ${prop.state}`,
+      strategy: prop.strategy as "wholesale" | "flip" | "rental" | "wholetail",
+      is_deal: prop.isDeal,
+      arv: prop.analysisArv,
+      rehab_cost: prop.rehabCost,
+      max_offer_price: prop.analysisMaxOfferPrice,
+      profit_margin_pct: Number(prop.profitMarginPct) || 0,
+      risk_level: (prop.riskLevel as "low" | "medium" | "high") || "medium",
+      confidence: Number(prop.analysisConfidence),
+      key_assumptions: (prop.keyAssumptions as string[]) || [],
+      comp_summary: (prop.compSummary as any[]) || [],
+      next_actions: (prop.nextActions as string[]) || [],
+    };
+  };
+
+  // Check for existing analysis results when property changes
+  useEffect(() => {
+    if (property) {
+      const cachedResult = transformPropertyToAnalysisResult(property);
+      if (cachedResult) {
+        setAnalysisResult(cachedResult);
+        setShowAnalysis(true);
+        setHasExistingAnalysis(true);
+      } else {
+        setAnalysisResult(null);
+        setShowAnalysis(false);
+        setHasExistingAnalysis(false);
+      }
+    }
+  }, [property]);
 
   // Mutation for deal analysis
   const analyzeDealMutation = useMutation({
@@ -48,9 +88,10 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
       if (data.success) {
         setAnalysisResult(data.data);
         setShowAnalysis(true);
+        setHasExistingAnalysis(true);
         toast({
           title: "Deal Analysis Complete",
-          description: "AI analysis has been generated successfully.",
+          description: "New AI analysis has been generated and saved.",
         });
       } else {
         toast({
@@ -500,7 +541,7 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
             ) : (
               <Calculator className="w-4 h-4 mr-2" />
             )}
-            {analyzeDealMutation.isPending ? "Analyzing..." : "Analyze Deal"}
+            {analyzeDealMutation.isPending ? "Analyzing..." : hasExistingAnalysis ? "Re-analyze Deal" : "Analyze Deal"}
           </Button>
           <Button variant="outline" size="sm" data-testid="button-generate-contract">
             <FileText className="w-4 h-4 mr-2" />
