@@ -907,18 +907,63 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
 
     // Call real BatchData API for seller leads
     try {
-      const searchCriteria: any = {
-        location: location,
-        sellerType: wizardData.sellerType,
-        propertyType: wizardData.propertyType,
-        minBedrooms: wizardData.minBedrooms,
-        maxPrice: wizardData.maxPrice,
-        minPrice: wizardData.minPrice,
+      // Build searchCriteria in a shape backend expects.
+      // - send sellerTypes as an array (backend merges to quickLists)
+      // - always include a canonical 'location' string and optional 'locations' array
+      const sellerTypeMap: Record<string, string> = {
+        distressed: "preforeclosure",
+        absentee: "out-of-state-absentee-owner",
+        high_equity: "high-equity",
+        inherited: "inherited",
+        tired_landlord: "tired-landlord",
+        corporate: "corporate-owned",
       };
+
+      const apiSellerType = wizardData.sellerType
+        ? sellerTypeMap[wizardData.sellerType] || wizardData.sellerType
+        : undefined;
+
+      const searchCriteria: any = {};
+
+      // Normalize location / locations
       if (locations && locations.length > 0) {
         searchCriteria.locations = locations;
+        searchCriteria.location = locations[0];
+      } else {
+        searchCriteria.location = location;
       }
 
+      // property type
+      if (wizardData.propertyType) {
+        searchCriteria.propertyType = wizardData.propertyType;
+        // also provide a propertyTypeList (BatchData label) for extra compatibility
+        const propertyTypeMap: Record<string, string> = {
+          single_family: "Single Family",
+          multi_family: "Multi Family",
+          condo: "Condominium Unit",
+          townhouse: "Townhouse",
+        };
+        searchCriteria.propertyTypeList = [
+          propertyTypeMap[wizardData.propertyType] || wizardData.propertyType,
+        ];
+      }
+
+      // numeric filters (ensure numbers)
+      if (wizardData.minBedrooms != null) {
+        searchCriteria.minBedrooms =
+          Number(wizardData.minBedrooms) || undefined;
+      }
+      if (wizardData.maxPrice != null) {
+        searchCriteria.maxPrice = Number(wizardData.maxPrice) || undefined;
+      }
+      if (wizardData.minPrice != null) {
+        searchCriteria.minPrice = Number(wizardData.minPrice) || undefined;
+      }
+
+      // send sellerTypes as array (backend expects an array)
+      if (apiSellerType) {
+        searchCriteria.sellerTypes = [apiSellerType];
+      }
       console.log(
         "🔍 Calling BatchData API for seller leads with criteria:",
         searchCriteria,
