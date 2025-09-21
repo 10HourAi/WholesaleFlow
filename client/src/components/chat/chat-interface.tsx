@@ -197,7 +197,19 @@ const PropertyCard = ({ content }: { content: string }) => {
     }
 
     try {
-      const result = await apiRequest("POST", "/api/properties", propertyData);
+      const response = await apiRequest("POST", "/api/properties", propertyData);
+      const result = await response.json();
+      
+      // Check if property already exists
+      if (response.status === 409 && result.isDuplicate) {
+        toast({
+          title: "Property Already in CRM",
+          description: result.message,
+          variant: "destructive",
+        });
+        return;
+      }
+      
       console.log("🏠 Property successfully added to CRM:", result);
 
       toast({
@@ -210,6 +222,20 @@ const PropertyCard = ({ content }: { content: string }) => {
       await queryClient.refetchQueries({ queryKey: ["/api/properties"] });
     } catch (error: any) {
       console.error("Error adding property to CRM:", error);
+      
+      // Handle duplicate detection from error response
+      if (error.response && error.response.status === 409) {
+        const errorData = await error.response.json();
+        if (errorData.isDuplicate) {
+          toast({
+            title: "Property Already in CRM",
+            description: errorData.message,
+            variant: "destructive",
+          });
+          return;
+        }
+      }
+      
       toast({
         title: "Error",
         description: "Failed to add property to CRM. Please try again.",
