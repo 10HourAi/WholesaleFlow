@@ -52,6 +52,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertPropertySchema.parse(req.body);
+      
+      // Check for duplicate property
+      const existingProperty = await storage.findDuplicateProperty(
+        userId,
+        validatedData.address,
+        validatedData.city,
+        validatedData.state
+      );
+      
+      if (existingProperty) {
+        return res.status(409).json({ 
+          isDuplicate: true,
+          message: `Property at ${validatedData.address}, ${validatedData.city}, ${validatedData.state} is already in your CRM.`,
+          existingProperty: existingProperty
+        });
+      }
+      
       const property = await storage.createProperty({
         ...validatedData,
         userId,

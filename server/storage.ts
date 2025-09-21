@@ -14,6 +14,7 @@ export interface IStorage {
   getProperty(id: string, userId: string): Promise<Property | undefined>;
   createProperty(property: InsertProperty & { userId: string }): Promise<Property>;
   updateProperty(id: string, userId: string, updates: Partial<Property>): Promise<Property>;
+  findDuplicateProperty(userId: string, address: string, city: string, state: string): Promise<Property | undefined>;
   updatePropertyAnalysis(propertyId: string, analysisData: {
     strategy?: string;
     isDeal?: boolean;
@@ -113,6 +114,19 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(properties.id, id), eq(properties.userId, userId)))
       .returning();
     if (!property) throw new Error("Property not found");
+    return property;
+  }
+
+  async findDuplicateProperty(userId: string, address: string, city: string, state: string): Promise<Property | undefined> {
+    const [property] = await db
+      .select()
+      .from(properties)
+      .where(and(
+        eq(properties.userId, userId),
+        eq(properties.address, address),
+        eq(properties.city, city),
+        eq(properties.state, state)
+      ));
     return property;
   }
 
