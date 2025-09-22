@@ -628,6 +628,18 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
 
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3">
+          {/* Show Analysis Button - appears when analysis exists but is hidden */}
+          {hasExistingAnalysis && !showAnalysis && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              data-testid="button-show-analysis"
+              onClick={() => setShowAnalysis(true)}
+            >
+              <TrendingUp className="w-4 h-4 mr-2" />
+              Show Analysis
+            </Button>
+          )}
           <Button 
             variant="outline" 
             size="sm" 
