@@ -114,7 +114,7 @@ export async function analyzeDealWithOpenAI(
         },
         next_actions: { type: "array", items: { type: "string" } }
       },
-      required: ["address","is_deal","arv","rehab_cost","max_offer_price","confidence"]
+      required: ["address","strategy","is_deal","arv","rehab_cost","max_offer_price","profit_margin_pct","confidence"]
     },
     strict: true
   };
