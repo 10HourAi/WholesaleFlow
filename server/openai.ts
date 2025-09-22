@@ -78,7 +78,10 @@ export async function generatePropertyLeads(location: string, criteria: string):
   return { properties: [] };
 }
 
-export async function analyzeDealWithOpenAI(property: Property): Promise<DealAnalysisResult> {
+export async function analyzeDealWithOpenAI(
+  property: Property, 
+  progressCallback?: (step: string, message: string, progress: number) => void
+): Promise<DealAnalysisResult> {
   const schema = {
     name: "DealAnalysis",
     schema: {
@@ -117,6 +120,8 @@ export async function analyzeDealWithOpenAI(property: Property): Promise<DealAna
   };
 
   try {
+    progressCallback?.('preparing', 'Preparing property data for analysis...', 10);
+    
     const openaiClient = getOpenAI();
 
     // Build comprehensive property context including BatchData-style information
@@ -138,6 +143,8 @@ export async function analyzeDealWithOpenAI(property: Property): Promise<DealAna
       confidence_score: property.confidenceScore
     };
 
+    progressCallback?.('analyzing', 'Sending data to AI for comprehensive analysis...', 30);
+
     const system = `You are a conservative real-estate acquisitions analyst. 
 Return ONLY JSON that matches the provided schema. 
 Assume missing facts conservatively and state assumptions. 
@@ -154,6 +161,8 @@ Task:
 - Fill all fields; never return text outside JSON.
 `;
 
+    progressCallback?.('processing', 'AI is analyzing market data and comparable sales...', 60);
+
     const response = await openaiClient.chat.completions.create({
       model: "gpt-4o",
       messages: [
@@ -164,6 +173,8 @@ Task:
       temperature: 0.1, // Very low temperature for consistent results
       response_format: { type: "json_schema", json_schema: schema }
     });
+
+    progressCallback?.('finalizing', 'Processing AI response and generating recommendations...', 80);
 
     const analysisContent = response.choices[0]?.message?.content;
     if (!analysisContent) {

@@ -473,7 +473,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Deal Analysis with OpenAI
+  // Deal Analysis with OpenAI (Server-Sent Events for streaming progress)
+  app.get("/api/deals/analyze/:propertyId/stream", isAuthenticated, async (req: any, res) => {
+    const userId = req.user.claims.sub;
+    const propertyId = req.params.propertyId;
+
+    // Set up Server-Sent Events
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+
+    const sendEvent = (event: string, data: any) => {
+      res.write(`event: ${event}\n`);
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    };
+
+    try {
+      // Get the property from storage
+      const property = await storage.getProperty(propertyId, userId);
+
+      if (!property) {
+        sendEvent('error', { message: 'Property not found' });
+        res.end();
+        return;
+      }
+
+      sendEvent('progress', { 
+        step: 'starting', 
+        message: 'Initializing deal analysis...',
+        progress: 0
+      });
+
+      // Call OpenAI analysis function with progress callback
+      const { analyzeDealWithOpenAI } = await import("./openai");
+      
+      const analysis = await analyzeDealWithOpenAI(property, (step: string, message: string, progress: number) => {
+        sendEvent('progress', { step, message, progress });
+      });
+
+      sendEvent('progress', { 
+        step: 'saving', 
+        message: 'Saving analysis results...',
+        progress: 90
+      });
+
+      // Save analysis results to database
+      await storage.updatePropertyAnalysis(propertyId, {
+        strategy: analysis.strategy,
+        isDeal: analysis.is_deal,
+        analysisArv: analysis.arv,
+        rehabCost: analysis.rehab_cost,
+        analysisMaxOfferPrice: analysis.max_offer_price,
+        profitMarginPct: analysis.profit_margin_pct,
+        riskLevel: analysis.risk_level,
+        analysisConfidence: analysis.confidence,
+        keyAssumptions: analysis.key_assumptions,
+        compSummary: analysis.comp_summary,
+        nextActions: analysis.next_actions,
+      });
+
+      sendEvent('complete', { 
+        success: true, 
+        data: analysis,
+        progress: 100
+      });
+
+    } catch (error: any) {
+      console.error("Deal analysis error:", error);
+      sendEvent('error', {
+        message: error.message || "Failed to analyze deal"
+      });
+    }
+
+    res.end();
+  });
+
+  // Deal Analysis with OpenAI (Traditional endpoint for backward compatibility)
   app.post("/api/deals/analyze", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
