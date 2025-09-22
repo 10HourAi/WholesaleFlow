@@ -3,7 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
-import { useState, useEffect } from "react";
+import { Progress } from "@/components/ui/progress";
+import { useState, useEffect, useRef } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +38,10 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
   const [analysisResult, setAnalysisResult] = useState<DealAnalysisResult | null>(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [hasExistingAnalysis, setHasExistingAnalysis] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamProgress, setStreamProgress] = useState(0);
+  const [streamMessage, setStreamMessage] = useState('');
+  const eventSourceRef = useRef<EventSource | null>(null);
   const { toast } = useToast();
 
   // Helper function to transform database fields to DealAnalysisResult format
@@ -111,16 +116,86 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
     },
   });
 
-  const handleAnalyzeDeal = () => {
-    const analysisRequest: DealAnalysisRequest = {
-      propertyId: property.id,
-      analysisOptions: {
-        includeComps: true,
-        includeRepairEstimates: true,
-        includeRentals: false,
-      },
+  // Stream-based deal analysis function
+  const startStreamAnalysis = async () => {
+    if (isStreaming || !property) return;
+    
+    setIsStreaming(true);
+    setStreamProgress(0);
+    setStreamMessage('Connecting to analysis service...');
+    
+    try {
+      const eventSource = new EventSource(
+        `/api/deals/analyze/${property.id}/stream`,
+        { withCredentials: true }
+      );
+      eventSourceRef.current = eventSource;
+
+      eventSource.addEventListener('progress', (event) => {
+        const data = JSON.parse(event.data);
+        setStreamProgress(data.progress);
+        setStreamMessage(data.message);
+      });
+
+      eventSource.addEventListener('complete', (event) => {
+        const data = JSON.parse(event.data);
+        if (data.success) {
+          setAnalysisResult(data.data);
+          setShowAnalysis(true);
+          setHasExistingAnalysis(true);
+          toast({
+            title: "Deal Analysis Complete",
+            description: "New AI analysis has been generated and saved.",
+          });
+        }
+        setIsStreaming(false);
+        eventSource.close();
+      });
+
+      eventSource.addEventListener('error', (event) => {
+        const data = JSON.parse(event.data);
+        toast({
+          title: "Analysis Failed",
+          description: data.message || "Failed to analyze deal.",
+          variant: "destructive",
+        });
+        setIsStreaming(false);
+        eventSource.close();
+      });
+
+      eventSource.onerror = () => {
+        toast({
+          title: "Connection Error",
+          description: "Lost connection to analysis service.",
+          variant: "destructive",
+        });
+        setIsStreaming(false);
+        eventSource.close();
+      };
+
+    } catch (error) {
+      console.error('Stream analysis error:', error);
+      setIsStreaming(false);
+      toast({
+        title: "Analysis Failed",
+        description: "Unable to start analysis. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Cleanup event source on unmount
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
     };
-    analyzeDealMutation.mutate(analysisRequest);
+  }, []);
+
+  const handleAnalyzeDeal = () => {
+    // Use streaming analysis by default
+    startStreamAnalysis();
   };
 
   const getStatusColor = (status: string) => {
@@ -527,6 +602,30 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
           </>
         )}
 
+        {/* Streaming Progress Indicator */}
+        {isStreaming && (
+          <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex items-center gap-3 mb-3">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+              <div className="flex-1">
+                <div className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  AI Deal Analysis in Progress
+                </div>
+                <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  {streamMessage}
+                </div>
+              </div>
+            </div>
+            <Progress 
+              value={streamProgress} 
+              className="w-full h-2"
+            />
+            <div className="text-xs text-blue-600 dark:text-blue-400 mt-1 text-right">
+              {streamProgress}%
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3">
           <Button 
@@ -534,14 +633,14 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
             size="sm" 
             data-testid="button-analyze-deal"
             onClick={handleAnalyzeDeal}
-            disabled={analyzeDealMutation.isPending}
+            disabled={isStreaming || analyzeDealMutation.isPending}
           >
-            {analyzeDealMutation.isPending ? (
+            {(isStreaming || analyzeDealMutation.isPending) ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
             ) : (
               <Calculator className="w-4 h-4 mr-2" />
             )}
-            {analyzeDealMutation.isPending ? "Analyzing..." : hasExistingAnalysis ? "Re-analyze Deal" : "Analyze Deal"}
+            {(isStreaming || analyzeDealMutation.isPending) ? "Analyzing..." : hasExistingAnalysis ? "Re-analyze Deal" : "Analyze Deal"}
           </Button>
           <Button variant="outline" size="sm" data-testid="button-generate-contract">
             <FileText className="w-4 h-4 mr-2" />
