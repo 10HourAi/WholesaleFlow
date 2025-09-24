@@ -164,13 +164,12 @@ Task:
     progressCallback?.('processing', 'AI is analyzing market data and comparable sales...', 60);
 
     const response = await openaiClient.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
       messages: [
         { role: "system", content: system },
         { role: "user", content: user }
       ],
       max_tokens: 2000,
-      temperature: 0.1, // Very low temperature for consistent results
       response_format: { type: "json_schema", json_schema: schema }
     });
 
@@ -235,10 +234,9 @@ export const openaiService = {
       const openaiClient = getOpenAI();
       
       const response = await openaiClient.chat.completions.create({
-        model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+        model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
         messages: messages as any,
-        max_tokens: 500,
-        temperature: 0.7
+        max_tokens: 500
       });
 
       return response.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
