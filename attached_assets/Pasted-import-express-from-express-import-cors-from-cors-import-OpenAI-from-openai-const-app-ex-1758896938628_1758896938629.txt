@@ -1,0 +1,89 @@
+import express from "express";
+import cors from "cors";
+import OpenAI from "openai";
+
+const app = express();
+app.use(cors());
+app.use(express.json());
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// --- simplified schema for *fast* analysis (no comps array) ---
+const response_format = {
+  type: "json_schema",
+  json_schema: {
+    name: "fast_deal_analysis",
+    strict: true,
+    schema: {
+      type: "object",
+      required: ["summary","arv_estimate","max_offer_estimate","is_deal","confidence","notes"],
+      properties: {
+        summary: { type: "string" },
+        arv_estimate: { type: "number" },
+        max_offer_estimate: { type: "number" },
+        is_deal: { type: "boolean" },
+        confidence: { type: "number" },
+        notes: { type: "string" }
+      },
+      additionalProperties: false
+    }
+  }
+};
+
+// --- Server-Sent Events endpoint for streaming tokens ---
+app.post("/api/analyze/stream", async (req, res) => {
+  // SSE headers
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+
+  const subject = req.body?.subject || {};
+  const system = "You are a real estate analyst. Return ONLY valid JSON matching the schema.";
+
+  // small helper to send SSE messages
+  const send = (event, data) => {
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${data}\n\n`);
+  };
+
+  try {
+    // notify UI we started
+    send("status", JSON.stringify({ stage: "starting" }));
+
+    // stream from OpenAI (Chat Completions)
+    const stream = await openai.chat.completions.create({
+      model: "gpt-5",
+      stream: true,
+      messages: [
+        { role: "system", content: system },
+        {
+          role: "user",
+          content:
+            `Analyze and return JSON for: ${JSON.stringify(subject)}.\n` +
+            `Focus on summary, ARV, MAO, deal/no-deal, confidence, notes.`
+        }
+      ],
+      response_format // strict JSON schema
+    });
+
+    // accumulate chunks to end as full JSON
+    let full = "";
+    for await (const chunk of stream) {
+      const delta = chunk.choices?.[0]?.delta?.content ?? "";
+      if (delta) {
+        full += delta;
+        // stream live characters to UI (optional)
+        send("delta", JSON.stringify({ text: delta }));
+      }
+    }
+
+    // send the completed JSON (so UI can parse once at the end)
+    send("done", full);
+    res.end();
+  } catch (err) {
+    send("error", JSON.stringify({ message: String(err) }));
+    res.end();
+  }
+});
+
+app.listen(3000, () => console.log("Server running on :3000"));

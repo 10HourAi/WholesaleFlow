@@ -149,10 +149,8 @@ export const dealAnalysisResultSchema = z.object({
   rehab_cost: z.number(),
   max_offer_price: z.number(),
   profit_margin_pct: z.number(),
-  risk_level: z.enum(["low", "medium", "high"]),
   confidence: z.number().min(0).max(1),
-  key_assumptions: z.array(z.string()),
-  comp_summary: z.array(compSummaryItemSchema),
+  summary: z.string(),
   next_actions: z.array(z.string()),
 });
 

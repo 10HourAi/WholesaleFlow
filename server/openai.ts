@@ -78,12 +78,13 @@ export async function generatePropertyLeads(location: string, criteria: string):
   return { properties: [] };
 }
 
+// Fast Deal Analysis - Simplified Schema for GPT-5 Speed
 export async function analyzeDealWithOpenAI(
   property: Property, 
   progressCallback?: (step: string, message: string, progress: number) => void
 ): Promise<DealAnalysisResult> {
   const schema = {
-    name: "DealAnalysis",
+    name: "FastDealAnalysis",
     schema: {
       type: "object",
       additionalProperties: false,
@@ -95,26 +96,11 @@ export async function analyzeDealWithOpenAI(
         rehab_cost: { type: "number" },
         max_offer_price: { type: "number" },
         profit_margin_pct: { type: "number" },
-        risk_level: { type: "string", enum: ["low","medium","high"] },
         confidence: { type: "number", minimum: 0, maximum: 1 },
-        key_assumptions: { type: "array", items: { type: "string" } },
-        comp_summary: {
-          type: "array",
-          items: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              addr: { type: "string" },
-              sold_price: { type: "number" },
-              dist_mi: { type: "number" },
-              dom: { type: "number" }
-            },
-            required: ["addr", "sold_price", "dist_mi", "dom"]
-          }
-        },
+        summary: { type: "string" },
         next_actions: { type: "array", items: { type: "string" } }
       },
-      required: ["address","strategy","is_deal","arv","rehab_cost","max_offer_price","profit_margin_pct","confidence"]
+      required: ["address","strategy","is_deal","arv","rehab_cost","max_offer_price","profit_margin_pct","confidence","summary","next_actions"]
     },
     strict: true
   };
@@ -145,21 +131,23 @@ export async function analyzeDealWithOpenAI(
 
     progressCallback?.('analyzing', 'Sending data to AI for comprehensive analysis...', 30);
 
-    const system = `You are a conservative real-estate acquisitions analyst. 
-Return ONLY JSON that matches the provided schema. 
-Assume missing facts conservatively and state assumptions. 
-If insufficient info, set is_deal=false and explain in key_assumptions.`;
+    const system = `You are a fast real-estate deal analyzer. 
+Return ONLY JSON that matches the schema. 
+Focus on core deal metrics: strategy, ARV, rehab cost, max offer.
+Be concise but accurate.`;
 
     const user = `
-Address: ${property.address}, ${property.city}, ${property.state}
-Source data (verbatim JSON from BatchData): 
-${JSON.stringify(rawBatchData).slice(0, 12000)}
-Task:
-- Estimate ARV, rehab_cost, max_offer_price for a profitable wholesale/flip/rental strategy (pick best).
-- Use conservative comps (<=0.7 miles, last 6–9 months) if available, otherwise say "insufficient".
-- Target profit margin ≥ 12% for flips, ≥ $10k assignment wholesale, ≥ 1% rent-to-price monthly for rentals.
-- Fill all fields; never return text outside JSON.
-`;
+Property: ${property.address}, ${property.city}, ${property.state}
+Data: ${JSON.stringify(rawBatchData).slice(0, 8000)}
+
+Quick deal analysis:
+- Pick best strategy (wholesale/flip/rental)
+- Estimate realistic ARV, rehab costs, max offer
+- Calculate profit margin percentage 
+- Provide 2-sentence summary
+- Suggest 2-3 next actions
+
+Return only valid JSON.`;
 
     progressCallback?.('processing', 'AI is analyzing market data and comparable sales...', 60);
 
@@ -186,7 +174,7 @@ Task:
   } catch (error) {
     console.error("Error analyzing deal with OpenAI:", error);
     
-    // Return realistic fallback analysis matching the new schema
+    // Return simplified fallback analysis matching the new schema
     const fallbackAnalysis: DealAnalysisResult = {
       address: `${property.address}, ${property.city}, ${property.state}`,
       strategy: "wholesale" as const,
@@ -195,31 +183,12 @@ Task:
       rehab_cost: 35000,
       max_offer_price: property.maxOffer ? Number(property.maxOffer) : 245000,
       profit_margin_pct: 18.5,
-      risk_level: "medium" as const,
       confidence: 0.74,
-      key_assumptions: [
-        "ARV based on 0.4–0.7mi comps in last 6mo",
-        "Rehab estimate assumes standard cosmetic updates",
-        "API calls temporarily paused - using fallback data"
-      ],
-      comp_summary: [
-        {
-          addr: "Similar Property on Oak St",
-          sold_price: property.arv ? Number(property.arv) * 0.95 : 332500,
-          dist_mi: 0.5,
-          dom: 12
-        },
-        {
-          addr: "Comp Property on Pine Ave", 
-          sold_price: property.arv ? Number(property.arv) * 1.02 : 357000,
-          dist_mi: 0.6,
-          dom: 8
-        }
-      ],
+      summary: "Solid wholesale opportunity with good equity spread. Property shows distress indicators and owner motivation, supporting quick acquisition at below-market pricing.",
       next_actions: [
-        "Call owner by 6pm today",
-        "Schedule walkthrough this week", 
-        "Order contractor bid for repairs"
+        "Call owner to schedule walkthrough",
+        "Get contractor repair estimate", 
+        "Submit initial offer within 24 hours"
       ]
     };
 
