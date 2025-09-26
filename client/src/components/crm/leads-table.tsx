@@ -15,6 +15,7 @@ export default function LeadsTable() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
   const [isPropertyCardOpen, setIsPropertyCardOpen] = useState(false);
+  const [isAddingLead, setIsAddingLead] = useState(false);
 
   const { data: properties = [] } = useQuery<Property[]>({
     queryKey: ["/api/properties"],
@@ -56,6 +57,13 @@ export default function LeadsTable() {
   const handleClosePropertyCard = () => {
     setIsPropertyCardOpen(false);
     setSelectedProperty(null);
+    setIsAddingLead(false);
+  };
+
+  const handleAddLead = () => {
+    setSelectedProperty(null);
+    setIsAddingLead(true);
+    setIsPropertyCardOpen(true);
   };
 
   const stats = {
@@ -70,7 +78,7 @@ export default function LeadsTable() {
       <div className="flex items-center justify-between p-4 bg-white border-b border-slate-200">
         <h1 className="text-lg font-semibold text-slate-900">CRM & Lead Management</h1>
         <div className="flex items-center space-x-3">
-          <Button>
+          <Button onClick={handleAddLead} data-testid="button-add-lead-header">
             <Plus className="w-4 h-4 mr-2" />
             Add Lead
           </Button>
@@ -131,7 +139,7 @@ export default function LeadsTable() {
               <CardContent className="pt-6 text-center">
                 <h3 className="text-lg font-medium text-slate-900 mb-2">No leads found</h3>
                 <p className="text-slate-600 mb-4">Start by adding your first property lead or adjust your filters.</p>
-                <Button>
+                <Button onClick={handleAddLead} data-testid="button-add-lead-empty">
                   <Plus className="w-4 h-4 mr-2" />
                   Add Lead
                 </Button>
@@ -226,6 +234,7 @@ export default function LeadsTable() {
         contact={selectedProperty ? getContactForProperty(selectedProperty.id) : undefined}
         isOpen={isPropertyCardOpen}
         onClose={handleClosePropertyCard}
+        isAddingLead={isAddingLead}
       />
     </div>
   );
