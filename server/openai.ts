@@ -89,18 +89,14 @@ export async function analyzeDealWithOpenAI(
       type: "object",
       additionalProperties: false,
       properties: {
-        address: { type: "string" },
-        strategy: { type: "string", enum: ["wholesale","flip","rental","wholetail"] },
-        is_deal: { type: "boolean" },
-        arv: { type: "number" },
-        rehab_cost: { type: "number" },
-        max_offer_price: { type: "number" },
-        profit_margin_pct: { type: "number" },
-        confidence: { type: "number", minimum: 0, maximum: 1 },
         summary: { type: "string" },
-        next_actions: { type: "array", items: { type: "string" } }
+        arv_estimate: { type: "number" },
+        max_offer_estimate: { type: "number" },
+        is_deal: { type: "boolean" },
+        confidence: { type: "number" },
+        notes: { type: "string" }
       },
-      required: ["address","strategy","is_deal","arv","rehab_cost","max_offer_price","profit_margin_pct","confidence","summary","next_actions"]
+      required: ["summary","arv_estimate","max_offer_estimate","is_deal","confidence","notes"]
     },
     strict: true
   };
@@ -176,20 +172,12 @@ Return only valid JSON.`;
     
     // Return simplified fallback analysis matching the new schema
     const fallbackAnalysis: DealAnalysisResult = {
-      address: `${property.address}, ${property.city}, ${property.state}`,
-      strategy: "wholesale" as const,
-      is_deal: true,
-      arv: property.arv ? Number(property.arv) : 350000,
-      rehab_cost: 35000,
-      max_offer_price: property.maxOffer ? Number(property.maxOffer) : 245000,
-      profit_margin_pct: 18.5,
-      confidence: 0.74,
       summary: "Solid wholesale opportunity with good equity spread. Property shows distress indicators and owner motivation, supporting quick acquisition at below-market pricing.",
-      next_actions: [
-        "Call owner to schedule walkthrough",
-        "Get contractor repair estimate", 
-        "Submit initial offer within 24 hours"
-      ]
+      arv_estimate: property.arv ? Number(property.arv) : 350000,
+      max_offer_estimate: property.maxOffer ? Number(property.maxOffer) : 245000,
+      is_deal: true,
+      confidence: 0.74,
+      notes: "Call owner to schedule walkthrough. Get contractor repair estimate. Submit initial offer within 24 hours."
     };
 
     return fallbackAnalysis;
