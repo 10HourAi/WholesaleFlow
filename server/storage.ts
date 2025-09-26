@@ -1,6 +1,6 @@
-import { type Property, type InsertProperty, type Contact, type InsertContact, type Conversation, type InsertConversation, type Message, type InsertMessage, type Document, type InsertDocument, type Deal, type InsertDeal, type User, type UpsertUser } from "@shared/schema";
+import { type Property, type InsertProperty, type Contact, type InsertContact, type Conversation, type InsertConversation, type Message, type InsertMessage, type Document, type InsertDocument, type Deal, type InsertDeal, type User, type UpsertUser, type Comp, type InsertComp } from "@shared/schema";
 import { db } from "./db";
-import { users, properties, contacts, conversations, messages, documents, deals } from "@shared/schema";
+import { users, properties, contacts, conversations, messages, documents, deals, comps } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 
 // Interface for storage operations
@@ -62,6 +62,12 @@ export interface IStorage {
   createDeal(deal: InsertDeal): Promise<Deal>;
   updateDeal(id: string, updates: Partial<Deal>): Promise<Deal>;
   getDealsByStage(stage: string, userId: string): Promise<Deal[]>;
+
+  // Comps
+  getCompsByProperty(propertyId: string): Promise<Comp[]>;
+  createComp(comp: InsertComp): Promise<Comp>;
+  updateComp(id: string, updates: Partial<Comp>): Promise<Comp>;
+  deleteComp(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -143,12 +149,17 @@ export class DatabaseStorage implements IStorage {
     compSummary?: any;
     nextActions?: any;
   }): Promise<Property> {
+    const updateData = {
+      ...analysisData,
+      // Convert number to string for decimal fields if they exist
+      profitMarginPct: analysisData.profitMarginPct?.toString(),
+      analysisConfidence: analysisData.analysisConfidence?.toString(),
+      updatedAt: new Date()
+    };
+    
     const [property] = await db
       .update(properties)
-      .set({ 
-        ...analysisData,
-        updatedAt: new Date() 
-      })
+      .set(updateData)
       .where(eq(properties.id, propertyId))
       .returning();
     if (!property) throw new Error("Property not found");
@@ -162,22 +173,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchProperties(userId: string, criteria: { city?: string; state?: string; status?: string; leadType?: string }): Promise<Property[]> {
-    let query = db.select().from(properties).where(eq(properties.userId, userId));
+    const conditions = [eq(properties.userId, userId)];
     
     if (criteria.city) {
-      query = query.where(eq(properties.city, criteria.city));
+      conditions.push(eq(properties.city, criteria.city));
     }
     if (criteria.state) {
-      query = query.where(eq(properties.state, criteria.state));
+      conditions.push(eq(properties.state, criteria.state));
     }
     if (criteria.status) {
-      query = query.where(eq(properties.status, criteria.status));
+      conditions.push(eq(properties.status, criteria.status));
     }
     if (criteria.leadType) {
-      query = query.where(eq(properties.leadType, criteria.leadType));
+      conditions.push(eq(properties.leadType, criteria.leadType));
     }
     
-    return await query;
+    return await db.select().from(properties).where(and(...conditions));
   }
 
   // Contacts
@@ -225,7 +236,15 @@ export class DatabaseStorage implements IStorage {
   // Conversations
   async getConversations(userId: string): Promise<Conversation[]> {
     return await db
-      .select()
+      .select({
+        id: conversations.id,
+        propertyId: conversations.propertyId,
+        contactId: conversations.contactId,
+        agentType: conversations.agentType,
+        title: conversations.title,
+        createdAt: conversations.createdAt,
+        updatedAt: conversations.updatedAt,
+      })
       .from(conversations)
       .leftJoin(properties, eq(conversations.propertyId, properties.id))
       .where(eq(properties.userId, userId));
@@ -268,7 +287,17 @@ export class DatabaseStorage implements IStorage {
   // Documents
   async getDocuments(userId: string): Promise<Document[]> {
     return await db
-      .select()
+      .select({
+        id: documents.id,
+        propertyId: documents.propertyId,
+        name: documents.name,
+        type: documents.type,
+        status: documents.status,
+        content: documents.content,
+        filePath: documents.filePath,
+        createdAt: documents.createdAt,
+        updatedAt: documents.updatedAt,
+      })
       .from(documents)
       .leftJoin(properties, eq(documents.propertyId, properties.id))
       .where(eq(properties.userId, userId));
@@ -305,7 +334,17 @@ export class DatabaseStorage implements IStorage {
   // Deals
   async getDeals(userId: string): Promise<Deal[]> {
     return await db
-      .select()
+      .select({
+        id: deals.id,
+        propertyId: deals.propertyId,
+        stage: deals.stage,
+        dealValue: deals.dealValue,
+        profit: deals.profit,
+        closeDate: deals.closeDate,
+        notes: deals.notes,
+        createdAt: deals.createdAt,
+        updatedAt: deals.updatedAt,
+      })
       .from(deals)
       .leftJoin(properties, eq(deals.propertyId, properties.id))
       .where(eq(properties.userId, userId));
@@ -333,10 +372,44 @@ export class DatabaseStorage implements IStorage {
 
   async getDealsByStage(stage: string, userId: string): Promise<Deal[]> {
     return await db
-      .select()
+      .select({
+        id: deals.id,
+        propertyId: deals.propertyId,
+        stage: deals.stage,
+        dealValue: deals.dealValue,
+        profit: deals.profit,
+        closeDate: deals.closeDate,
+        notes: deals.notes,
+        createdAt: deals.createdAt,
+        updatedAt: deals.updatedAt,
+      })
       .from(deals)
       .leftJoin(properties, eq(deals.propertyId, properties.id))
       .where(and(eq(deals.stage, stage), eq(properties.userId, userId)));
+  }
+
+  // Comps
+  async getCompsByProperty(propertyId: string): Promise<Comp[]> {
+    return await db.select().from(comps).where(eq(comps.propertyId, propertyId));
+  }
+
+  async createComp(compData: InsertComp): Promise<Comp> {
+    const [comp] = await db.insert(comps).values(compData).returning();
+    return comp;
+  }
+
+  async updateComp(id: string, updates: Partial<Comp>): Promise<Comp> {
+    const [comp] = await db
+      .update(comps)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(comps.id, id))
+      .returning();
+    if (!comp) throw new Error("Comp not found");
+    return comp;
+  }
+
+  async deleteComp(id: string): Promise<void> {
+    await db.delete(comps).where(eq(comps.id, id));
   }
 }
 
