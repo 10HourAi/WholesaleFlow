@@ -141,7 +141,22 @@ export const compSummaryItemSchema = z.object({
   dom: z.number().optional(), // days on market
 });
 
+// Original full schema for database compatibility
 export const dealAnalysisResultSchema = z.object({
+  address: z.string(),
+  strategy: z.enum(["wholesale", "flip", "rental", "wholetail"]),
+  is_deal: z.boolean(),
+  arv: z.number(),
+  rehab_cost: z.number(),
+  max_offer_price: z.number(),
+  profit_margin_pct: z.number(),
+  confidence: z.number().min(0).max(1),
+  summary: z.string(),
+  next_actions: z.array(z.string()),
+});
+
+// Simplified schema for streaming API
+export const streamingDealAnalysisSchema = z.object({
   summary: z.string(),
   arv_estimate: z.number(),
   max_offer_estimate: z.number(),
@@ -152,6 +167,7 @@ export const dealAnalysisResultSchema = z.object({
 
 export type DealAnalysisRequest = z.infer<typeof dealAnalysisRequestSchema>;
 export type DealAnalysisResult = z.infer<typeof dealAnalysisResultSchema>;
+export type StreamingDealAnalysisResult = z.infer<typeof streamingDealAnalysisSchema>;
 
 export const insertPropertySchema = createInsertSchema(properties).omit({
   id: true,

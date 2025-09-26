@@ -22,7 +22,7 @@ import {
   Calculator,
   Loader2
 } from "lucide-react";
-import type { Property, Contact, DealAnalysisRequest, DealAnalysisResult } from "@shared/schema";
+import type { Property, Contact, DealAnalysisRequest, DealAnalysisResult, StreamingDealAnalysisResult } from "@shared/schema";
 
 interface PropertyCardProps {
   property: Property | null;
@@ -35,7 +35,7 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
   // Early return before hooks to avoid hook ordering issues
   if (!property) return null;
 
-  const [analysisResult, setAnalysisResult] = useState<DealAnalysisResult | null>(null);
+  const [analysisResult, setAnalysisResult] = useState<DealAnalysisResult | StreamingDealAnalysisResult | null>(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [hasExistingAnalysis, setHasExistingAnalysis] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -53,13 +53,34 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
     }
 
     return {
-      summary: "Property has been analyzed with AI deal analysis.",
-      arv_estimate: Number(prop.analysisArv) || Number(prop.arv) || 0,
-      max_offer_estimate: Number(prop.analysisMaxOfferPrice) || Number(prop.maxOffer) || 0,
+      address: `${prop.address}, ${prop.city}, ${prop.state}`,
+      strategy: (prop.strategy as "wholesale" | "flip" | "rental" | "wholetail") || "wholesale",
       is_deal: prop.isDeal,
+      arv: Number(prop.analysisArv) || Number(prop.arv) || 0,
+      rehab_cost: Number(prop.rehabCost) || 0,
+      max_offer_price: Number(prop.analysisMaxOfferPrice) || Number(prop.maxOffer) || 0,
+      profit_margin_pct: Number(prop.profitMarginPct) || 0,
       confidence: Number(prop.analysisConfidence),
-      notes: "Analysis completed and saved to database."
+      summary: "Property has been analyzed with AI deal analysis.",
+      next_actions: (prop.nextActions as string[]) || ["Review analysis", "Schedule walkthrough"]
     };
+  };
+
+  // Helper functions to handle both schema types
+  const getARVValue = (result: DealAnalysisResult | StreamingDealAnalysisResult): number => {
+    return 'arv' in result ? result.arv : result.arv_estimate;
+  };
+
+  const getMaxOfferValue = (result: DealAnalysisResult | StreamingDealAnalysisResult): number => {
+    return 'max_offer_price' in result ? result.max_offer_price : result.max_offer_estimate;
+  };
+
+  const getSummary = (result: DealAnalysisResult | StreamingDealAnalysisResult): string => {
+    return result.summary;
+  };
+
+  const getNotes = (result: DealAnalysisResult | StreamingDealAnalysisResult): string => {
+    return 'next_actions' in result ? result.next_actions.join('. ') : result.notes;
   };
 
   // Check for existing analysis results when property changes
@@ -556,15 +577,15 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                   <CardContent className="space-y-3">
                     <div className="flex justify-between text-sm">
                       <span>ARV Estimate:</span>
-                      <span className="font-mono font-semibold">${analysisResult.arv_estimate.toLocaleString()}</span>
+                      <span className="font-mono font-semibold">${getARVValue(analysisResult).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span>Max Offer:</span>
-                      <span className="font-mono font-semibold">${analysisResult.max_offer_estimate.toLocaleString()}</span>
+                      <span className="font-mono font-semibold">${getMaxOfferValue(analysisResult).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-sm font-semibold text-green-600 border-t pt-2">
                       <span>Potential Equity:</span>
-                      <span className="font-mono">${(analysisResult.arv_estimate - analysisResult.max_offer_estimate).toLocaleString()}</span>
+                      <span className="font-mono">${(getARVValue(analysisResult) - getMaxOfferValue(analysisResult)).toLocaleString()}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -579,7 +600,7 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                      {analysisResult.summary}
+                      {getSummary(analysisResult)}
                     </p>
                   </CardContent>
                 </Card>
@@ -595,7 +616,7 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
-                    {analysisResult.notes}
+                    {getNotes(analysisResult)}
                   </p>
                 </CardContent>
               </Card>
