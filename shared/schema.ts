@@ -128,31 +128,6 @@ export const deals = pgTable("deals", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-export const comps = pgTable("comps", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  propertyId: varchar("property_id").references(() => properties.id),
-  compAddress: text("comp_address").notNull(),
-  compCity: text("comp_city").notNull(),
-  compState: text("comp_state").notNull(),
-  compZipCode: text("comp_zip_code"),
-  saleDate: text("sale_date"),
-  salePrice: integer("sale_price"),
-  bedrooms: integer("bedrooms"),
-  bathrooms: integer("bathrooms"),
-  squareFeet: integer("square_feet"),
-  yearBuilt: integer("year_built"),
-  distanceMiles: decimal("distance_miles", { precision: 4, scale: 2 }),
-  daysOnMarket: integer("days_on_market"),
-  pricePerSqFt: decimal("price_per_sq_ft", { precision: 8, scale: 2 }),
-  adjustments: jsonb("adjustments"), // Store any adjustments made to this comp
-  source: text("source").notNull().default("batchdata"), // batchdata, mls, manual, etc.
-  confidence: decimal("confidence", { precision: 3, scale: 2 }), // 0.0 to 1.0
-  isActive: boolean("is_active").default(true), // Allow deactivating comps
-  notes: text("notes"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
-
 // Deal Analysis schemas (matching OpenAI structured output)
 export const dealAnalysisRequestSchema = z.object({
   propertyId: z.string().uuid(),
@@ -228,12 +203,6 @@ export const insertDealSchema = createInsertSchema(deals).omit({
   updatedAt: true,
 });
 
-export const insertCompSchema = createInsertSchema(comps).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-
 export type InsertProperty = z.infer<typeof insertPropertySchema>;
 export type Property = typeof properties.$inferSelect;
 export type InsertContact = z.infer<typeof insertContactSchema>;
@@ -246,5 +215,3 @@ export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
 export type InsertDeal = z.infer<typeof insertDealSchema>;
 export type Deal = typeof deals.$inferSelect;
-export type InsertComp = z.infer<typeof insertCompSchema>;
-export type Comp = typeof comps.$inferSelect;
