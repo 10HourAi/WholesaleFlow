@@ -538,19 +538,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         progress: 90
       });
 
-      // Save analysis results to database
+      // Save analysis results to database using new simplified schema
       await storage.updatePropertyAnalysis(propertyId, {
-        strategy: analysis.strategy,
         isDeal: analysis.is_deal,
-        analysisArv: analysis.arv,
-        rehabCost: analysis.rehab_cost,
-        analysisMaxOfferPrice: analysis.max_offer_price,
-        profitMarginPct: analysis.profit_margin_pct,
-        riskLevel: analysis.risk_level,
+        analysisArv: analysis.arv_estimate,
+        analysisMaxOfferPrice: analysis.max_offer_estimate,
         analysisConfidence: analysis.confidence,
-        keyAssumptions: analysis.key_assumptions,
-        compSummary: analysis.comp_summary,
-        nextActions: analysis.next_actions,
       });
 
       sendEvent('complete', { 
@@ -589,19 +582,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { analyzeDealWithOpenAI } = await import("./openai");
       const analysis = await analyzeDealWithOpenAI(property);
 
-      // Save analysis results to database
+      // Save analysis results to database using new simplified schema
       await storage.updatePropertyAnalysis(validatedRequest.propertyId, {
-        strategy: analysis.strategy,
         isDeal: analysis.is_deal,
-        analysisArv: analysis.arv,
-        rehabCost: analysis.rehab_cost,
-        analysisMaxOfferPrice: analysis.max_offer_price,
-        profitMarginPct: analysis.profit_margin_pct,
-        riskLevel: analysis.risk_level,
+        analysisArv: analysis.arv_estimate,
+        analysisMaxOfferPrice: analysis.max_offer_estimate,
         analysisConfidence: analysis.confidence,
-        keyAssumptions: analysis.key_assumptions,
-        compSummary: analysis.comp_summary,
-        nextActions: analysis.next_actions,
       });
 
       res.json({
