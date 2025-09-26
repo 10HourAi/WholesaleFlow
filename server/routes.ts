@@ -18,23 +18,6 @@ import {
   generateClosingResponse,
   generatePropertyLeads,
 } from "./openai";
-
-// Import getOpenAI for streaming endpoint
-import OpenAI from "openai";
-
-let openai: OpenAI | null = null;
-
-function getOpenAI(): OpenAI {
-  if (!openai) {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error("OpenAI API key is required but not configured");
-    }
-    openai = new OpenAI({ 
-      apiKey: process.env.OPENAI_API_KEY
-    });
-  }
-  return openai;
-}
 import { setupAuth, isAuthenticated } from "./replitAuth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -538,12 +521,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         progress: 90
       });
 
-      // Save analysis results to database using new simplified schema
+      // Save analysis results to database
       await storage.updatePropertyAnalysis(propertyId, {
+        strategy: analysis.strategy,
         isDeal: analysis.is_deal,
-        analysisArv: analysis.arv_estimate,
-        analysisMaxOfferPrice: analysis.max_offer_estimate,
+        analysisArv: analysis.arv,
+        rehabCost: analysis.rehab_cost,
+        analysisMaxOfferPrice: analysis.max_offer_price,
+        profitMarginPct: analysis.profit_margin_pct,
+        riskLevel: analysis.risk_level,
         analysisConfidence: analysis.confidence,
+        keyAssumptions: analysis.key_assumptions,
+        compSummary: analysis.comp_summary,
+        nextActions: analysis.next_actions,
       });
 
       sendEvent('complete', { 
@@ -582,12 +572,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { analyzeDealWithOpenAI } = await import("./openai");
       const analysis = await analyzeDealWithOpenAI(property);
 
-      // Save analysis results to database using new simplified schema
+      // Save analysis results to database
       await storage.updatePropertyAnalysis(validatedRequest.propertyId, {
+        strategy: analysis.strategy,
         isDeal: analysis.is_deal,
-        analysisArv: analysis.arv_estimate,
-        analysisMaxOfferPrice: analysis.max_offer_estimate,
+        analysisArv: analysis.arv,
+        rehabCost: analysis.rehab_cost,
+        analysisMaxOfferPrice: analysis.max_offer_price,
+        profitMarginPct: analysis.profit_margin_pct,
+        riskLevel: analysis.risk_level,
         analysisConfidence: analysis.confidence,
+        keyAssumptions: analysis.key_assumptions,
+        compSummary: analysis.comp_summary,
+        nextActions: analysis.next_actions,
       });
 
       res.json({
@@ -599,138 +596,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({
         success: false,
         message: error.message || "Failed to analyze deal",
-      });
-    }
-  });
-
-  // Stream Deal Analysis with token-level streaming
-  app.post("/api/analyze/stream", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const validatedRequest = dealAnalysisRequestSchema.parse(req.body);
-
-      // Get the property from storage
-      const property = await storage.getProperty(
-        validatedRequest.propertyId,
-        userId,
-      );
-
-      if (!property) {
-        return res.status(404).json({ message: "Property not found" });
-      }
-
-      // SSE headers
-      res.setHeader("Content-Type", "text/event-stream");
-      res.setHeader("Cache-Control", "no-cache, no-transform");
-      res.setHeader("Connection", "keep-alive");
-      res.setHeader("Access-Control-Allow-Origin", "*");
-      res.setHeader("Access-Control-Allow-Headers", "Cache-Control");
-
-      // Small helper to send SSE messages
-      const send = (event: string, data: string) => {
-        res.write(`event: ${event}\n`);
-        res.write(`data: ${data}\n\n`);
-      };
-
-      try {
-        // Notify UI we started
-        send("status", JSON.stringify({ stage: "starting" }));
-
-        const openaiClient = getOpenAI();
-
-        // Build property context
-        const rawBatchData = {
-          address: `${property.address}, ${property.city}, ${property.state} ${property.zipCode}`,
-          property_type: property.propertyType,
-          bedrooms: property.bedrooms,
-          bathrooms: property.bathrooms,
-          square_feet: property.squareFeet,
-          year_built: property.yearBuilt,
-          arv: property.arv ? Number(property.arv) : null,
-          max_offer: property.maxOffer ? Number(property.maxOffer) : null,
-          equity_percentage: property.equityPercentage,
-          owner_name: property.ownerName,
-          lead_type: property.leadType,
-          distressed_indicator: property.distressedIndicator,
-          last_sale_price: property.lastSalePrice ? Number(property.lastSalePrice) : null,
-          last_sale_date: property.lastSaleDate,
-          confidence_score: property.confidenceScore
-        };
-
-        send("status", JSON.stringify({ stage: "analyzing" }));
-
-        // Stream from OpenAI (Chat Completions)
-        const stream = await openaiClient.chat.completions.create({
-          model: "gpt-5",
-          stream: true,
-          messages: [
-            { 
-              role: "system", 
-              content: "You are a real estate analyst. Return ONLY valid JSON matching the schema." 
-            },
-            {
-              role: "user",
-              content: `Analyze and return JSON for: ${JSON.stringify(rawBatchData)}.
-Focus on summary, ARV estimate, max offer estimate, deal/no-deal, confidence, notes.`
-            }
-          ],
-          response_format: {
-            type: "json_schema",
-            json_schema: {
-              name: "fast_deal_analysis",
-              strict: true,
-              schema: {
-                type: "object",
-                required: ["summary","arv_estimate","max_offer_estimate","is_deal","confidence","notes"],
-                properties: {
-                  summary: { type: "string" },
-                  arv_estimate: { type: "number" },
-                  max_offer_estimate: { type: "number" },
-                  is_deal: { type: "boolean" },
-                  confidence: { type: "number" },
-                  notes: { type: "string" }
-                },
-                additionalProperties: false
-              }
-            }
-          }
-        });
-
-        // Accumulate chunks to end as full JSON
-        let full = "";
-        for await (const chunk of stream) {
-          const delta = chunk.choices?.[0]?.delta?.content ?? "";
-          if (delta) {
-            full += delta;
-            // Stream live characters to UI
-            send("delta", JSON.stringify({ text: delta }));
-          }
-        }
-
-        // Parse and save the completed analysis
-        const analysisData = JSON.parse(full);
-        
-        // Save analysis results to database with new schema
-        await storage.updateProperty(validatedRequest.propertyId, userId, {
-          isDeal: analysisData.is_deal,
-          analysisConfidence: analysisData.confidence,
-        });
-
-        // Send the completed JSON
-        send("done", full);
-        res.end();
-
-      } catch (streamError: any) {
-        console.error("Streaming error:", streamError);
-        send("error", JSON.stringify({ message: String(streamError) }));
-        res.end();
-      }
-
-    } catch (error: any) {
-      console.error("Stream endpoint error:", error);
-      res.status(500).json({
-        success: false,
-        message: error.message || "Failed to start stream analysis",
       });
     }
   });
