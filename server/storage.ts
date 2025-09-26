@@ -76,7 +76,7 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
-        target: users.id,
+        target: users.email,
         set: {
           ...userData,
           updatedAt: new Date(),
@@ -143,12 +143,17 @@ export class DatabaseStorage implements IStorage {
     compSummary?: any;
     nextActions?: any;
   }): Promise<Property> {
+    // Convert number fields to proper types for database
+    const processedData = {
+      ...analysisData,
+      profitMarginPct: analysisData.profitMarginPct !== undefined ? analysisData.profitMarginPct.toString() : undefined,
+      analysisConfidence: analysisData.analysisConfidence !== undefined ? analysisData.analysisConfidence.toString() : undefined,
+      updatedAt: new Date()
+    };
+
     const [property] = await db
       .update(properties)
-      .set({ 
-        ...analysisData,
-        updatedAt: new Date() 
-      })
+      .set(processedData)
       .where(eq(properties.id, propertyId))
       .returning();
     if (!property) throw new Error("Property not found");
@@ -162,22 +167,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async searchProperties(userId: string, criteria: { city?: string; state?: string; status?: string; leadType?: string }): Promise<Property[]> {
-    let query = db.select().from(properties).where(eq(properties.userId, userId));
+    const conditions = [eq(properties.userId, userId)];
     
     if (criteria.city) {
-      query = query.where(eq(properties.city, criteria.city));
+      conditions.push(eq(properties.city, criteria.city));
     }
     if (criteria.state) {
-      query = query.where(eq(properties.state, criteria.state));
+      conditions.push(eq(properties.state, criteria.state));
     }
     if (criteria.status) {
-      query = query.where(eq(properties.status, criteria.status));
+      conditions.push(eq(properties.status, criteria.status));
     }
     if (criteria.leadType) {
-      query = query.where(eq(properties.leadType, criteria.leadType));
+      conditions.push(eq(properties.leadType, criteria.leadType));
     }
     
-    return await query;
+    return await db.select().from(properties).where(and(...conditions));
   }
 
   // Contacts
@@ -225,7 +230,15 @@ export class DatabaseStorage implements IStorage {
   // Conversations
   async getConversations(userId: string): Promise<Conversation[]> {
     return await db
-      .select()
+      .select({
+        id: conversations.id,
+        createdAt: conversations.createdAt,
+        updatedAt: conversations.updatedAt,
+        propertyId: conversations.propertyId,
+        contactId: conversations.contactId,
+        agentType: conversations.agentType,
+        title: conversations.title,
+      })
       .from(conversations)
       .leftJoin(properties, eq(conversations.propertyId, properties.id))
       .where(eq(properties.userId, userId));
@@ -268,7 +281,17 @@ export class DatabaseStorage implements IStorage {
   // Documents
   async getDocuments(userId: string): Promise<Document[]> {
     return await db
-      .select()
+      .select({
+        id: documents.id,
+        name: documents.name,
+        createdAt: documents.createdAt,
+        updatedAt: documents.updatedAt,
+        status: documents.status,
+        type: documents.type,
+        propertyId: documents.propertyId,
+        content: documents.content,
+        filePath: documents.filePath,
+      })
       .from(documents)
       .leftJoin(properties, eq(documents.propertyId, properties.id))
       .where(eq(properties.userId, userId));
@@ -305,7 +328,17 @@ export class DatabaseStorage implements IStorage {
   // Deals
   async getDeals(userId: string): Promise<Deal[]> {
     return await db
-      .select()
+      .select({
+        id: deals.id,
+        createdAt: deals.createdAt,
+        updatedAt: deals.updatedAt,
+        propertyId: deals.propertyId,
+        stage: deals.stage,
+        dealValue: deals.dealValue,
+        profit: deals.profit,
+        closeDate: deals.closeDate,
+        notes: deals.notes,
+      })
       .from(deals)
       .leftJoin(properties, eq(deals.propertyId, properties.id))
       .where(eq(properties.userId, userId));
@@ -333,7 +366,17 @@ export class DatabaseStorage implements IStorage {
 
   async getDealsByStage(stage: string, userId: string): Promise<Deal[]> {
     return await db
-      .select()
+      .select({
+        id: deals.id,
+        createdAt: deals.createdAt,
+        updatedAt: deals.updatedAt,
+        propertyId: deals.propertyId,
+        stage: deals.stage,
+        dealValue: deals.dealValue,
+        profit: deals.profit,
+        closeDate: deals.closeDate,
+        notes: deals.notes,
+      })
       .from(deals)
       .leftJoin(properties, eq(deals.propertyId, properties.id))
       .where(and(eq(deals.stage, stage), eq(properties.userId, userId)));
