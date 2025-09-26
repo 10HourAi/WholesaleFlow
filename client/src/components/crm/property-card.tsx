@@ -41,29 +41,24 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamProgress, setStreamProgress] = useState(0);
   const [streamMessage, setStreamMessage] = useState('');
+  const [streamedText, setStreamedText] = useState('');
   const eventSourceRef = useRef<EventSource | null>(null);
   const { toast } = useToast();
 
   // Helper function to transform database fields to DealAnalysisResult format
   const transformPropertyToAnalysisResult = (prop: Property): DealAnalysisResult | null => {
-    if (!prop.strategy || prop.isDeal === null || !prop.analysisArv || !prop.rehabCost || 
-        !prop.analysisMaxOfferPrice || !prop.analysisConfidence) {
+    // Check if we have basic analysis data
+    if (prop.isDeal === null || !prop.analysisConfidence) {
       return null;
     }
 
     return {
-      address: `${prop.address}, ${prop.city}, ${prop.state}`,
-      strategy: prop.strategy as "wholesale" | "flip" | "rental" | "wholetail",
+      summary: "Property has been analyzed with AI deal analysis.",
+      arv_estimate: Number(prop.analysisArv) || Number(prop.arv) || 0,
+      max_offer_estimate: Number(prop.analysisMaxOfferPrice) || Number(prop.maxOffer) || 0,
       is_deal: prop.isDeal,
-      arv: prop.analysisArv,
-      rehab_cost: prop.rehabCost,
-      max_offer_price: prop.analysisMaxOfferPrice,
-      profit_margin_pct: Number(prop.profitMarginPct) || 0,
-      risk_level: (prop.riskLevel as "low" | "medium" | "high") || "medium",
       confidence: Number(prop.analysisConfidence),
-      key_assumptions: (prop.keyAssumptions as string[]) || [],
-      comp_summary: (prop.compSummary as any[]) || [],
-      next_actions: (prop.nextActions as string[]) || [],
+      notes: "Analysis completed and saved to database."
     };
   };
 
@@ -116,69 +111,108 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
     },
   });
 
-  // Stream-based deal analysis function
+  // Stream-based deal analysis function with token streaming
   const startStreamAnalysis = async () => {
     if (isStreaming || !property) return;
     
     setIsStreaming(true);
-    setStreamProgress(0);
-    setStreamMessage('Connecting to analysis service...');
+    setStreamProgress(10);
+    setStreamMessage('Connecting to AI analysis service...');
+    setStreamedText('');
+    setShowAnalysis(true); // Show analysis section to display streaming text
     
     try {
-      const eventSource = new EventSource(
-        `/api/deals/analyze/${property.id}/stream`,
-        { withCredentials: true }
-      );
-      eventSourceRef.current = eventSource;
-
-      eventSource.addEventListener('progress', (event) => {
-        const data = JSON.parse(event.data);
-        setStreamProgress(data.progress);
-        setStreamMessage(data.message);
+      // Make POST request to initialize stream
+      const response = await fetch('/api/analyze/stream', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ propertyId: property.id }),
+        credentials: 'include'
       });
 
-      eventSource.addEventListener('complete', (event) => {
-        const data = JSON.parse(event.data);
-        if (data.success) {
-          setAnalysisResult(data.data);
-          setShowAnalysis(true);
-          setHasExistingAnalysis(true);
-          toast({
-            title: "Deal Analysis Complete",
-            description: "New AI analysis has been generated and saved.",
-          });
+      if (!response.ok) {
+        throw new Error('Failed to start analysis stream');
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No stream reader available');
+      }
+
+      const decoder = new TextDecoder();
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (line.startsWith('event: ')) {
+            const event = line.replace('event: ', '');
+            continue;
+          }
+          
+          if (line.startsWith('data: ')) {
+            const data = line.replace('data: ', '');
+            if (!data.trim()) continue;
+
+            try {
+              const eventData = JSON.parse(data);
+
+              if (chunk.includes('event: status')) {
+                if (eventData.stage === 'starting') {
+                  setStreamMessage('Initializing AI analysis...');
+                  setStreamProgress(20);
+                } else if (eventData.stage === 'analyzing') {
+                  setStreamMessage('AI is analyzing property data...');
+                  setStreamProgress(30);
+                }
+              }
+
+              if (chunk.includes('event: delta')) {
+                // Token streaming - append new text
+                setStreamedText(prev => prev + eventData.text);
+                setStreamMessage('AI generating analysis...');
+                setStreamProgress(60);
+              }
+
+              if (chunk.includes('event: done')) {
+                // Analysis complete - parse final result
+                const analysisData = JSON.parse(data);
+                setAnalysisResult(analysisData);
+                setStreamMessage('Analysis complete!');
+                setStreamProgress(100);
+                setHasExistingAnalysis(true);
+                setIsStreaming(false);
+                
+                toast({
+                  title: "Deal Analysis Complete",
+                  description: "AI analysis generated with live streaming!",
+                });
+                return;
+              }
+
+              if (chunk.includes('event: error')) {
+                throw new Error(eventData.message || 'Analysis failed');
+              }
+
+            } catch (parseError) {
+              console.error('Error parsing stream data:', parseError);
+            }
+          }
         }
-        setIsStreaming(false);
-        eventSource.close();
-      });
-
-      eventSource.addEventListener('error', (event) => {
-        const data = JSON.parse(event.data);
-        toast({
-          title: "Analysis Failed",
-          description: data.message || "Failed to analyze deal.",
-          variant: "destructive",
-        });
-        setIsStreaming(false);
-        eventSource.close();
-      });
-
-      eventSource.onerror = () => {
-        toast({
-          title: "Connection Error",
-          description: "Lost connection to analysis service.",
-          variant: "destructive",
-        });
-        setIsStreaming(false);
-        eventSource.close();
-      };
+      }
 
     } catch (error) {
       console.error('Stream analysis error:', error);
       setIsStreaming(false);
       toast({
         title: "Analysis Failed",
-        description: "Unable to start analysis. Please try again.",
+        description: "Unable to complete analysis. Please try again.",
         variant: "destructive",
       });
     }
@@ -450,8 +484,48 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
           </Card>
         </div>
 
+        {/* Streaming Analysis Display */}
+        {showAnalysis && isStreaming && (
+          <>
+            <Separator className="my-4" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Calculator className="w-5 h-5 text-blue-600 animate-pulse" />
+                  AI Deal Analysis (Streaming)
+                </h3>
+                <Badge variant="outline" className="text-xs animate-pulse">
+                  Generating...
+                </Badge>
+              </div>
+              
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Live AI Analysis</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-md min-h-[200px]">
+                    <div className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-wrap font-mono">
+                      {streamedText || "Waiting for AI to start generating analysis..."}
+                    </div>
+                    {isStreaming && (
+                      <div className="inline-block w-2 h-4 bg-blue-500 animate-pulse ml-1"></div>
+                    )}
+                  </div>
+                  <div className="mt-3 flex items-center gap-2 text-xs text-blue-600">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    {streamMessage}
+                  </div>
+                  <Progress value={streamProgress} className="mt-2 h-2" />
+                </CardContent>
+              </Card>
+            </div>
+            <Separator className="my-4" />
+          </>
+        )}
+
         {/* Deal Analysis Results */}
-        {showAnalysis && analysisResult && (
+        {showAnalysis && analysisResult && !isStreaming && (
           <>
             <Separator className="my-4" />
             <div className="space-y-4">
@@ -471,119 +545,58 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Strategy & Key Metrics */}
+                {/* Key Metrics */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-sm flex items-center gap-2">
                       <TrendingUp className="w-4 h-4" />
-                      Deal Summary
+                      Deal Metrics
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex justify-between text-xs">
-                      <span>Strategy:</span>
-                      <span className="font-semibold capitalize">{analysisResult.strategy}</span>
+                  <CardContent className="space-y-3">
+                    <div className="flex justify-between text-sm">
+                      <span>ARV Estimate:</span>
+                      <span className="font-mono font-semibold">${analysisResult.arv_estimate.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-xs">
-                      <span>ARV:</span>
-                      <span className="font-mono">${analysisResult.arv.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
+                    <div className="flex justify-between text-sm">
                       <span>Max Offer:</span>
-                      <span className="font-mono">${analysisResult.max_offer_price.toLocaleString()}</span>
+                      <span className="font-mono font-semibold">${analysisResult.max_offer_estimate.toLocaleString()}</span>
                     </div>
-                    <div className="flex justify-between text-xs">
-                      <span>Rehab Cost:</span>
-                      <span className="font-mono">${analysisResult.rehab_cost.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-xs font-semibold text-green-600 border-t pt-1">
-                      <span>Profit Margin:</span>
-                      <span className="font-mono">{analysisResult.profit_margin_pct}%</span>
+                    <div className="flex justify-between text-sm font-semibold text-green-600 border-t pt-2">
+                      <span>Potential Equity:</span>
+                      <span className="font-mono">${(analysisResult.arv_estimate - analysisResult.max_offer_estimate).toLocaleString()}</span>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Risk Assessment */}
+                {/* Analysis Summary */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-sm flex items-center gap-2">
-                      <DollarSign className="w-4 h-4" />
-                      Risk Assessment
+                      <MessageSquare className="w-4 h-4" />
+                      AI Summary
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2">
-                    <div className="flex justify-between text-xs">
-                      <span>Risk Level:</span>
-                      <Badge 
-                        variant={analysisResult.risk_level === 'low' ? 'default' : analysisResult.risk_level === 'medium' ? 'secondary' : 'destructive'} 
-                        className="text-xs capitalize"
-                      >
-                        {analysisResult.risk_level}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span>Total Investment:</span>
-                      <span className="font-mono">${(analysisResult.max_offer_price + analysisResult.rehab_cost).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-xs">
-                      <span>Estimated Profit:</span>
-                      <span className="font-mono text-green-600">${(analysisResult.arv - analysisResult.max_offer_price - analysisResult.rehab_cost).toLocaleString()}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Key Assumptions */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Key Assumptions</CardTitle>
-                  </CardHeader>
                   <CardContent>
-                    <ul className="text-xs text-slate-600 space-y-1">
-                      {analysisResult.key_assumptions.map((assumption, index) => (
-                        <li key={index} className="flex items-start gap-2">
-                          <span className="text-blue-500 mt-0.5">•</span>
-                          {assumption}
-                        </li>
-                      ))}
-                    </ul>
-                  </CardContent>
-                </Card>
-
-                {/* Comparable Sales */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Comparable Sales</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {analysisResult.comp_summary.map((comp, index) => (
-                      <div key={index} className="text-xs border-b pb-2 last:border-b-0">
-                        <div className="font-semibold">{comp.addr}</div>
-                        <div className="flex justify-between">
-                          <span>${comp.sold_price.toLocaleString()}</span>
-                          <span className="text-slate-500">
-                            {comp.dist_mi ? `${comp.dist_mi}mi` : ''} {comp.dom ? `• ${comp.dom} DOM` : ''}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                      {analysisResult.summary}
+                    </p>
                   </CardContent>
                 </Card>
               </div>
 
-              {/* Next Actions */}
+              {/* Notes Section */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-sm text-blue-600">Next Actions</CardTitle>
+                  <CardTitle className="text-sm flex items-center gap-2">
+                    <FileText className="w-4 h-4" />
+                    Analysis Notes
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <ul className="text-xs text-slate-600 space-y-1">
-                    {analysisResult.next_actions.map((action, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <span className="text-blue-500 mt-0.5">→</span>
-                        {action}
-                      </li>
-                    ))}
-                  </ul>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">
+                    {analysisResult.notes}
+                  </p>
                 </CardContent>
               </Card>
 
