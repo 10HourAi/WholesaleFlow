@@ -4,19 +4,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useState, useEffect, useRef } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { insertPropertySchema } from "@shared/schema";
-import type { InsertProperty } from "@shared/schema";
-import { z } from "zod";
 import { 
   MapPin, 
   Home, 
@@ -38,13 +29,11 @@ interface PropertyCardProps {
   contact?: Contact;
   isOpen: boolean;
   onClose: () => void;
-  isAddingLead?: boolean;
 }
 
-export default function PropertyCard({ property, contact, isOpen, onClose, isAddingLead = false }: PropertyCardProps) {
+export default function PropertyCard({ property, contact, isOpen, onClose }: PropertyCardProps) {
   // Early return before hooks to avoid hook ordering issues
-  // Allow the component to render when adding a new lead even if property is null
-  if (!property && !isAddingLead) return null;
+  if (!property) return null;
 
   const [analysisResult, setAnalysisResult] = useState<DealAnalysisResult | StreamingDealAnalysisResult | null>(null);
   const [showAnalysis, setShowAnalysis] = useState(false);
@@ -54,86 +43,7 @@ export default function PropertyCard({ property, contact, isOpen, onClose, isAdd
   const [streamMessage, setStreamMessage] = useState('');
   const [streamedText, setStreamedText] = useState('');
   const eventSourceRef = useRef<EventSource | null>(null);
-  const [compsData, setCompsData] = useState<any[]>([]);
-  const [compsSummary, setCompsSummary] = useState<any>(null);
-  const [showComps, setShowComps] = useState(false);
-  const [isRunningComps, setIsRunningComps] = useState(false);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-
-  // Add Lead Form
-  const addLeadFormSchema = insertPropertySchema.omit({ id: true, createdAt: true, updatedAt: true, userId: true }).extend({
-    ownerName: z.string().min(1, "Owner name is required"),
-    ownerPhone: z.string().optional(),
-    ownerEmail: z.string().email().optional(),
-  });
-
-  type AddLeadFormData = z.infer<typeof addLeadFormSchema>;
-
-  const addLeadForm = useForm<AddLeadFormData>({
-    resolver: zodResolver(addLeadFormSchema),
-    defaultValues: {
-      address: "",
-      city: "",
-      state: "",
-      zipCode: "",
-      bedrooms: null,
-      bathrooms: null,
-      squareFeet: null,
-      yearBuilt: null,
-      propertyType: "single_family",
-      status: "new",
-      leadType: "organic",
-      ownerName: "",
-      ownerPhone: "",
-      ownerEmail: "",
-    },
-  });
-
-  // Mutation for creating new properties
-  const createPropertyMutation = useMutation({
-    mutationFn: async (data: AddLeadFormData) => {
-      const { ownerName, ownerPhone, ownerEmail, ...propertyData } = data;
-      
-      // First create the property
-      const property = await apiRequest("/api/properties", {
-        method: "POST",
-        body: JSON.stringify(propertyData),
-      });
-
-      // Then create the contact if owner information is provided
-      if (ownerName) {
-        await apiRequest("/api/contacts", {
-          method: "POST",
-          body: JSON.stringify({
-            name: ownerName,
-            phone: ownerPhone || null,
-            email: ownerEmail || null,
-            propertyId: property.id,
-          }),
-        });
-      }
-
-      return property;
-    },
-    onSuccess: () => {
-      toast({
-        title: "Lead Added",
-        description: "Property lead has been successfully added.",
-      });
-      queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/contacts"] });
-      addLeadForm.reset();
-      onClose();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to add property lead.",
-        variant: "destructive",
-      });
-    },
-  });
 
   // Helper function to transform database fields to DealAnalysisResult format
   const transformPropertyToAnalysisResult = (prop: Property): DealAnalysisResult | null => {
@@ -186,9 +96,6 @@ export default function PropertyCard({ property, contact, isOpen, onClose, isAdd
         setShowAnalysis(false);
         setHasExistingAnalysis(false);
       }
-      
-      // Fetch existing comps for this property
-      fetchCompsMutation.mutate(property.id);
     }
   }, [property]);
 
@@ -222,60 +129,6 @@ export default function PropertyCard({ property, contact, isOpen, onClose, isAdd
         description: "Unable to analyze deal. Please try again.",
         variant: "destructive",
       });
-    },
-  });
-
-  // Mutation for running comps
-  const runCompsMutation = useMutation({
-    mutationFn: async (propertyId: string) => {
-      const response = await apiRequest("POST", `/api/properties/${propertyId}/comps`, {});
-      return await response.json();
-    },
-    onSuccess: (data: any) => {
-      if (data.success) {
-        setCompsData(data.comps);
-        setCompsSummary(data.summary);
-        setShowComps(true);
-        setIsRunningComps(false);
-        toast({
-          title: "Comps Analysis Complete",
-          description: data.message || "Comparable sales analysis generated.",
-        });
-      } else {
-        setIsRunningComps(false);
-        toast({
-          title: "Comps Analysis Failed",
-          description: data.message || "Failed to run comps analysis.",
-          variant: "destructive",
-        });
-      }
-    },
-    onError: (error: any) => {
-      console.error("Comps error:", error);
-      setIsRunningComps(false);
-      toast({
-        title: "Comps Analysis Failed",
-        description: "Unable to run comps analysis. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Fetch existing comps
-  const fetchCompsMutation = useMutation({
-    mutationFn: async (propertyId: string) => {
-      const response = await apiRequest("GET", `/api/properties/${propertyId}/comps`);
-      return await response.json();
-    },
-    onSuccess: (data: any) => {
-      if (data.success && data.comps && data.comps.length > 0) {
-        setCompsData(data.comps);
-        setCompsSummary(data.summary);
-        setShowComps(true);
-      }
-    },
-    onError: (error: any) => {
-      console.error("Fetch comps error:", error);
     },
   });
 
@@ -400,12 +253,6 @@ export default function PropertyCard({ property, contact, isOpen, onClose, isAdd
     startStreamAnalysis();
   };
 
-  const handleRunComps = () => {
-    if (!property || isRunningComps) return;
-    setIsRunningComps(true);
-    runCompsMutation.mutate(property.id);
-  };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case "new": return "bg-slate-100 text-slate-800 border-slate-300";
@@ -444,273 +291,11 @@ export default function PropertyCard({ property, contact, isOpen, onClose, isAdd
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <MapPin className="w-5 h-5 text-slate-600" />
-            {isAddingLead ? "Add New Lead" : `${property!.address}, ${property!.city}, ${property!.state} ${property!.zipCode}`}
+            {property.address}, {property.city}, {property.state} {property.zipCode}
           </DialogTitle>
         </DialogHeader>
 
-        {/* Conditional rendering based on isAddingLead */}
-        {isAddingLead ? (
-          /* Add Lead Form */
-          <Form {...addLeadForm}>
-            <form onSubmit={addLeadForm.handleSubmit((data) => createPropertyMutation.mutate(data))} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Property Information */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <Home className="w-5 h-5" />
-                      Property Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <FormField
-                      control={addLeadForm.control}
-                      name="address"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Address</FormLabel>
-                          <FormControl>
-                            <Input placeholder="123 Main Street" {...field} data-testid="input-address" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <FormField
-                        control={addLeadForm.control}
-                        name="city"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>City</FormLabel>
-                            <FormControl>
-                              <Input placeholder="City" {...field} data-testid="input-city" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={addLeadForm.control}
-                        name="state"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>State</FormLabel>
-                            <FormControl>
-                              <Input placeholder="State" {...field} data-testid="input-state" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <FormField
-                      control={addLeadForm.control}
-                      name="zipCode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>ZIP Code</FormLabel>
-                          <FormControl>
-                            <Input placeholder="12345" {...field} data-testid="input-zipcode" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <FormField
-                        control={addLeadForm.control}
-                        name="bedrooms"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Bedrooms</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                placeholder="3" 
-                                {...field}
-                                value={field.value || ""}
-                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                                data-testid="input-bedrooms"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={addLeadForm.control}
-                        name="bathrooms"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Bathrooms</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="number" 
-                                step="0.5"
-                                placeholder="2" 
-                                {...field}
-                                value={field.value || ""}
-                                onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                                data-testid="input-bathrooms"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                    <FormField
-                      control={addLeadForm.control}
-                      name="squareFeet"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Square Feet</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              placeholder="1500" 
-                              {...field}
-                              value={field.value || ""}
-                              onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : null)}
-                              data-testid="input-squarefeet"
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={addLeadForm.control}
-                      name="propertyType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Property Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-propertytype">
-                                <SelectValue placeholder="Select property type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="single_family">Single Family</SelectItem>
-                              <SelectItem value="multi_family">Multi Family</SelectItem>
-                              <SelectItem value="condo">Condo</SelectItem>
-                              <SelectItem value="townhouse">Townhouse</SelectItem>
-                              <SelectItem value="land">Land</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-
-                {/* Owner Information */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-lg">
-                      <User className="w-5 h-5" />
-                      Owner Information
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <FormField
-                      control={addLeadForm.control}
-                      name="ownerName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Owner Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="John Doe" {...field} data-testid="input-ownername" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={addLeadForm.control}
-                      name="ownerPhone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone (Optional)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="(555) 123-4567" {...field} data-testid="input-ownerphone" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={addLeadForm.control}
-                      name="ownerEmail"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email (Optional)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="john@example.com" {...field} data-testid="input-owneremail" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={addLeadForm.control}
-                      name="leadType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Lead Type</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-leadtype">
-                                <SelectValue placeholder="Select lead type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="organic">Organic</SelectItem>
-                              <SelectItem value="cold_call">Cold Call</SelectItem>
-                              <SelectItem value="direct_mail">Direct Mail</SelectItem>
-                              <SelectItem value="referral">Referral</SelectItem>
-                              <SelectItem value="online_marketing">Online Marketing</SelectItem>
-                              <SelectItem value="networking">Networking</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-              </div>
-
-              {/* Form Actions */}
-              <div className="flex justify-end space-x-3 pt-4">
-                <Button type="button" variant="outline" onClick={onClose} data-testid="button-cancel-add-lead">
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={createPropertyMutation.isPending}
-                  data-testid="button-submit-add-lead"
-                >
-                  {createPropertyMutation.isPending ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Adding Lead...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Lead
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Property Details */}
           <Card>
             <CardHeader>
@@ -919,9 +504,8 @@ export default function PropertyCard({ property, contact, isOpen, onClose, isAdd
             </CardContent>
           </Card>
         </div>
-        )}
 
-        {/* Streaming Analysis Display - only show for existing properties */}
+        {/* Streaming Analysis Display */}
         {showAnalysis && isStreaming && (
           <>
             <Separator className="my-4" />
@@ -1076,122 +660,6 @@ export default function PropertyCard({ property, contact, isOpen, onClose, isAdd
           </div>
         )}
 
-        {/* Comps Analysis Results */}
-        {showComps && compsData && compsData.length > 0 && (
-          <>
-            <Separator className="my-4" />
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <TrendingUp className="w-5 h-5 text-green-600" />
-                  Comparable Sales Analysis
-                </h3>
-                <div className="flex gap-2">
-                  <Badge variant="outline" className="text-xs">
-                    {compsData.length} Comps Found
-                  </Badge>
-                  {compsSummary && (
-                    <Badge variant="outline" className="text-xs">
-                      {compsSummary.confidence ? `${Math.round(compsSummary.confidence * 100)}% Confident` : "High Confidence"}
-                    </Badge>
-                  )}
-                </div>
-              </div>
-
-              {/* Comps Summary */}
-              {compsSummary && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm flex items-center gap-2">
-                      <Calculator className="w-4 h-4" />
-                      Market Summary
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium text-slate-700">Avg Sale Price:</span>
-                        <div className="font-mono font-semibold">${compsSummary.avgSalePrice?.toLocaleString() || "N/A"}</div>
-                      </div>
-                      <div>
-                        <span className="font-medium text-slate-700">Price per Sq Ft:</span>
-                        <div className="font-mono font-semibold">${compsSummary.avgPricePerSqFt?.toLocaleString() || "N/A"}</div>
-                      </div>
-                      <div>
-                        <span className="font-medium text-slate-700">Avg Days on Market:</span>
-                        <div className="font-mono font-semibold">{compsSummary.avgDaysOnMarket || "N/A"} days</div>
-                      </div>
-                      <div>
-                        <span className="font-medium text-slate-700">Price Range:</span>
-                        <div className="font-mono font-semibold text-xs">
-                          ${compsSummary.priceRange?.min?.toLocaleString() || "N/A"} - ${compsSummary.priceRange?.max?.toLocaleString() || "N/A"}
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Individual Comps */}
-              <div className="space-y-3">
-                <h4 className="text-sm font-semibold text-slate-700">Individual Comparable Sales</h4>
-                <div className="grid grid-cols-1 gap-3 max-h-96 overflow-y-auto">
-                  {compsData.map((comp, index) => (
-                    <Card key={comp.id || index} className="border-l-4 border-l-green-500">
-                      <CardContent className="p-3">
-                        <div className="flex justify-between items-start mb-2">
-                          <div>
-                            <div className="font-semibold text-sm">{comp.compAddress}</div>
-                            <div className="text-xs text-slate-600">{comp.compCity}, {comp.compState} {comp.compZipCode}</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="font-semibold text-green-600">${comp.salePrice?.toLocaleString() || "N/A"}</div>
-                            <div className="text-xs text-slate-600">
-                              {comp.saleDate ? new Date(comp.saleDate).toLocaleDateString() : "Date unknown"}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="grid grid-cols-4 gap-2 text-xs text-slate-600">
-                          <div>
-                            <span className="font-medium">{comp.bedrooms || "N/A"}</span> bed
-                          </div>
-                          <div>
-                            <span className="font-medium">{comp.bathrooms || "N/A"}</span> bath
-                          </div>
-                          <div>
-                            <span className="font-medium">{comp.squareFeet?.toLocaleString() || "N/A"}</span> sq ft
-                          </div>
-                          <div>
-                            <span className="font-medium">{comp.distanceMiles || "N/A"}</span> mi
-                          </div>
-                        </div>
-                        {comp.pricePerSqFt && (
-                          <div className="mt-2 pt-2 border-t text-xs">
-                            <span className="text-slate-600">Price per sq ft: </span>
-                            <span className="font-semibold">${Number(comp.pricePerSqFt).toFixed(0)}</span>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setShowComps(false)}
-                  data-testid="button-hide-comps"
-                >
-                  Hide Comps
-                </Button>
-              </div>
-            </div>
-            <Separator className="my-4" />
-          </>
-        )}
-
         {/* Action Buttons */}
         <div className="flex items-center justify-end gap-3">
           {/* Show Analysis Button - appears when analysis exists but is hidden */}
@@ -1219,20 +687,6 @@ export default function PropertyCard({ property, contact, isOpen, onClose, isAdd
               <Calculator className="w-4 h-4 mr-2" />
             )}
             {(isStreaming || analyzeDealMutation.isPending) ? "Analyzing..." : hasExistingAnalysis ? "Re-analyze Deal" : "Analyze Deal"}
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            data-testid="button-run-comps"
-            onClick={handleRunComps}
-            disabled={isRunningComps}
-          >
-            {isRunningComps ? (
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <TrendingUp className="w-4 h-4 mr-2" />
-            )}
-            {isRunningComps ? "Running Comps..." : "Run Comps"}
           </Button>
           <Button variant="outline" size="sm" data-testid="button-generate-contract">
             <FileText className="w-4 h-4 mr-2" />
