@@ -1,0 +1,125 @@
+// 1) Full schema (trimmed to essentials you asked for)
+const response_format = {
+  type: "json_schema",
+  json_schema: {
+    name: "investment_analysis",
+    strict: true,
+    schema: {
+      type: "object",
+      required: [
+        "subject","free_sources_used","school_district","comps",
+        "adjustments_method","adjusted_valuation","market_trends",
+        "neighborhood","limitations","recommendation"
+      ],
+      properties: {
+        subject: {
+          type: "object",
+          required: ["address","property_type","bedrooms","bathrooms","square_feet","year_built","arv","max_offer","owner_name","lead_type","distressed_indicator","last_sale_price","last_sale_date","confidence_score"],
+          properties: {
+            address:{type:"string"}, property_type:{type:"string"},
+            bedrooms:{type:"integer"}, bathrooms:{type:"number"},
+            square_feet:{type:"integer"}, year_built:{type:"integer"},
+            arv:{type:"number"}, max_offer:{type:"number"},
+            owner_name:{type:"string"}, lead_type:{type:"string"},
+            distressed_indicator:{type:"boolean"},
+            last_sale_price:{type:"number"}, last_sale_date:{type:"string"},
+            confidence_score:{type:"number"}
+          }
+        },
+        free_sources_used: { type:"array", items:{type:"string"} },
+        school_district: { type:"string" },
+        comps: {
+          type:"array", minItems:3, maxItems:3,
+          items:{
+            type:"object",
+            required:["address","bedrooms","bathrooms","property_type","square_feet","sale_price","sale_date","dom","distance_miles","same_school_district","photos","price_per_sqft","source_urls"],
+            properties:{
+              address:{type:"string"}, bedrooms:{type:"integer"},
+              bathrooms:{type:"number"}, property_type:{type:"string"},
+              square_feet:{type:"integer"}, sale_price:{type:"number"},
+              sale_date:{type:"string"}, dom:{type:"integer"},
+              distance_miles:{type:"number"}, same_school_district:{type:"boolean"},
+              photos:{type:"array", items:{type:"string"}},
+              price_per_sqft:{type:"number"},
+              source_urls:{type:"array", items:{type:"string"}}
+            }
+          }
+        },
+        adjustments_method: {
+          type:"object",
+          required:["basis","sqft_rate_delta","condition_notes"],
+          properties:{
+            basis:{type:"string"}, sqft_rate_delta:{type:"number"},
+            condition_notes:{type:"string"}
+          }
+        },
+        adjusted_valuation:{
+          type:"object",
+          required:["comp_details"],
+          properties:{
+            comp_details:{
+              type:"array",
+              items:{
+                type:"object",
+                required:["comp_address","raw_price","sqft_adjustment","condition_adjustment","other_adjustments","adjusted_price"],
+                properties:{
+                  comp_address:{type:"string"},
+                  raw_price:{type:"number"},
+                  sqft_adjustment:{type:"number"},
+                  condition_adjustment:{type:"number"},
+                  other_adjustments:{type:"number"},
+                  adjusted_price:{type:"number"}
+                }
+              }
+            }
+          }
+        },
+        market_trends:{
+          type:"object",
+          required:["pricing_direction","median_days_on_market","inventory_note","seasonality_note"],
+          properties:{
+            pricing_direction:{type:"string"},
+            median_days_on_market:{type:"number"},
+            inventory_note:{type:"string"},
+            seasonality_note:{type:"string"}
+          }
+        },
+        neighborhood:{
+          type:"object",
+          required:["amenities","walkability","crime_snapshot","school_ratings_note","recent_development_note"],
+          properties:{
+            amenities:{type:"string"}, walkability:{type:"string"},
+            crime_snapshot:{type:"string"}, school_ratings_note:{type:"string"},
+            recent_development_note:{type:"string"}
+          }
+        },
+        limitations:{type:"string"},
+        recommendation:{
+          type:"object",
+          required:["valuation_range","mao_proposed","notes"],
+          properties:{
+            valuation_range:{
+              type:"object", required:["low","high"],
+              properties:{ low:{type:"number"}, high:{type:"number"} }
+            },
+            mao_proposed:{type:"number"},
+            notes:{type:"string"}
+          }
+        }
+      },
+      additionalProperties:false
+    }
+  }
+};
+
+// 2) Messages (keep the system tight)
+const messages = [
+  { role: "system", content:
+    "You are a real-estate data analyst. Return ONLY valid JSON matching the schema. If missing data (comps/photos), make conservative placeholders and clearly flag limitations." },
+  { role: "user", content:
+    `Produce the final investment analysis JSON for the subject below (do not call tools in this test).
+Subject:
+${JSON.stringify(subject)}` }
+];
+
+// 3) Call as before (gpt-5) and JSON.parse() the result
