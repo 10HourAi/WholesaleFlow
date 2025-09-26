@@ -142,16 +142,12 @@ export const compSummaryItemSchema = z.object({
 });
 
 export const dealAnalysisResultSchema = z.object({
-  address: z.string(),
-  strategy: z.enum(["wholesale", "flip", "rental", "wholetail"]),
-  is_deal: z.boolean(),
-  arv: z.number(),
-  rehab_cost: z.number(),
-  max_offer_price: z.number(),
-  profit_margin_pct: z.number(),
-  confidence: z.number().min(0).max(1),
   summary: z.string(),
-  next_actions: z.array(z.string()),
+  arv_estimate: z.number(),
+  max_offer_estimate: z.number(),
+  is_deal: z.boolean(),
+  confidence: z.number(),
+  notes: z.string(),
 });
 
 export type DealAnalysisRequest = z.infer<typeof dealAnalysisRequestSchema>;
