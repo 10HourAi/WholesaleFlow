@@ -58,7 +58,7 @@ async function upsertUser(
   claims: any,
 ) {
   await storage.upsertUser({
-    id: claims["sub"],
+    id: String(claims["sub"]),
     email: claims["email"],
     firstName: claims["first_name"],
     lastName: claims["last_name"],
