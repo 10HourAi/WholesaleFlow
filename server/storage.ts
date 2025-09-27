@@ -74,11 +74,13 @@ export class DatabaseStorage implements IStorage {
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
-      .values(userData)
+      .values({
+        ...userData,
+        id: undefined, // Let the database generate a UUID
+      })
       .onConflictDoUpdate({
         target: users.email,
         set: {
-          id: userData.id,
           firstName: userData.firstName,
           lastName: userData.lastName,
           profileImageUrl: userData.profileImageUrl,
@@ -172,7 +174,7 @@ export class DatabaseStorage implements IStorage {
 
   async searchProperties(userId: string, criteria: { city?: string; state?: string; status?: string; leadType?: string }): Promise<Property[]> {
     const conditions = [eq(properties.userId, userId)];
-    
+
     if (criteria.city) {
       conditions.push(eq(properties.city, criteria.city));
     }
@@ -185,7 +187,7 @@ export class DatabaseStorage implements IStorage {
     if (criteria.leadType) {
       conditions.push(eq(properties.leadType, criteria.leadType));
     }
-    
+
     return await db.select().from(properties).where(and(...conditions));
   }
 
@@ -203,7 +205,7 @@ export class DatabaseStorage implements IStorage {
       .from(contacts)
       .leftJoin(properties, eq(contacts.propertyId, properties.id))
       .where(eq(properties.userId, userId));
-    
+
     return results;
   }
 
