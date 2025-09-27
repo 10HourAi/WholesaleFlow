@@ -14,6 +14,13 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
   Send,
   Search,
   TrendingUp,
@@ -54,10 +61,284 @@ interface BuyerWizardData {
   buyerType: string;
 }
 
+// Helper to format numbers with commas
+const formatNumber = (num?: number | string | null) => {
+  if (num === null || num === undefined) return "N/A";
+  return Number(num).toLocaleString();
+};
+
+// Helper to format date
+const formatDate = (dateStr?: string | null) => {
+  if (!dateStr) return "N/A";
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
+  } catch (e) {
+    return dateStr;
+  }
+};
+
+// New Component for Condensed Property Card
+const CondensedPropertyCard = ({
+  property,
+  onViewDetails,
+}: {
+  property: Property;
+  onViewDetails: (property: Property) => void;
+}) => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const handleAddToCRM = async () => {
+    try {
+      const result = await apiRequest("POST", "/api/properties", property);
+      console.log("🏠 Property successfully added to CRM:", result);
+      toast({
+        title: "Added to CRM",
+        description: `Property at ${property.address} has been added.`,
+      });
+      await queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+    } catch (error: any) {
+      console.error("Error adding property to CRM:", error);
+      toast({
+        title: "Error",
+        description: "Failed to add property to CRM.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAnalyzeDeal = () => {
+    toast({
+      title: "Deal Analysis Started",
+      description: `Analyzing deal for ${property.address}...`,
+    });
+  };
+
+  const handleContactOwner = () => {
+    toast({
+      title: "Contact Owner",
+      description: `Preparing to contact property owner...`,
+    });
+  };
+
+  return (
+    <Card className="w-full max-w-2xl mx-auto overflow-hidden bg-white border border-gray-200 shadow-sm">
+      <CardContent className="p-6">
+        {/* Header with Location and Seller Badge */}
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <p className="text-sm text-gray-500 mb-1">{`${property.city}, ${property.state}`}</p>
+            <p className="font-semibold text-lg text-gray-800">
+              {property.address}
+            </p>
+          </div>
+          <Badge className="bg-green-100 text-green-800 border-green-200">
+            Seller
+          </Badge>
+        </div>
+
+        {/* Owner Name */}
+        <div className="mb-4">
+          <p className="text-sm text-gray-500 mb-1">Owner Name</p>
+          <p className="font-medium text-gray-800">
+            {property.ownerName || "Contact for details"}
+          </p>
+        </div>
+
+        {/* Property Details Grid */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <p className="text-sm text-gray-500 mb-1">Beds</p>
+            <p className="font-semibold text-xl text-gray-800">
+              {property.bedrooms || "N/A"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 mb-1">Baths</p>
+            <p className="font-semibold text-xl text-gray-800">
+              {property.bathrooms || "N/A"}
+            </p>
+          </div>
+        </div>
+
+        {/* Financial Information */}
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <p className="text-sm text-gray-500 mb-1">Last Sale Price</p>
+            <p className="font-semibold text-lg text-gray-800">
+              {property.lastSalePrice &&
+              property.lastSalePrice !== "null" &&
+              property.lastSalePrice !== null
+                ? `$${formatNumber(property.lastSalePrice)}`
+                : "N/A"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 mb-1">Last Sale Date</p>
+            <p className="font-semibold text-lg text-gray-800">
+              {formatDate(property.lastSaleDate)}
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4 mb-4">
+          <div>
+            <p className="text-sm text-gray-500 mb-1">Equity Percent</p>
+            <p className="font-semibold text-lg text-green-600">
+              {property.equityPercentage
+                ? `${property.equityPercentage}%`
+                : "N/A"}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-500 mb-1">Equity Value</p>
+            <p className="font-semibold text-lg text-green-600">
+              {property.equityBalance
+                ? `$${formatNumber(property.equityBalance)}`
+                : "N/A"}
+            </p>
+          </div>
+        </div>
+
+        {/* Estimated Value - Prominent Display */}
+        <div className="mb-6 p-3 bg-blue-50 rounded-lg">
+          <p className="text-sm text-blue-600 mb-1">Estimated Value</p>
+          <p className="text-2xl font-bold text-blue-700">
+            {property.arv
+              ? `$${formatNumber(property.arv)}`
+              : "Contact for details"}
+          </p>
+        </div>
+      </CardContent>
+
+      {/* Action Buttons */}
+      <div className="bg-gray-50 p-4 flex flex-wrap gap-2 justify-start border-t">
+        <Button
+          size="sm"
+          variant="outline"
+          className="bg-white hover:bg-green-50"
+          onClick={handleAddToCRM}
+        >
+          <Plus className="h-4 w-4 mr-2" /> Add to CRM
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="bg-white hover:bg-blue-50"
+          onClick={handleAnalyzeDeal}
+        >
+          <BarChart3 className="h-4 w-4 mr-2" /> Analyze Deal
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="bg-white hover:bg-orange-50"
+          onClick={handleContactOwner}
+        >
+          <PhoneCall className="h-4 w-4 mr-2" /> Contact Owner
+        </Button>
+        <Button size="sm" variant="outline" className="bg-white text-gray-600">
+          I'll Pass
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="bg-white text-blue-600 hover:bg-blue-50"
+          onClick={() => onViewDetails(property)}
+        >
+          View Details
+        </Button>
+      </div>
+    </Card>
+  );
+};
+
+// New Component for Detailed Property View Modal
+const PropertyDetailsModal = ({
+  property,
+  isOpen,
+  onClose,
+}: {
+  property: Property | null;
+  isOpen: boolean;
+  onClose: () => void;
+}) => {
+  if (!property) return null;
+
+  const formatPhone = (phone: string | null) => {
+    return phone || "Contact for details";
+  };
+
+  const formatEmail = (email: string | null) => {
+    return email || "Contact for details";
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-3xl bg-gray-50">
+        <DialogHeader>
+          <DialogTitle className="text-xl font-bold text-gray-800">
+            Seller Lead Details
+          </DialogTitle>
+        </DialogHeader>
+        <div className="text-sm whitespace-pre-wrap font-mono text-gray-700 bg-white p-4 rounded-md border max-h-[70vh] overflow-y-auto">
+          {`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏠 SELLER LEAD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 LOCATION
+   ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
+
+🏗️ BUILDING DETAILS
+   🏠 ${property.bedrooms || "N/A"} bed, ${property.bathrooms || "N/A"} bath | ${formatNumber(property.squareFeet)} sq ft
+   📅 Built: ${property.yearBuilt || "N/A"}
+   📐 Property Type: ${property.propertyType?.replace(/_/g, " ") || "single family"}
+   💰 Market Value: $${formatNumber(property.arv)}
+
+🏠 PROPERTY DETAILS
+   Total Area                   ${formatNumber(property.squareFeet)} sqft
+   Property Type                ${property.propertyType?.replace(/_/g, " ") || "single family"}
+   Bedrooms                     ${property.bedrooms || "N/A"}
+   Bathrooms                    ${property.bathrooms || "N/A"}
+
+👤 OWNER INFORMATION
+   Owner Name                   ${property.ownerName || "N/A"}
+   Mailing Address              ${property.ownerMailingAddress || "N/A"}
+
+📞 CONTACT INFORMATION
+   Email(s)                     ${formatEmail(property.ownerEmail)}
+   Phone(s)                     ${formatPhone(property.ownerPhone)}
+   Mobile Phone                 ${formatPhone(property.ownerMobilePhone)}
+   Land Line                    ${formatPhone(property.ownerLandLine)}
+   DNC Phone(s)                 ${formatPhone(property.ownerDNCPhone)}
+   Mailing Address              ${property.ownerMailingAddress || "N/A"}
+
+💰 VALUATION DETAILS
+   As of Date                   ${new Date().toLocaleDateString("en-US")}
+   Confidence Score             ${property.confidenceScore || "N/A"}
+   Equity Balance               $${formatNumber(property.equityBalance)}
+   Equity Percent               ${property.equityPercentage || "N/A"}%
+   Estimated Value              $${formatNumber(property.arv)}
+   Max Offer (70% Rule)         $${formatNumber(property.maxOffer)}
+   Last Sale Price              ${property.lastSalePrice ? `$${formatNumber(property.lastSalePrice)}` : "N/A"}
+   Last Sale Date               ${formatDate(property.lastSaleDate)}
+`}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
 // PropertyCard component for rendering property cards with buttons
 const PropertyCard = ({ content }: { content: string }) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
 
   // Detect card type and extract number
   const isSellerLead = content.includes("🏠 SELLER LEAD");
@@ -81,6 +362,136 @@ const PropertyCard = ({ content }: { content: string }) => {
       trimmedValue.includes("not available") ||
       trimmedValue.includes("none on record")
     );
+  };
+
+  // Function to extract minimal property details for card view
+  const extractMinimalDetails = (content: string) => {
+    if (!isSellerLead) return null;
+
+    console.log(
+      "🔍 PropertyCard: Extracting details from content:",
+      content.substring(0, 500) + "...",
+    );
+
+    try {
+      // Extract address
+      const addressMatch =
+        content.match(/📍 LOCATION[ \t]*\n[ \t]+(.+?)\n/) ||
+        content.match(/📍 LOCATION\s+(.+?)\n/);
+
+      let address = addressMatch ? addressMatch[1].trim() : "";
+
+      // Check if address is an object and handle it properly
+      if (address.includes("[object Object]")) {
+        // Try to extract address components separately
+        const streetMatch = content.match(/Address:\s*([^,\n]+)/i);
+        const cityMatch = content.match(/City:\s*([^,\n]+)/i);
+        const stateMatch = content.match(/State:\s*([^,\n]+)/i);
+        const zipMatch = content.match(/Zip:\s*(\d{5})/i);
+
+        // Reconstruct address from components
+        const street = streetMatch ? streetMatch[1].trim() : "";
+        const city = cityMatch ? cityMatch[1].trim() : "";
+        const state = stateMatch ? stateMatch[1].trim() : "";
+        const zip = zipMatch ? zipMatch[1].trim() : "";
+
+        address = street;
+        if (city && state) {
+          address += (address ? ", " : "") + city + ", " + state;
+          if (zip) address += " " + zip;
+        }
+      }
+
+      // Extract owner name
+      const ownerNameMatch =
+        content.match(/Owner Name\s+(.+?)\n/) ||
+        content.match(/Owner: (.+?)\n/) ||
+        content.match(/Owner name:\s*([^,\n]+)/i);
+
+      let ownerName = ownerNameMatch ? ownerNameMatch[1].trim() : "";
+
+      // Handle undefined owner name
+      if (ownerName === "undefined" || !ownerName) {
+        // Try to find owner name in other formats
+        const altOwnerMatch = content.match(/Owner:\s*([^,\n]+)/i);
+        ownerName = altOwnerMatch ? altOwnerMatch[1].trim() : "Not Available";
+      }
+
+      // Extract bedrooms and bathrooms - updated patterns to match actual format
+      const bedroomsMatch =
+        content.match(/Bedrooms\s+(\d+)/) || content.match(/🏠 (\d+) bed/);
+      const bathroomsMatch =
+        content.match(/Bathrooms\s+(\d+)/) || content.match(/(\d+) bath/);
+      const bedrooms = bedroomsMatch ? bedroomsMatch[1] : "";
+      const bathrooms = bathroomsMatch ? bathroomsMatch[1] : "";
+
+      // Extract estimated value - updated pattern to match actual format
+      const arvMatch =
+        content.match(/Estimated Value\s+([0-9,]+)/) ||
+        content.match(/💰 Market Value: \$([0-9,]+)/);
+      const estimatedValue = arvMatch ? arvMatch[1] : "";
+
+      // Extract equity percent - updated pattern to match actual format with multiple spaces
+      const equityPercentMatch = content.match(/Equity Percent\s+(\d+)%/);
+      const equityPercent = equityPercentMatch ? equityPercentMatch[1] : "";
+      console.log("🔍 PropertyCard: Equity Percent match:", {
+        equityPercentMatch,
+        equityPercent,
+      });
+
+      // Extract equity balance (this is the equity value in dollars) - updated pattern
+      const equityBalanceMatch = content.match(/Equity Balance\s+\$([0-9,]+)/);
+      const equityValue = equityBalanceMatch ? equityBalanceMatch[1] : "";
+      console.log("🔍 PropertyCard: Equity Balance match:", {
+        equityBalanceMatch,
+        equityValue,
+      });
+
+      // Extract last sale data if available - updated patterns to match actual format
+      const lastSalePriceMatch = content.match(
+        /Last Sale Price\s+(\$[0-9,]+|N\/A|null)/,
+      );
+      const lastSalePrice = lastSalePriceMatch ? lastSalePriceMatch[1] : "N/A";
+      console.log("🔍 PropertyCard: Last Sale Price match:", {
+        lastSalePriceMatch,
+        lastSalePrice,
+      });
+
+      const lastSaleDateMatch = content.match(
+        /Last Sale Date\s+([0-9\/\-]+|N\/A|null)/,
+      );
+      const lastSaleDate = lastSaleDateMatch ? lastSaleDateMatch[1] : "N/A";
+      console.log("🔍 PropertyCard: Last Sale Date match:", {
+        lastSaleDateMatch,
+        lastSaleDate,
+      });
+
+      // Debug: Log the entire content around sale data
+      const saleSection = content.match(
+        /Last Sale Price[\s\S]*?Last Sale Date[\s\S]*?\n/,
+      );
+      console.log(
+        "🔍 PropertyCard: Sale section from content:",
+        saleSection?.[0],
+      );
+
+      // Equity value is extracted directly from the content above
+
+      return {
+        address,
+        ownerName,
+        bedrooms,
+        bathrooms,
+        lastSalePrice,
+        lastSaleDate,
+        equityPercent,
+        estimatedValue,
+        equityValue,
+      };
+    } catch (error) {
+      console.error("Error extracting minimal details:", error);
+      return null;
+    }
   };
 
   // Function to extract property data from seller lead content
@@ -197,19 +608,7 @@ const PropertyCard = ({ content }: { content: string }) => {
     }
 
     try {
-      const response = await apiRequest("POST", "/api/properties", propertyData);
-      const result = await response.json();
-      
-      // Check if property already exists
-      if (response.status === 409 && result.isDuplicate) {
-        toast({
-          title: "Property Already in CRM",
-          description: result.message,
-          variant: "destructive",
-        });
-        return;
-      }
-      
+      const result = await apiRequest("POST", "/api/properties", propertyData);
       console.log("🏠 Property successfully added to CRM:", result);
 
       toast({
@@ -222,20 +621,43 @@ const PropertyCard = ({ content }: { content: string }) => {
       await queryClient.refetchQueries({ queryKey: ["/api/properties"] });
     } catch (error: any) {
       console.error("Error adding property to CRM:", error);
-      
-      // Handle duplicate detection from error response
-      if (error.response && error.response.status === 409) {
-        const errorData = await error.response.json();
-        if (errorData.isDuplicate) {
-          toast({
-            title: "Property Already in CRM",
-            description: errorData.message,
-            variant: "destructive",
-          });
-          return;
-        }
-      }
-      
+      toast({
+        title: "Error",
+        description: "Failed to add property to CRM. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleConfirmAddToCRM = async () => {
+    const propertyData = extractPropertyData(content);
+
+    if (!propertyData) {
+      toast({
+        title: "Error",
+        description: "Failed to extract property data from the lead.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      const result = await apiRequest("POST", "/api/properties", propertyData);
+      console.log("🏠 Property successfully added to CRM:", result);
+
+      toast({
+        title: "Added to CRM",
+        description: `Property at ${propertyData.address} has been added to your CRM system.`,
+      });
+
+      // Force refresh the properties cache to ensure CRM updates immediately
+      await queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+      await queryClient.refetchQueries({ queryKey: ["/api/properties"] });
+
+      // Close the dialog
+      setShowDetailsDialog(false);
+    } catch (error: any) {
+      console.error("Error adding property to CRM:", error);
       toast({
         title: "Error",
         description: "Failed to add property to CRM. Please try again.",
@@ -275,7 +697,7 @@ const PropertyCard = ({ content }: { content: string }) => {
   // Remove any action sections from content for display
   const displayContent = content
     .replace(
-      /🎯 ACTIONS[\s\S]*?━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━/g,
+      /� ACTIONS[\s\S]*?━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━/g,
       "",
     )
     .trim();
@@ -323,39 +745,258 @@ const PropertyCard = ({ content }: { content: string }) => {
         },
       ];
 
+  const minimalDetails = extractMinimalDetails(content);
+
+  // If not a seller lead, show the original format
+  if (!isSellerLead) {
+    return (
+      <div className="space-y-4">
+        {/* Display the formatted content */}
+        <div className="text-sm whitespace-pre-wrap font-mono bg-slate-50 p-3 rounded border">
+          {displayContent}
+        </div>
+
+        {/* Action buttons */}
+        <div className="flex flex-wrap gap-2 pt-2 border-t">
+          {actionButtons.map((button, idx) => {
+            const colorClasses = {
+              green:
+                "bg-green-50 border-green-200 text-green-700 hover:bg-green-100",
+              blue: "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100",
+              orange:
+                "bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100",
+            };
+
+            return (
+              <Button
+                key={idx}
+                onClick={button.action}
+                variant="outline"
+                size="sm"
+                className={`flex items-center gap-2 ${colorClasses[button.color as keyof typeof colorClasses]}`}
+                data-testid={`button-${button.label.toLowerCase().replace(/\s+/g, "-")}-${cardNumber}`}
+              >
+                <button.icon className="h-4 w-4" />
+                {button.label}
+              </Button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // For seller leads, show minimal card view
   return (
     <div className="space-y-4">
-      {/* Display the formatted content */}
-      <div className="text-sm whitespace-pre-wrap font-mono bg-slate-50 p-3 rounded border">
-        {displayContent}
-      </div>
+      {/* Minimal Property Card */}
+      <Card className="w-full max-w-md bg-white border border-gray-200 rounded-lg shadow-sm">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-gray-600">
+              {minimalDetails?.address
+                ? `${minimalDetails.address.split(",").slice(-2).join(",").trim()}`
+                : "Location"}
+            </h3>
+            <Badge
+              variant="secondary"
+              className="text-xs bg-green-100 text-green-800"
+            >
+              Seller
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* Address */}
+          <div>
+            <p className="text-sm text-gray-600">Address:</p>
+            <p className="font-medium text-gray-900">
+              {minimalDetails?.address || "Address not available"}
+            </p>
+          </div>
 
-      {/* Action buttons */}
-      <div className="flex flex-wrap gap-2 pt-2 border-t">
-        {actionButtons.map((button, idx) => {
-          const colorClasses = {
-            green:
-              "bg-green-50 border-green-200 text-green-700 hover:bg-green-100",
-            blue: "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100",
-            orange:
-              "bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100",
-          };
+          {/* Owner */}
+          <div>
+            <p className="text-sm text-gray-600">Owner name:</p>
+            <p className="font-medium text-gray-900">
+              {minimalDetails?.ownerName &&
+              minimalDetails.ownerName !== "undefined"
+                ? minimalDetails.ownerName
+                : "Not Available"}
+            </p>
+          </div>
 
-          return (
+          {/* Property Details Grid */}
+          <div className="grid grid-cols-2 gap-4 py-2">
+            <div className="text-center">
+              <p className="text-xs text-gray-500">Beds</p>
+              <p className="font-semibold text-gray-900">
+                {minimalDetails?.bedrooms || "N/A"}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-xs text-gray-500">Baths</p>
+              <p className="font-semibold text-gray-900">
+                {minimalDetails?.bathrooms || "N/A"}
+              </p>
+            </div>
+          </div>
+
+          {/* Sale Information */}
+          <div className="grid grid-cols-2 gap-4 py-2">
+            <div>
+              <p className="text-xs text-gray-500">Last Sale Price</p>
+              <p className="font-semibold text-gray-900">
+                {minimalDetails?.lastSalePrice &&
+                minimalDetails.lastSalePrice !== "N/A" &&
+                minimalDetails.lastSalePrice !== "null"
+                  ? minimalDetails.lastSalePrice.startsWith("$")
+                    ? minimalDetails.lastSalePrice
+                    : `$${minimalDetails.lastSalePrice}`
+                  : "N/A"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Last Sale Date</p>
+              <p className="font-semibold text-gray-900">
+                {minimalDetails?.lastSaleDate &&
+                minimalDetails.lastSaleDate !== "N/A" &&
+                minimalDetails.lastSaleDate !== "null"
+                  ? minimalDetails.lastSaleDate
+                  : "N/A"}
+              </p>
+            </div>
+          </div>
+
+          {/* Financial Information */}
+          <div className="grid grid-cols-2 gap-4 py-2">
+            <div>
+              <p className="text-xs text-gray-500">Equity Percent</p>
+              <p className="font-semibold text-green-600">
+                {minimalDetails?.equityPercent
+                  ? `${minimalDetails.equityPercent}%`
+                  : "N/A"}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Equity Value</p>
+              <p className="font-semibold text-green-600">
+                {minimalDetails?.equityValue
+                  ? minimalDetails.equityValue.startsWith("$")
+                    ? minimalDetails.equityValue
+                    : `$${minimalDetails.equityValue}`
+                  : "N/A"}
+              </p>
+            </div>
+          </div>
+
+          {/* Estimated Value */}
+          <div className="py-2">
+            <p className="text-sm text-gray-600">Estimated Value</p>
+            <p className="text-lg font-bold text-blue-600">
+              {minimalDetails?.estimatedValue
+                ? minimalDetails.estimatedValue.startsWith("$")
+                  ? minimalDetails.estimatedValue
+                  : `$${minimalDetails.estimatedValue}`
+                : "N/A"}
+            </p>
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex flex-wrap gap-2 pt-3">
             <Button
-              key={idx}
-              onClick={button.action}
+              onClick={handleAddToCRM}
               variant="outline"
               size="sm"
-              className={`flex items-center gap-2 ${colorClasses[button.color as keyof typeof colorClasses]}`}
-              data-testid={`button-${button.label.toLowerCase().replace(/\s+/g, "-")}-${cardNumber}`}
+              className="flex items-center gap-1 bg-green-50 border-green-200 text-green-700 hover:bg-green-100 text-xs px-3 py-1"
             >
-              <button.icon className="h-4 w-4" />
-              {button.label}
+              <Plus className="h-3 w-3" />
+              Add to CRM
             </Button>
-          );
-        })}
-      </div>
+            <Button
+              onClick={handleAnalyzeDeal}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 text-xs px-3 py-1"
+            >
+              <BarChart3 className="h-3 w-3" />
+              Analyze Deal
+            </Button>
+            <Button
+              onClick={handleContactOwner}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 text-xs px-3 py-1"
+            >
+              <PhoneCall className="h-3 w-3" />
+              Contact Owner
+            </Button>
+          </div>
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1 text-xs px-3 py-1 text-gray-600 hover:bg-gray-50"
+            >
+              I'll Pass
+            </Button>
+            <Button
+              onClick={() => setShowDetailsDialog(true)}
+              variant="outline"
+              size="sm"
+              className="flex-1 text-xs px-3 py-1 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+            >
+              View Details
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Detailed Property Information Dialog */}
+      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-green-700">
+              🏠 Seller Lead {cardNumber} - Complete Details
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Full property details in formatted view */}
+            <div className="text-sm whitespace-pre-wrap font-mono bg-slate-50 p-4 rounded border max-h-96 overflow-y-auto">
+              {displayContent}
+            </div>
+
+            {/* Action buttons in dialog */}
+            <div className="flex flex-wrap gap-3 pt-4 border-t">
+              <Button
+                onClick={handleConfirmAddToCRM}
+                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+              >
+                <Plus className="h-4 w-4" />
+                Confirm Add to CRM
+              </Button>
+              <Button
+                onClick={handleAnalyzeDeal}
+                variant="outline"
+                className="flex items-center gap-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+              >
+                <BarChart3 className="h-4 w-4" />
+                Analyze Deal
+              </Button>
+              <Button
+                onClick={handleContactOwner}
+                variant="outline"
+                className="flex items-center gap-2 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+              >
+                <PhoneCall className="h-4 w-4" />
+                Contact Owner
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
@@ -470,6 +1111,17 @@ export default function ChatInterface() {
     new Set(),
   );
   const [lastSearchCriteria, setLastSearchCriteria] = useState<any>(null);
+
+  // State for the details modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(
+    null,
+  );
+
+  const handleViewDetails = (property: Property) => {
+    setSelectedProperty(property);
+    setIsModalOpen(true);
+  };
 
   const { data: conversations = [] } = useQuery<Conversation[]>({
     queryKey: ["/api/conversations"],
@@ -622,17 +1274,19 @@ Equity Balance               $${(parseInt(property.arv) * (property.equityPercen
 Equity Percent               ${property.equityPercentage}%
 Estimated Value              $${parseInt(property.arv).toLocaleString()}
 Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
-
-🎯 ACTIONS
-   📋 Add to CRM        📊 Analyze Deal        📞 Contact Owner
+Last Sale Price              ${property.lastSalePrice ? `$${Number(property.lastSalePrice).toLocaleString()}` : "N/A"}
+Last Sale Date               ${property.lastSaleDate || "N/A"}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+
+                // Property card already includes last sale data in template
+                const updatedPropertyCard = propertyCard;
 
                 await apiRequest(
                   "POST",
                   `/api/conversations/${conversation.id}/messages`,
                   {
-                    content: propertyCard,
+                    content: updatedPropertyCard,
                     role: "assistant",
                     isAiGenerated: true,
                   },
@@ -664,42 +1318,13 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
           data.content.toLowerCase().includes("leads"));
 
       if (selectedAgent === "lead-finder" && !isWizardMessage) {
-        // Skip API call for seller leads - we're using dummy data for UI testing
-        // const demoResponse = await fetch('/api/demo/chat', {
-        //   method: 'POST',
-        //   headers: {
-        //     'Content-Type': 'application/json',
-        //   },
-        //   body: JSON.stringify({
-        //     message: data.content,
-        //     agentType: 'lead_finder',
-        //     sessionState: sessionState,
-        //     excludedPropertyIds: Array.from(shownPropertyIds)
-        //   })
-        // });
-
-        // Return dummy result for now
-        await apiRequest(
+        // For lead finder, use the normal API flow
+        const response = await apiRequest(
           "POST",
           `/api/conversations/${currentConversation}/messages`,
-          {
-            content: data.content,
-            role: "user",
-          },
+          data,
         );
-
-        await apiRequest(
-          "POST",
-          `/api/conversations/${currentConversation}/messages`,
-          {
-            content:
-              "API calls are currently paused for UI testing. Please use the Seller Lead Wizard for testing the new card format.",
-            role: "assistant",
-            isAiGenerated: true,
-          },
-        );
-
-        return { response: "API paused for testing" };
+        return response.json();
       } else if (isWizardMessage) {
         // For wizard messages, just send the user message without triggering AI response
         await apiRequest(
@@ -862,6 +1487,10 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
     { value: "townhouse", label: "Townhouses" },
   ];
 
+  // client/src/components/chat/chat-interface.tsx
+
+  // client/src/components/chat/chat-interface.tsx
+
   const handleWizardSubmit = async () => {
     let location = "";
     const cityInput = wizardData.city.trim();
@@ -922,10 +1551,6 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
     }
 
     setWizardProcessing(true);
-    // Don't set the input message or close wizard yet - wait until after we send dummy data
-    // setInputMessage(searchQuery);
-    // setShowWizard(false);
-    // setWizardStep(1);
 
     // Clear any previous search results
     localStorage.removeItem("pendingSellerResponse");
@@ -933,63 +1558,18 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
 
     // Call real BatchData API for seller leads
     try {
-      // Build searchCriteria in a shape backend expects.
-      // - send sellerTypes as an array (backend merges to quickLists)
-      // - always include a canonical 'location' string and optional 'locations' array
-      const sellerTypeMap: Record<string, string> = {
-        distressed: "preforeclosure",
-        absentee: "out-of-state-absentee-owner",
-        high_equity: "high-equity",
-        inherited: "inherited",
-        tired_landlord: "tired-landlord",
-        corporate: "corporate-owned",
+      const searchCriteria: any = {
+        location: location,
+        sellerType: wizardData.sellerType,
+        propertyType: wizardData.propertyType,
+        minBedrooms: wizardData.minBedrooms,
+        maxPrice: wizardData.maxPrice,
+        minPrice: wizardData.minPrice,
       };
-
-      const apiSellerType = wizardData.sellerType
-        ? sellerTypeMap[wizardData.sellerType] || wizardData.sellerType
-        : undefined;
-
-      const searchCriteria: any = {};
-
-      // Normalize location / locations
       if (locations && locations.length > 0) {
         searchCriteria.locations = locations;
-        searchCriteria.location = locations[0];
-      } else {
-        searchCriteria.location = location;
       }
 
-      // property type
-      if (wizardData.propertyType) {
-        searchCriteria.propertyType = wizardData.propertyType;
-        // also provide a propertyTypeList (BatchData label) for extra compatibility
-        const propertyTypeMap: Record<string, string> = {
-          single_family: "Single Family",
-          multi_family: "Multi Family",
-          condo: "Condominium Unit",
-          townhouse: "Townhouse",
-        };
-        searchCriteria.propertyTypeList = [
-          propertyTypeMap[wizardData.propertyType] || wizardData.propertyType,
-        ];
-      }
-
-      // numeric filters (ensure numbers)
-      if (wizardData.minBedrooms != null) {
-        searchCriteria.minBedrooms =
-          Number(wizardData.minBedrooms) || undefined;
-      }
-      if (wizardData.maxPrice != null) {
-        searchCriteria.maxPrice = Number(wizardData.maxPrice) || undefined;
-      }
-      if (wizardData.minPrice != null) {
-        searchCriteria.minPrice = Number(wizardData.minPrice) || undefined;
-      }
-
-      // send sellerTypes as array (backend expects an array)
-      if (apiSellerType) {
-        searchCriteria.sellerTypes = [apiSellerType];
-      }
       console.log(
         "🔍 Calling BatchData API for seller leads with criteria:",
         searchCriteria,
@@ -1105,25 +1685,42 @@ Would you like to adjust your search criteria and try again?`;
         );
 
         // Send property cards after intro message with a small delay
-        setTimeout(async () => {
-          const storedCards = localStorage.getItem("pendingSellerCards");
-          if (storedCards) {
-            localStorage.removeItem("pendingSellerCards");
-            const properties = JSON.parse(storedCards);
+        for (let i = 0; i < properties.length; i++) {
+          await new Promise((resolve) => setTimeout(resolve, 400)); // Small delay between cards
+          const rawProperty = properties[i];
 
-            for (let i = 0; i < properties.length; i++) {
-              await new Promise((resolve) => setTimeout(resolve, 400)); // Small delay between cards
-              const property = properties[i];
+          // Normalize property object to ensure camelCase field names
+          const property = {
+            ...rawProperty,
+            lastSalePrice:
+              rawProperty.lastSalePrice || rawProperty.last_sale_price,
+            lastSaleDate:
+              rawProperty.lastSaleDate || rawProperty.last_sale_date,
+            equityPercentage:
+              rawProperty.equityPercentage ||
+              rawProperty.equity_percentage ||
+              0,
+          };
 
-              // Use building data from original BatchData search - no additional API calls needed
-              const buildingDetails = `
+          console.log("🔍 PropertyCard Template: Normalized property:", {
+            address: property.address,
+            lastSalePrice: property.lastSalePrice,
+            lastSaleDate: property.lastSaleDate,
+            equityPercentage: property.equityPercentage,
+            hasLastSalePrice: !!property.lastSalePrice,
+            hasLastSaleDate: !!property.lastSaleDate,
+            hasEquityPercentage: !!property.equityPercentage,
+          });
+
+          // Use building data from original BatchData search - no additional API calls needed
+          const buildingDetails = `
 🏗️ BUILDING DETAILS
    🏠 ${property.bedrooms || "Contact seller"} bed, ${property.bathrooms || "Contact seller"} bath${property.squareFeet ? ` | ${property.squareFeet.toLocaleString()} sq ft` : " | Contact seller for sq ft"}
    📅 Built: ${property.yearBuilt || "Contact seller for year built"}
    📐 Property Type: ${property.propertyType?.replace(/_/g, " ") || "Single Family"}
    💰 Market Value: $${parseInt(property.arv).toLocaleString()}`;
 
-              const propertyCard = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          const propertyCard = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🏠 SELLER LEAD ${i + 1}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -1171,28 +1768,24 @@ Equity Balance               $${(parseInt(property.arv) * (property.equityPercen
 Equity Percent               ${property.equityPercentage}%
 Estimated Value              $${parseInt(property.arv).toLocaleString()}
 Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
-
-🎯 ACTIONS
-   📋 Add to CRM        📊 Analyze Deal        📞 Contact Owner
+Last Sale Price              ${property.lastSalePrice ? `$${Number(property.lastSalePrice).toLocaleString()}` : "N/A"}
+Last Sale Date               ${property.lastSaleDate || "N/A"}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
-              await apiRequest(
-                "POST",
-                `/api/conversations/${currentConversation}/messages`,
-                {
-                  content: propertyCard,
-                  role: "assistant",
-                  isAiGenerated: true,
-                },
-              );
-            }
-
-            queryClient.invalidateQueries({
-              queryKey: ["/api/conversations", currentConversation, "messages"],
-            });
-          }
-        }, 500); // Wait for intro message to be sent first
+          await apiRequest(
+            "POST",
+            `/api/conversations/${currentConversation}/messages`,
+            {
+              content: JSON.stringify({
+                type: "property_card",
+                data: property,
+              }),
+              role: "assistant",
+              isAiGenerated: true,
+            },
+          );
+        }
 
         queryClient.invalidateQueries({
           queryKey: ["/api/conversations", currentConversation, "messages"],
@@ -1310,7 +1903,7 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
 
           // Create modern, sleek card design
           let cardContent = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 QUALIFIED CASH BUYER #${index + 1}
+� QUALIFIED CASH BUYER #${index + 1}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 `;
@@ -1348,10 +1941,7 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
             cardContent += `📱 Contact for details\n`;
           }
 
-          cardContent += `\n🎯 ACTIONS
-   📋 Add to CRM        📊 View Portfolio        📞 Contact Investor
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+          cardContent += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
 
           return cardContent;
         });
@@ -1373,7 +1963,7 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
         });
       } else {
         // Send intro message immediately
-        const introMessage = `🎯 **CASH BUYER SEARCH COMPLETE**\n\nFound **5 qualified ${buyerWizardData.buyerType.replace(/_/g, " ")}** in **${location}**!\n\nHere are your investor leads:`;
+        const introMessage = `� **CASH BUYER SEARCH COMPLETE**\n\nFound **5 qualified ${buyerWizardData.buyerType.replace(/_/g, " ")}** in **${location}**!\n\nHere are your investor leads:`;
 
         await apiRequest(
           "POST",
@@ -1901,15 +2491,17 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
                       </p>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {selectedAgent === "lead-finder" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowWizard(true)}
-                            className="flex items-center gap-2 mb-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
-                          >
-                            <Search className="h-4 w-4" />
-                            Use Seller Lead Wizard
-                          </Button>
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setShowWizard(true)}
+                              className="flex items-center gap-2 mb-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                            >
+                              <Search className="h-4 w-4" />
+                              Use Seller Lead Wizard
+                            </Button>
+                          </>
                         )}
                         {selectedAgent === "deal-analyzer" && (
                           <>
@@ -2303,14 +2895,34 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
                 }
               >
                 <CardContent className="p-4">
-                  {message.content.includes("🏠 SELLER LEAD") ||
-                  message.content.includes("🎯 QUALIFIED CASH BUYER #") ? (
-                    <PropertyCard content={message.content} />
-                  ) : (
-                    <p className="text-sm whitespace-pre-wrap">
-                      {message.content}
-                    </p>
-                  )}
+                  {(() => {
+                    try {
+                      const parsed = JSON.parse(message.content);
+                      if (parsed.type === "property_card") {
+                        return (
+                          <CondensedPropertyCard
+                            property={parsed.data}
+                            onViewDetails={handleViewDetails}
+                          />
+                        );
+                      }
+                    } catch (e) {
+                      // Not JSON, check for legacy format
+                    }
+
+                    if (
+                      message.content.includes("🏠 SELLER LEAD") ||
+                      message.content.includes("🎯 QUALIFIED CASH BUYER #")
+                    ) {
+                      return <PropertyCard content={message.content} />;
+                    }
+
+                    return (
+                      <p className="text-sm whitespace-pre-wrap">
+                        {message.content}
+                      </p>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </div>
@@ -2351,6 +2963,13 @@ Max Offer (70% Rule)         $${parseInt(property.maxOffer).toLocaleString()}
           </Button>
         </div>
       </div>
+
+      {/* Modal Renderer */}
+      <PropertyDetailsModal
+        property={selectedProperty}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+      />
     </div>
   );
 }

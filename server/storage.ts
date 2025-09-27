@@ -1,6 +1,29 @@
-import { type Property, type InsertProperty, type Contact, type InsertContact, type Conversation, type InsertConversation, type Message, type InsertMessage, type Document, type InsertDocument, type Deal, type InsertDeal, type User, type UpsertUser } from "@shared/schema";
+import {
+  type Property,
+  type InsertProperty,
+  type Contact,
+  type InsertContact,
+  type Conversation,
+  type InsertConversation,
+  type Message,
+  type InsertMessage,
+  type Document,
+  type InsertDocument,
+  type Deal,
+  type InsertDeal,
+  type User,
+  type UpsertUser,
+} from "@shared/schema";
 import { db } from "./db";
-import { users, properties, contacts, conversations, messages, documents, deals } from "@shared/schema";
+import {
+  users,
+  properties,
+  contacts,
+  conversations,
+  messages,
+  documents,
+  deals,
+} from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 
 // Interface for storage operations
@@ -12,24 +35,24 @@ export interface IStorage {
   // Properties
   getProperties(userId: string): Promise<Property[]>;
   getProperty(id: string, userId: string): Promise<Property | undefined>;
-  createProperty(property: InsertProperty & { userId: string }): Promise<Property>;
-  updateProperty(id: string, userId: string, updates: Partial<Property>): Promise<Property>;
-  findDuplicateProperty(userId: string, address: string, city: string, state: string): Promise<Property | undefined>;
-  updatePropertyAnalysis(propertyId: string, analysisData: {
-    strategy?: string;
-    isDeal?: boolean;
-    analysisArv?: number;
-    rehabCost?: number;
-    analysisMaxOfferPrice?: number;
-    profitMarginPct?: number;
-    riskLevel?: string;
-    analysisConfidence?: number;
-    keyAssumptions?: any;
-    compSummary?: any;
-    nextActions?: any;
-  }): Promise<Property>;
+  createProperty(
+    property: InsertProperty & { userId: string },
+  ): Promise<Property>;
+  updateProperty(
+    id: string,
+    userId: string,
+    updates: Partial<Property>,
+  ): Promise<Property>;
   deleteProperty(id: string, userId: string): Promise<void>;
-  searchProperties(userId: string, criteria: { city?: string; state?: string; status?: string; leadType?: string }): Promise<Property[]>;
+  searchProperties(
+    userId: string,
+    criteria: {
+      city?: string;
+      state?: string;
+      status?: string;
+      leadType?: string;
+    },
+  ): Promise<Property[]>;
 
   // Contacts
   getContacts(userId: string): Promise<Contact[]>;
@@ -42,7 +65,10 @@ export interface IStorage {
   getConversations(userId: string): Promise<Conversation[]>;
   getConversation(id: string): Promise<Conversation | undefined>;
   createConversation(conversation: InsertConversation): Promise<Conversation>;
-  updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation>;
+  updateConversation(
+    id: string,
+    updates: Partial<Conversation>,
+  ): Promise<Conversation>;
 
   // Messages
   getMessagesByConversation(conversationId: string): Promise<Message[]>;
@@ -76,13 +102,9 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values(userData)
       .onConflictDoUpdate({
-        target: users.email,
+        target: users.id,
         set: {
-          id: userData.id,
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          profileImageUrl: userData.profileImageUrl,
-          preferences: userData.preferences,
+          ...userData,
           updatedAt: new Date(),
         },
       })
@@ -92,7 +114,10 @@ export class DatabaseStorage implements IStorage {
 
   // Properties
   async getProperties(userId: string): Promise<Property[]> {
-    return await db.select().from(properties).where(eq(properties.userId, userId));
+    return await db
+      .select()
+      .from(properties)
+      .where(eq(properties.userId, userId));
   }
 
   async getProperty(id: string, userId: string): Promise<Property | undefined> {
@@ -103,7 +128,9 @@ export class DatabaseStorage implements IStorage {
     return property;
   }
 
-  async createProperty(propertyData: InsertProperty & { userId: string }): Promise<Property> {
+  async createProperty(
+    propertyData: InsertProperty & { userId: string },
+  ): Promise<Property> {
     const [property] = await db
       .insert(properties)
       .values(propertyData)
@@ -111,54 +138,15 @@ export class DatabaseStorage implements IStorage {
     return property;
   }
 
-  async updateProperty(id: string, userId: string, updates: Partial<Property>): Promise<Property> {
+  async updateProperty(
+    id: string,
+    userId: string,
+    updates: Partial<Property>,
+  ): Promise<Property> {
     const [property] = await db
       .update(properties)
       .set({ ...updates, updatedAt: new Date() })
       .where(and(eq(properties.id, id), eq(properties.userId, userId)))
-      .returning();
-    if (!property) throw new Error("Property not found");
-    return property;
-  }
-
-  async findDuplicateProperty(userId: string, address: string, city: string, state: string): Promise<Property | undefined> {
-    const [property] = await db
-      .select()
-      .from(properties)
-      .where(and(
-        eq(properties.userId, userId),
-        eq(properties.address, address),
-        eq(properties.city, city),
-        eq(properties.state, state)
-      ));
-    return property;
-  }
-
-  async updatePropertyAnalysis(propertyId: string, analysisData: {
-    strategy?: string;
-    isDeal?: boolean;
-    analysisArv?: number;
-    rehabCost?: number;
-    analysisMaxOfferPrice?: number;
-    profitMarginPct?: number;
-    riskLevel?: string;
-    analysisConfidence?: number;
-    keyAssumptions?: any;
-    compSummary?: any;
-    nextActions?: any;
-  }): Promise<Property> {
-    // Convert number fields to proper types for database
-    const processedData = {
-      ...analysisData,
-      profitMarginPct: analysisData.profitMarginPct !== undefined ? analysisData.profitMarginPct.toString() : undefined,
-      analysisConfidence: analysisData.analysisConfidence !== undefined ? analysisData.analysisConfidence.toString() : undefined,
-      updatedAt: new Date()
-    };
-
-    const [property] = await db
-      .update(properties)
-      .set(processedData)
-      .where(eq(properties.id, propertyId))
       .returning();
     if (!property) throw new Error("Property not found");
     return property;
@@ -170,23 +158,34 @@ export class DatabaseStorage implements IStorage {
       .where(and(eq(properties.id, id), eq(properties.userId, userId)));
   }
 
-  async searchProperties(userId: string, criteria: { city?: string; state?: string; status?: string; leadType?: string }): Promise<Property[]> {
-    const conditions = [eq(properties.userId, userId)];
-    
+  async searchProperties(
+    userId: string,
+    criteria: {
+      city?: string;
+      state?: string;
+      status?: string;
+      leadType?: string;
+    },
+  ): Promise<Property[]> {
+    let query = db
+      .select()
+      .from(properties)
+      .where(eq(properties.userId, userId));
+
     if (criteria.city) {
-      conditions.push(eq(properties.city, criteria.city));
+      query = query.where(eq(properties.city, criteria.city));
     }
     if (criteria.state) {
-      conditions.push(eq(properties.state, criteria.state));
+      query = query.where(eq(properties.state, criteria.state));
     }
     if (criteria.status) {
-      conditions.push(eq(properties.status, criteria.status));
+      query = query.where(eq(properties.status, criteria.status));
     }
     if (criteria.leadType) {
-      conditions.push(eq(properties.leadType, criteria.leadType));
+      query = query.where(eq(properties.leadType, criteria.leadType));
     }
-    
-    return await db.select().from(properties).where(and(...conditions));
+
+    return await query;
   }
 
   // Contacts
@@ -203,17 +202,23 @@ export class DatabaseStorage implements IStorage {
       .from(contacts)
       .leftJoin(properties, eq(contacts.propertyId, properties.id))
       .where(eq(properties.userId, userId));
-    
+
     return results;
   }
 
   async getContact(id: string): Promise<Contact | undefined> {
-    const [contact] = await db.select().from(contacts).where(eq(contacts.id, id));
+    const [contact] = await db
+      .select()
+      .from(contacts)
+      .where(eq(contacts.id, id));
     return contact;
   }
 
   async getContactsByProperty(propertyId: string): Promise<Contact[]> {
-    return await db.select().from(contacts).where(eq(contacts.propertyId, propertyId));
+    return await db
+      .select()
+      .from(contacts)
+      .where(eq(contacts.propertyId, propertyId));
   }
 
   async createContact(contactData: InsertContact): Promise<Contact> {
@@ -234,31 +239,34 @@ export class DatabaseStorage implements IStorage {
   // Conversations
   async getConversations(userId: string): Promise<Conversation[]> {
     return await db
-      .select({
-        id: conversations.id,
-        createdAt: conversations.createdAt,
-        updatedAt: conversations.updatedAt,
-        propertyId: conversations.propertyId,
-        contactId: conversations.contactId,
-        agentType: conversations.agentType,
-        title: conversations.title,
-      })
+      .select()
       .from(conversations)
       .leftJoin(properties, eq(conversations.propertyId, properties.id))
       .where(eq(properties.userId, userId));
   }
 
   async getConversation(id: string): Promise<Conversation | undefined> {
-    const [conversation] = await db.select().from(conversations).where(eq(conversations.id, id));
+    const [conversation] = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.id, id));
     return conversation;
   }
 
-  async createConversation(conversationData: InsertConversation): Promise<Conversation> {
-    const [conversation] = await db.insert(conversations).values(conversationData).returning();
+  async createConversation(
+    conversationData: InsertConversation,
+  ): Promise<Conversation> {
+    const [conversation] = await db
+      .insert(conversations)
+      .values(conversationData)
+      .returning();
     return conversation;
   }
 
-  async updateConversation(id: string, updates: Partial<Conversation>): Promise<Conversation> {
+  async updateConversation(
+    id: string,
+    updates: Partial<Conversation>,
+  ): Promise<Conversation> {
     const [conversation] = await db
       .update(conversations)
       .set({ ...updates, updatedAt: new Date() })
@@ -285,37 +293,39 @@ export class DatabaseStorage implements IStorage {
   // Documents
   async getDocuments(userId: string): Promise<Document[]> {
     return await db
-      .select({
-        id: documents.id,
-        name: documents.name,
-        createdAt: documents.createdAt,
-        updatedAt: documents.updatedAt,
-        status: documents.status,
-        type: documents.type,
-        propertyId: documents.propertyId,
-        content: documents.content,
-        filePath: documents.filePath,
-      })
+      .select()
       .from(documents)
       .leftJoin(properties, eq(documents.propertyId, properties.id))
       .where(eq(properties.userId, userId));
   }
 
   async getDocument(id: string): Promise<Document | undefined> {
-    const [document] = await db.select().from(documents).where(eq(documents.id, id));
+    const [document] = await db
+      .select()
+      .from(documents)
+      .where(eq(documents.id, id));
     return document;
   }
 
   async getDocumentsByProperty(propertyId: string): Promise<Document[]> {
-    return await db.select().from(documents).where(eq(documents.propertyId, propertyId));
+    return await db
+      .select()
+      .from(documents)
+      .where(eq(documents.propertyId, propertyId));
   }
 
   async createDocument(documentData: InsertDocument): Promise<Document> {
-    const [document] = await db.insert(documents).values(documentData).returning();
+    const [document] = await db
+      .insert(documents)
+      .values(documentData)
+      .returning();
     return document;
   }
 
-  async updateDocument(id: string, updates: Partial<Document>): Promise<Document> {
+  async updateDocument(
+    id: string,
+    updates: Partial<Document>,
+  ): Promise<Document> {
     const [document] = await db
       .update(documents)
       .set({ ...updates, updatedAt: new Date() })
@@ -332,17 +342,7 @@ export class DatabaseStorage implements IStorage {
   // Deals
   async getDeals(userId: string): Promise<Deal[]> {
     return await db
-      .select({
-        id: deals.id,
-        createdAt: deals.createdAt,
-        updatedAt: deals.updatedAt,
-        propertyId: deals.propertyId,
-        stage: deals.stage,
-        dealValue: deals.dealValue,
-        profit: deals.profit,
-        closeDate: deals.closeDate,
-        notes: deals.notes,
-      })
+      .select()
       .from(deals)
       .leftJoin(properties, eq(deals.propertyId, properties.id))
       .where(eq(properties.userId, userId));
@@ -370,17 +370,7 @@ export class DatabaseStorage implements IStorage {
 
   async getDealsByStage(stage: string, userId: string): Promise<Deal[]> {
     return await db
-      .select({
-        id: deals.id,
-        createdAt: deals.createdAt,
-        updatedAt: deals.updatedAt,
-        propertyId: deals.propertyId,
-        stage: deals.stage,
-        dealValue: deals.dealValue,
-        profit: deals.profit,
-        closeDate: deals.closeDate,
-        notes: deals.notes,
-      })
+      .select()
       .from(deals)
       .leftJoin(properties, eq(deals.propertyId, properties.id))
       .where(and(eq(deals.stage, stage), eq(properties.userId, userId)));
