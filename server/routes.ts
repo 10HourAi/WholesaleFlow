@@ -17,13 +17,13 @@ import {
   generateClosingResponse,
   generatePropertyLeads,
 } from "./openai";
-import { setupDevAuth, isAuthenticated } from "./dev-auth";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log("🟢 ROUTES FILE LOADED - NEW VERSION WITH SKIP TRACE!");
 
   // Auth middleware
-  setupDevAuth(app);
+  await setupAuth(app);
 
   // Auth routes
   app.get("/api/auth/user", (req: any, res) => {
