@@ -139,29 +139,47 @@ export class LeadDeliveryService {
       const [property] = await db
         .insert(properties)
         .values({
-          address1: leadData.address,
-          address2: null,
+          address: leadData.address,
           city: leadData.city,
           state: leadData.state,
-          postalCode: leadData.zipCode,
-          country: "US",
-          latitude: null,
-          longitude: null,
+          zipCode: leadData.zipCode,
+          bedrooms: leadData.bedrooms,
+          bathrooms: leadData.bathrooms,
+          squareFeet: leadData.squareFeet,
+          yearBuilt: leadData.yearBuilt,
+          arv: leadData.arv ? parseFloat(leadData.arv) : null,
+          maxOffer: leadData.maxOffer ? parseFloat(leadData.maxOffer) : null,
+          lastSalePrice: leadData.lastSalePrice,
+          lastSaleDate: leadData.lastSaleDate,
           propertyType: leadData.propertyType || "single_family",
-          statusFlag: "not_listed",
-          fingerprint: fingerprint,
+          ownerName: leadData.ownerName,
+          ownerPhone: leadData.ownerPhone,
+          ownerEmail: leadData.ownerEmail,
+          ownerMailingAddress: leadData.ownerMailingAddress,
+          equityPercentage: leadData.equityPercentage,
+          equityBalance: leadData.equityBalance,
+          confidenceScore: leadData.confidenceScore,
+          distressedIndicator: leadData.distressedIndicator,
+          leadType: leadData.leadType,
+          status: "new",
         })
         .onConflictDoNothing()
         .returning();
 
       let propertyId = property?.id;
 
-      // If property already exists, get its ID
+      // If property already exists, try to find by address
       if (!propertyId) {
         const [existingProperty] = await db
           .select()
           .from(properties)
-          .where(eq(properties.fingerprint, fingerprint))
+          .where(
+            and(
+              eq(properties.address, leadData.address),
+              eq(properties.city, leadData.city),
+              eq(properties.state, leadData.state),
+            ),
+          )
           .limit(1);
         propertyId = existingProperty?.id;
       }
@@ -634,7 +652,7 @@ export class LeadDeliveryService {
     try {
       const deliveredProperties = await db
         .select({
-          address: properties.address1,
+          address: properties.address,
           city: properties.city,
           state: properties.state,
         })
