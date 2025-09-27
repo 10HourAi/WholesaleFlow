@@ -634,7 +634,7 @@ export class LeadDeliveryService {
     try {
       const deliveredProperties = await db
         .select({
-          address: properties.address,
+          address: properties.address1,
           city: properties.city,
           state: properties.state,
         })
