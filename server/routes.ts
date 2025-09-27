@@ -9,7 +9,6 @@ import {
   insertMessageSchema,
   insertDocumentSchema,
   insertDealSchema,
-  dealAnalysisRequestSchema,
 } from "@shared/schema";
 import {
   generateLeadFinderResponse,
@@ -18,24 +17,20 @@ import {
   generateClosingResponse,
   generatePropertyLeads,
 } from "./openai";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupDevAuth, isAuthenticated } from "./dev-auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log("🟢 ROUTES FILE LOADED - NEW VERSION WITH SKIP TRACE!");
 
   // Auth middleware
-  await setupAuth(app);
+  setupDevAuth(app);
 
   // Auth routes
-  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
-    } catch (error) {
-      console.error("Error fetching user:", error);
-      res.status(500).json({ message: "Failed to fetch user" });
+  app.get("/api/auth/user", (req: any, res) => {
+    if (!req.session?.user) {
+      return res.status(401).json({ message: "Unauthorized" });
     }
+    res.json(req.session.user);
   });
   // Properties
   app.get("/api/properties", isAuthenticated, async (req: any, res) => {
@@ -52,23 +47,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const userId = req.user.claims.sub;
       const validatedData = insertPropertySchema.parse(req.body);
-      
-      // Check for duplicate property
-      const existingProperty = await storage.findDuplicateProperty(
-        userId,
-        validatedData.address,
-        validatedData.city,
-        validatedData.state
-      );
-      
-      if (existingProperty) {
-        return res.status(409).json({ 
-          isDuplicate: true,
-          message: `Property at ${validatedData.address}, ${validatedData.city}, ${validatedData.state} is already in your CRM.`,
-          existingProperty: existingProperty
-        });
-      }
-      
       const property = await storage.createProperty({
         ...validatedData,
         userId,
@@ -473,133 +451,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Deal Analysis with OpenAI (Server-Sent Events for streaming progress)
-  app.get("/api/deals/analyze/:propertyId/stream", isAuthenticated, async (req: any, res) => {
-    const userId = req.user.claims.sub;
-    const propertyId = req.params.propertyId;
-
-    // Set up Server-Sent Events
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Headers': 'Cache-Control'
-    });
-
-    const sendEvent = (event: string, data: any) => {
-      res.write(`event: ${event}\n`);
-      res.write(`data: ${JSON.stringify(data)}\n\n`);
-    };
-
-    try {
-      // Get the property from storage
-      const property = await storage.getProperty(propertyId, userId);
-
-      if (!property) {
-        sendEvent('error', { message: 'Property not found' });
-        res.end();
-        return;
-      }
-
-      sendEvent('progress', { 
-        step: 'starting', 
-        message: 'Initializing deal analysis...',
-        progress: 0
-      });
-
-      // Call OpenAI analysis function with progress callback
-      const { analyzeDealWithOpenAI } = await import("./openai");
-      
-      const analysis = await analyzeDealWithOpenAI(property, (step: string, message: string, progress: number) => {
-        sendEvent('progress', { step, message, progress });
-      });
-
-      sendEvent('progress', { 
-        step: 'saving', 
-        message: 'Saving analysis results...',
-        progress: 90
-      });
-
-      // Save analysis results to database
-      await storage.updatePropertyAnalysis(propertyId, {
-        strategy: analysis.strategy,
-        isDeal: analysis.is_deal,
-        analysisArv: analysis.arv,
-        rehabCost: analysis.rehab_cost,
-        analysisMaxOfferPrice: analysis.max_offer_price,
-        profitMarginPct: analysis.profit_margin_pct,
-        riskLevel: analysis.risk_level,
-        analysisConfidence: analysis.confidence,
-        keyAssumptions: analysis.key_assumptions,
-        compSummary: analysis.comp_summary,
-        nextActions: analysis.next_actions,
-      });
-
-      sendEvent('complete', { 
-        success: true, 
-        data: analysis,
-        progress: 100
-      });
-
-    } catch (error: any) {
-      console.error("Deal analysis error:", error);
-      sendEvent('error', {
-        message: error.message || "Failed to analyze deal"
-      });
-    }
-
-    res.end();
-  });
-
-  // Deal Analysis with OpenAI (Traditional endpoint for backward compatibility)
-  app.post("/api/deals/analyze", isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const validatedRequest = dealAnalysisRequestSchema.parse(req.body);
-
-      // Get the property from storage
-      const property = await storage.getProperty(
-        validatedRequest.propertyId,
-        userId,
-      );
-
-      if (!property) {
-        return res.status(404).json({ message: "Property not found" });
-      }
-
-      // Call OpenAI analysis function with new signature
-      const { analyzeDealWithOpenAI } = await import("./openai");
-      const analysis = await analyzeDealWithOpenAI(property);
-
-      // Save analysis results to database
-      await storage.updatePropertyAnalysis(validatedRequest.propertyId, {
-        strategy: analysis.strategy,
-        isDeal: analysis.is_deal,
-        analysisArv: analysis.arv,
-        rehabCost: analysis.rehab_cost,
-        analysisMaxOfferPrice: analysis.max_offer_price,
-        profitMarginPct: analysis.profit_margin_pct,
-        riskLevel: analysis.risk_level,
-        analysisConfidence: analysis.confidence,
-        keyAssumptions: analysis.key_assumptions,
-        compSummary: analysis.comp_summary,
-        nextActions: analysis.next_actions,
-      });
-
-      res.json({
-        success: true,
-        data: analysis,
-      });
-    } catch (error: any) {
-      console.error("Deal analysis error:", error);
-      res.status(500).json({
-        success: false,
-        message: error.message || "Failed to analyze deal",
-      });
-    }
-  });
-
   // Test BatchLeads API
   app.post("/api/test-batchleads", isAuthenticated, async (req: any, res) => {
     try {
@@ -926,78 +777,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check if the API returned an error in the response body
       const isLookupSuccess = lookupData.status?.code === 200;
-      let enrichmentData;
 
       if (!isLookupSuccess) {
-        console.log(
-          "❌ Property Lookup failed, trying Contact Enrichment API...",
-        );
-
-        // Test 2: Try Contact Enrichment API with propertyAddress format
-        const contactEnrichmentRequest = {
-          requests: [
-            {
-              propertyAddress: {
-                street: testProperty.address,
-                city: testProperty.city,
-                state: testProperty.state,
-                zip: testProperty.zipCode,
-              },
-              ownerName: testProperty.ownerName,
-            },
-          ],
-        };
-
-        console.log("📞 Testing Contact Enrichment API...");
-        const contactEnrichmentResponse = await fetch(
-          "https://api.batchdata.com/api/v1/contact/enrichment",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${process.env.BATCHLEADS_API_KEY}`,
-            },
-            body: JSON.stringify(contactEnrichmentRequest),
+        console.log("❌ Property Lookup failed");
+        return res.json({
+          success: false,
+          error: {
+            code: lookupData.status?.code,
+            message: `Property Lookup failed: ${lookupData.status?.message}`,
           },
-        );
-
-        const contactData = await contactEnrichmentResponse.json();
-        console.log(
-          "📞 Contact Enrichment API Response:",
-          JSON.stringify(contactData, null, 2),
-        );
-
-        if (contactData.status?.code !== 200) {
-          console.log("❌ BOTH APIs FAILED");
-          return res.json({
-            success: false,
-            error: {
-              code: contactData.status?.code || lookupData.status?.code,
-              message: `Both APIs failed. Property Lookup: ${lookupData.status?.message}, Contact Enrichment: ${contactData.status?.message}`,
-            },
-            originalProperty: testProperty,
-            propertyLookupResponse: lookupData,
-            contactEnrichmentResponse: contactData,
-          });
-        }
-
-        // Use contact enrichment data
-        enrichmentData = contactData;
-      } else {
-        // Use property lookup data
-        enrichmentData = lookupData;
+          originalProperty: testProperty,
+          propertyLookupResponse: lookupData,
+        });
       }
 
-      console.log("📞 CONTACT ENRICHMENT SUCCESS");
+      // Use property lookup data
+      const enrichmentData = lookupData;
 
-      // Extract contact data from new contact enrichment response structure
+      console.log("📞 PROPERTY LOOKUP SUCCESS");
+
+      // Extract contact data from property lookup response structure
       const owner =
         enrichmentData.results?.owner ||
         enrichmentData.results?.persons?.[0] ||
         {};
       const enrichedProperty = {
         ...testProperty,
-        // Contact Enrichment Data structure as specified
+        // Property Lookup Contact Data structure
         ownerPhone: owner?.phoneNumbers?.[0]?.number || null,
         ownerEmail: owner?.emails?.[0]?.email || owner?.emails?.[0] || null,
         phoneNumbers:
@@ -1020,118 +826,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: true,
         originalProperty: testProperty,
         enrichedProperty: enrichedProperty,
-        fullContactEnrichmentResponse: enrichmentData,
+        fullPropertyLookupResponse: enrichmentData,
       });
     } catch (error: any) {
-      console.log("❌ Contact enrichment test error:", error);
+      console.log("❌ Property lookup test error:", error);
       res
         .status(500)
         .json({ error: error.message || "Unknown error occurred" });
     }
   });
 
-  // Get multiple properties at once - LIVE API ENABLED
+  // Get multiple properties at once - WITH LEAD DELIVERY DEDUPLICATION & AUTO-SAVE SEARCH
   app.post("/api/properties/batch", isAuthenticated, async (req: any, res) => {
     console.log(
-      "🔥🔥🔥 ROUTE HANDLER CALLED - TIMESTAMP:",
+      "🔥🔥🔥 ENHANCED BATCH ROUTE WITH LEAD DELIVERIES - TIMESTAMP:",
       new Date().toISOString(),
     );
-    console.log("🔥🔥🔥 USER AUTHENTICATED:", !!req.user);
-    console.log("🔥🔥🔥 REQUEST BODY:", JSON.stringify(req.body, null, 2));
-    console.log(
-      "🚨🚨🚨 NEW ENHANCED ROUTE HANDLER WITH PROPERTY LOOKUP API - VERSION 2.0",
-    );
     try {
-      console.log("🚨 CRITICAL DEBUG: /api/properties/batch route HIT!");
-      console.log("🔥 ROUTE TIMESTAMP:", new Date().toISOString());
       const userId = req.user.claims.sub;
       const { count = 5, criteria = {} } = req.body;
 
-      // Normalize frontend single-string fields to array form expected by batchleads service
-      try {
-        if (
-          criteria &&
-          criteria.sellerType &&
-          !Array.isArray(criteria.sellerTypes)
-        ) {
-          // allow older callers that send sellerType (string)
-          criteria.sellerTypes = [criteria.sellerType];
-        }
-      } catch (e) {
-        console.warn("Normalization warning:", e);
-      }
-
-      console.log("🔍 Backend: Batch properties search starting");
+      console.log(
+        "🔍 Backend: Starting batch search with lead delivery deduplication",
+      );
       console.log("🔍 Backend: User ID:", userId);
-      console.log("🔍 Backend: Request body:", req.body);
       console.log("🔍 Backend: Search criteria:", criteria);
 
+      // Import services
       const { batchLeadsService } = await import("./batchleads");
-      console.log("🚀 ROUTES: About to call searchValidProperties");
-      const results = await batchLeadsService.searchValidProperties(
+      const { LeadDeliveryService } = await import("./lead-delivery");
+      const leadService = new LeadDeliveryService();
+
+      // Auto-save search data by default (if criteria has location)
+      let savedSearchId = null;
+      if (criteria.location) {
+        try {
+          // Generate a descriptive name based on criteria
+          const searchName = `${criteria.location}${criteria.sellerType ? ` - ${criteria.sellerType}` : ""}${criteria.propertyType ? ` - ${criteria.propertyType}` : ""}`;
+
+          const savedSearch = await leadService.saveSearch(userId, {
+            name: searchName,
+            type: "seller", // Default to seller for property searches
+            criteriaJson: criteria,
+            isActive: true,
+          });
+          savedSearchId = savedSearch.id;
+          console.log(
+            "💾 Auto-saved search:",
+            savedSearchId,
+            "Name:",
+            searchName,
+          );
+        } catch (error) {
+          console.error("❌ Failed to auto-save search:", error);
+          // Continue with search even if save fails
+        }
+      }
+
+      // Search and deliver new properties (with automatic deduplication)
+      console.log(
+        "🚀 ROUTES: Calling searchAndDeliverProperties with deduplication",
+      );
+      const result = await leadService.searchAndDeliverProperties(
+        userId,
         criteria,
         count,
       );
-      console.log(
-        "🚀 ROUTES: searchValidProperties returned:",
-        results.data.length,
-        "properties",
-      );
 
-      // Properties already have building data and contact info from batchLeadsService
-      console.log(
-        "🔥 USING ENHANCED BATCHLEADS SERVICE WITH INTELLIGENT DEFAULTS",
-      );
-      const convertedProperties = results.data;
-
-      console.log(
-        "🔍 Backend: results.data from searchValidProperties:",
-        results.data,
-      );
-      console.log(
-        "🔍 Backend: convertedProperties length:",
-        convertedProperties.length,
-      );
-      console.log(
-        "🔍 Backend: first converted property:",
-        convertedProperties[0],
-      );
+      console.log("🚀 ROUTES: Lead delivery result:", {
+        deliveredCount: result.deliveredCount,
+        totalAvailable: result.totalAvailable,
+        propertiesLength: result.properties.length,
+      });
 
       const responseData = {
-        properties: convertedProperties,
-        total: results.totalChecked,
-        filtered: results.filtered,
-        hasMore: results.hasMore,
-        message: `Found ${convertedProperties.length} properties matching your criteria`,
+        properties: result.properties,
+        total: result.totalAvailable,
+        delivered: result.deliveredCount,
+        savedSearchId,
+        message: `Delivered ${result.deliveredCount} new properties (${result.totalAvailable} total found)`,
       };
 
-      console.log("🔍 Backend: Final response being sent:", responseData);
-      console.log(
-        "🔍 Backend: Response properties length:",
-        responseData.properties.length,
-      );
-      console.log(
-        "🔍 Backend: About to call res.json() with:",
-        JSON.stringify(responseData).substring(0, 200) + "...",
-      );
-
-      // Try direct response instead of complex object
-      const simpleResponse = {
-        properties: convertedProperties,
-        total: convertedProperties.length,
-        message: "Success",
-      };
-
-      console.log("🔍 Backend: Sending simplified response:", simpleResponse);
-      res.json(simpleResponse);
+      console.log("🔍 Backend: Sending response with lead delivery tracking");
+      res.json(responseData);
     } catch (error: any) {
-      console.error("Batch properties error:", error);
+      console.error("Batch properties with lead delivery error:", error);
       res.status(500).json({
         properties: [],
         total: 0,
-        filtered: 0,
-        hasMore: false,
-        message: error.message || "Failed to fetch properties",
+        delivered: 0,
+        message: error.message || "Failed to fetch and deliver properties",
       });
     }
   });
@@ -1140,6 +924,233 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/demo", (req, res) => {
     res.sendFile(path.join(process.cwd(), "demo.html"));
   });
+
+  // Lead Deliveries API - prevents duplicate leads to same user
+  app.get("/api/leads/deliverable", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const limit = parseInt(req.query.limit as string) || 5;
+      const { LeadDeliveryService } = await import("./lead-delivery");
+      const leadService = new LeadDeliveryService();
+
+      const leads = await leadService.getDeliverableLeads(userId, limit);
+      res.json(leads);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Clear delivered leads for testing
+  app.delete("/api/leads/delivered", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { LeadDeliveryService } = await import("./lead-delivery");
+      const leadService = new LeadDeliveryService();
+
+      const cleared = await leadService.clearDeliveredLeads(userId);
+      res.json({
+        message: `Cleared ${cleared.length} delivered leads`,
+        cleared: cleared.length,
+      });
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Get delivered leads for a user
+  app.get("/api/leads/delivered", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { LeadDeliveryService } = await import("./lead-delivery");
+      const leadService = new LeadDeliveryService();
+
+      const deliveredLeads = await leadService.getDeliveredLeads(userId);
+      res.json(deliveredLeads);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Search and deliver new properties (with deduplication)
+  app.post(
+    "/api/leads/search-and-deliver",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const { criteria, count = 5 } = req.body;
+        const { LeadDeliveryService } = await import("./lead-delivery");
+        const leadService = new LeadDeliveryService();
+
+        const result = await leadService.searchAndDeliverProperties(
+          userId,
+          criteria,
+          count,
+        );
+        res.json(result);
+      } catch (error: any) {
+        res.status(400).json({ message: error.message });
+      }
+    },
+  );
+
+  // Check if a lead has been delivered to user
+  app.get(
+    "/api/leads/:id/delivered",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const { LeadDeliveryService } = await import("./lead-delivery");
+        const leadService = new LeadDeliveryService();
+
+        const isDelivered = await leadService.isLeadDelivered(
+          userId,
+          req.params.id,
+        );
+        res.json({ isDelivered });
+      } catch (error: any) {
+        res.status(500).json({ message: error.message });
+      }
+    },
+  );
+
+  // Saved Searches API
+  app.get("/api/saved-searches", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      console.log("🔍 Getting saved searches for user:", userId);
+
+      const { LeadDeliveryService } = await import("./lead-delivery");
+      const leadService = new LeadDeliveryService();
+
+      const searches = await leadService.getUserSavedSearches(
+        userId,
+        req.query.type as "buyer" | "seller",
+      );
+      console.log("📋 Found saved searches:", searches.length);
+
+      res.json(searches);
+    } catch (error: any) {
+      console.error("❌ Error getting saved searches:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/saved-searches", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      console.log("💾 Saving search for user:", userId);
+      console.log("📋 Search data:", req.body);
+
+      const { LeadDeliveryService } = await import("./lead-delivery");
+      const leadService = new LeadDeliveryService();
+
+      const savedSearch = await leadService.saveSearch(userId, req.body);
+      console.log("✅ Search saved:", savedSearch.id);
+
+      res.json(savedSearch);
+    } catch (error: any) {
+      console.error("❌ Error saving search:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.put("/api/saved-searches/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { LeadDeliveryService } = await import("./lead-delivery");
+      const leadService = new LeadDeliveryService();
+
+      const updatedSearch = await leadService.updateSavedSearch(
+        userId,
+        req.params.id,
+        req.body,
+      );
+      res.json(updatedSearch);
+    } catch (error: any) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.delete(
+    "/api/saved-searches/:id",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const { LeadDeliveryService } = await import("./lead-delivery");
+        const leadService = new LeadDeliveryService();
+
+        const deletedSearch = await leadService.deleteSavedSearch(
+          userId,
+          req.params.id,
+        );
+        res.json(deletedSearch);
+      } catch (error: any) {
+        res.status(400).json({ message: error.message });
+      }
+    },
+  );
+
+  // Execute a saved search
+  app.post(
+    "/api/saved-searches/:id/execute",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const { count = 5 } = req.body;
+        const { LeadDeliveryService } = await import("./lead-delivery");
+        const leadService = new LeadDeliveryService();
+
+        const result = await leadService.executeSearch(
+          userId,
+          req.params.id,
+          count,
+        );
+        res.json(result);
+      } catch (error: any) {
+        res.status(400).json({ message: error.message });
+      }
+    },
+  );
+
+  // Debug endpoint - check saved searches table
+  app.get(
+    "/api/debug/saved-searches",
+    isAuthenticated,
+    async (req: any, res) => {
+      try {
+        const userId = req.user.claims.sub;
+        const { db } = await import("./db");
+        const { savedSearches } = await import("@shared/schema");
+        const { eq } = await import("drizzle-orm");
+
+        // Get all saved searches for this user
+        const userSearches = await db
+          .select()
+          .from(savedSearches)
+          .where(eq(savedSearches.userId, userId));
+
+        // Get total count of all saved searches
+        const allSearches = await db.select().from(savedSearches);
+
+        res.json({
+          user_id: userId,
+          user_searches_count: userSearches.length,
+          total_searches_count: allSearches.length,
+          user_searches: userSearches,
+          table_exists: true,
+        });
+      } catch (error: any) {
+        res.status(500).json({
+          error: error.message,
+          table_exists: false,
+        });
+      }
+    },
+  );
 
   // Debug endpoint to test location formats
   app.get("/api/debug/locations/:location?", async (req, res) => {
@@ -1690,7 +1701,7 @@ When users ask about market research, provide specific, data-driven insights. If
         // Determine search criteria based on query content
         const searchCriteria: any = { location };
 
-        // Map seller types to BatchLeads quicklists
+        // Map seller types to BatchLeads quicklists (updated)
         if (
           message.toLowerCase().includes("distressed") ||
           message.toLowerCase().includes("pre-foreclosure") ||
@@ -1702,15 +1713,21 @@ When users ask about market research, provide specific, data-driven insights. If
           message.toLowerCase().includes("out-of-state") ||
           message.toLowerCase().includes("non-resident")
         ) {
-          searchCriteria.quickLists = ["absentee-owner", "out-of-state-owner"];
-        } else if (message.toLowerCase().includes("corporate owned")) {
-          searchCriteria.quickLists = ["corporate-owned"];
+          searchCriteria.quickLists = ["absentee-owner"];
+        } else if (
+          message.toLowerCase().includes("high equity") ||
+          message.toLowerCase().includes("70%")
+        ) {
+          searchCriteria.quickLists = ["high-equity", "free-and-clear"];
+          searchCriteria.minEquity = 70;
+        } else if (message.toLowerCase().includes("inherited")) {
+          searchCriteria.quickLists = ["inherited"];
         } else if (message.toLowerCase().includes("tired landlord")) {
           searchCriteria.quickLists = ["tired-landlord"];
-        } else if (message.toLowerCase().includes("motivated seller")) {
-          searchCriteria.quickLists = ["absentee-owner", "high-equity"];
+        } else if (message.toLowerCase().includes("corporate owned")) {
+          searchCriteria.quickLists = ["corporate-owned"];
         } else {
-          // Default to distressed properties if no specific type is mentioned
+          // Default fallback
           searchCriteria.quickLists = ["absentee-owner"];
         }
 
