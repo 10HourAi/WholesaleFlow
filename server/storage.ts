@@ -13,6 +13,18 @@ import {
   type InsertDeal,
   type User,
   type UpsertUser,
+  type Lead,
+  type InsertLead,
+  type Owner,
+  type InsertOwner,
+  type LeadRequest,
+  type InsertLeadRequest,
+  type LeadDelivery,
+  type InsertLeadDelivery,
+  type UserLead,
+  type InsertUserLead,
+  type SavedSearch,
+  type InsertSavedSearch,
 } from "@shared/schema";
 import { db } from "./db";
 import {
@@ -23,6 +35,13 @@ import {
   messages,
   documents,
   deals,
+  leads,
+  owners,
+  leadRequests,
+  leadDeliveries,
+  userLeads,
+  savedSearches,
+  leadContacts,
 } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 
@@ -88,6 +107,40 @@ export interface IStorage {
   createDeal(deal: InsertDeal): Promise<Deal>;
   updateDeal(id: string, updates: Partial<Deal>): Promise<Deal>;
   getDealsByStage(stage: string, userId: string): Promise<Deal[]>;
+
+  // Leads
+  getLeads(userId: string): Promise<Lead[]>;
+  getLead(id: string): Promise<Lead | undefined>;
+  createLead(lead: InsertLead): Promise<Lead>;
+  updateLead(id: string, updates: Partial<Lead>): Promise<Lead>;
+
+  // Owners
+  getOwners(): Promise<Owner[]>;
+  getOwner(id: string): Promise<Owner | undefined>;
+  createOwner(owner: InsertOwner): Promise<Owner>;
+  updateOwner(id: string, updates: Partial<Owner>): Promise<Owner>;
+
+  // Lead Requests
+  getLeadRequests(userId: string): Promise<LeadRequest[]>;
+  getLeadRequest(id: string): Promise<LeadRequest | undefined>;
+  createLeadRequest(request: InsertLeadRequest): Promise<LeadRequest>;
+  updateLeadRequest(id: string, updates: Partial<LeadRequest>): Promise<LeadRequest>;
+
+  // Lead Deliveries
+  getLeadDeliveries(userId: string): Promise<LeadDelivery[]>;
+  createLeadDelivery(delivery: InsertLeadDelivery): Promise<LeadDelivery>;
+
+  // User Leads
+  getUserLeads(userId: string): Promise<UserLead[]>;
+  createUserLead(userLead: InsertUserLead): Promise<UserLead>;
+  updateUserLead(id: string, updates: Partial<UserLead>): Promise<UserLead>;
+
+  // Saved Searches
+  getSavedSearches(userId: string): Promise<SavedSearch[]>;
+  getSavedSearch(id: string): Promise<SavedSearch | undefined>;
+  createSavedSearch(search: InsertSavedSearch): Promise<SavedSearch>;
+  updateSavedSearch(id: string, updates: Partial<SavedSearch>): Promise<SavedSearch>;
+  deleteSavedSearch(id: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -377,6 +430,185 @@ export class DatabaseStorage implements IStorage {
       .from(deals)
       .leftJoin(properties, eq(deals.propertyId, properties.id))
       .where(and(eq(deals.stage, stage), eq(properties.userId, userId)));
+  }
+
+  // Leads
+  async getLeads(userId: string): Promise<Lead[]> {
+    return await db
+      .select()
+      .from(leadDeliveries)
+      .leftJoin(leads, eq(leadDeliveries.leadId, leads.id))
+      .where(eq(leadDeliveries.userId, userId));
+  }
+
+  async getLead(id: string): Promise<Lead | undefined> {
+    const [lead] = await db.select().from(leads).where(eq(leads.id, id));
+    return lead;
+  }
+
+  async createLead(leadData: InsertLead): Promise<Lead> {
+    const [lead] = await db.insert(leads).values(leadData).returning();
+    return lead;
+  }
+
+  async updateLead(id: string, updates: Partial<Lead>): Promise<Lead> {
+    const [lead] = await db
+      .update(leads)
+      .set(updates)
+      .where(eq(leads.id, id))
+      .returning();
+    if (!lead) throw new Error("Lead not found");
+    return lead;
+  }
+
+  // Owners
+  async getOwners(): Promise<Owner[]> {
+    return await db.select().from(owners);
+  }
+
+  async getOwner(id: string): Promise<Owner | undefined> {
+    const [owner] = await db.select().from(owners).where(eq(owners.id, id));
+    return owner;
+  }
+
+  async createOwner(ownerData: InsertOwner): Promise<Owner> {
+    const [owner] = await db.insert(owners).values(ownerData).returning();
+    return owner;
+  }
+
+  async updateOwner(id: string, updates: Partial<Owner>): Promise<Owner> {
+    const [owner] = await db
+      .update(owners)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(owners.id, id))
+      .returning();
+    if (!owner) throw new Error("Owner not found");
+    return owner;
+  }
+
+  // Lead Requests
+  async getLeadRequests(userId: string): Promise<LeadRequest[]> {
+    return await db
+      .select()
+      .from(leadRequests)
+      .where(eq(leadRequests.userId, userId));
+  }
+
+  async getLeadRequest(id: string): Promise<LeadRequest | undefined> {
+    const [request] = await db
+      .select()
+      .from(leadRequests)
+      .where(eq(leadRequests.id, id));
+    return request;
+  }
+
+  async createLeadRequest(requestData: InsertLeadRequest): Promise<LeadRequest> {
+    const [request] = await db
+      .insert(leadRequests)
+      .values(requestData)
+      .returning();
+    return request;
+  }
+
+  async updateLeadRequest(
+    id: string,
+    updates: Partial<LeadRequest>,
+  ): Promise<LeadRequest> {
+    const [request] = await db
+      .update(leadRequests)
+      .set(updates)
+      .where(eq(leadRequests.id, id))
+      .returning();
+    if (!request) throw new Error("Lead request not found");
+    return request;
+  }
+
+  // Lead Deliveries
+  async getLeadDeliveries(userId: string): Promise<LeadDelivery[]> {
+    return await db
+      .select()
+      .from(leadDeliveries)
+      .where(eq(leadDeliveries.userId, userId));
+  }
+
+  async createLeadDelivery(
+    deliveryData: InsertLeadDelivery,
+  ): Promise<LeadDelivery> {
+    const [delivery] = await db
+      .insert(leadDeliveries)
+      .values(deliveryData)
+      .returning();
+    return delivery;
+  }
+
+  // User Leads
+  async getUserLeads(userId: string): Promise<UserLead[]> {
+    return await db
+      .select()
+      .from(userLeads)
+      .where(eq(userLeads.userId, userId));
+  }
+
+  async createUserLead(userLeadData: InsertUserLead): Promise<UserLead> {
+    const [userLead] = await db
+      .insert(userLeads)
+      .values(userLeadData)
+      .returning();
+    return userLead;
+  }
+
+  async updateUserLead(
+    id: string,
+    updates: Partial<UserLead>,
+  ): Promise<UserLead> {
+    const [userLead] = await db
+      .update(userLeads)
+      .set({ ...updates, lastActionAt: new Date() })
+      .where(eq(userLeads.id, id))
+      .returning();
+    if (!userLead) throw new Error("User lead not found");
+    return userLead;
+  }
+
+  // Saved Searches
+  async getSavedSearches(userId: string): Promise<SavedSearch[]> {
+    return await db
+      .select()
+      .from(savedSearches)
+      .where(eq(savedSearches.userId, userId));
+  }
+
+  async getSavedSearch(id: string): Promise<SavedSearch | undefined> {
+    const [search] = await db
+      .select()
+      .from(savedSearches)
+      .where(eq(savedSearches.id, id));
+    return search;
+  }
+
+  async createSavedSearch(searchData: InsertSavedSearch): Promise<SavedSearch> {
+    const [search] = await db
+      .insert(savedSearches)
+      .values(searchData)
+      .returning();
+    return search;
+  }
+
+  async updateSavedSearch(
+    id: string,
+    updates: Partial<SavedSearch>,
+  ): Promise<SavedSearch> {
+    const [search] = await db
+      .update(savedSearches)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(savedSearches.id, id))
+      .returning();
+    if (!search) throw new Error("Saved search not found");
+    return search;
+  }
+
+  async deleteSavedSearch(id: string): Promise<void> {
+    await db.delete(savedSearches).where(eq(savedSearches.id, id));
   }
 }
 
