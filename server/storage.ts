@@ -246,17 +246,22 @@ export class DatabaseStorage implements IStorage {
 
   // Contacts
   async getContacts(userId: string): Promise<Contact[]> {
+    // Get contacts through the proper relationship chain
     const results = await db
       .select({
         id: contacts.id,
-        propertyId: contacts.propertyId,
-        name: contacts.name,
-        phone: contacts.phone,
+        ownerId: contacts.ownerId,
+        phoneE164: contacts.phoneE164,
+        phoneQuality: contacts.phoneQuality,
         email: contacts.email,
+        emailQuality: contacts.emailQuality,
+        source: contacts.source,
         createdAt: contacts.createdAt,
       })
       .from(contacts)
-      .leftJoin(properties, eq(contacts.propertyId, properties.id))
+      .innerJoin(owners, eq(contacts.ownerId, owners.id))
+      .innerJoin(leads, eq(owners.id, leads.ownerId))
+      .innerJoin(properties, eq(leads.propertyId, properties.id))
       .where(eq(properties.userId, userId));
 
     return results;
