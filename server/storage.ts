@@ -223,25 +223,30 @@ export class DatabaseStorage implements IStorage {
       leadType?: string;
     },
   ): Promise<Property[]> {
-    let query = db
-      .select()
-      .from(properties)
-      .where(eq(properties.userId, userId));
+    try {
+      let query = db
+        .select()
+        .from(properties)
+        .where(eq(properties.userId, userId));
 
-    if (criteria.city) {
-      query = query.where(eq(properties.city, criteria.city));
-    }
-    if (criteria.state) {
-      query = query.where(eq(properties.state, criteria.state));
-    }
-    if (criteria.status) {
-      query = query.where(eq(properties.status, criteria.status));
-    }
-    if (criteria.leadType) {
-      query = query.where(eq(properties.leadType, criteria.leadType));
-    }
+      if (criteria.city) {
+        query = query.where(eq(properties.city, criteria.city));
+      }
+      if (criteria.state) {
+        query = query.where(eq(properties.state, criteria.state));
+      }
+      if (criteria.status) {
+        query = query.where(eq(properties.status, criteria.status));
+      }
+      if (criteria.leadType) {
+        query = query.where(eq(properties.leadType, criteria.leadType));
+      }
 
-    return await query;
+      return await query;
+    } catch (error: any) {
+      console.log("⚠️ Properties search failed:", error.message);
+      return [];
+    }
   }
 
   // Contacts

@@ -141,7 +141,6 @@ export class LeadDeliveryService {
         // Build property data with only fields that exist in the current schema
         const propertyData: any = {
           userId: userId,
-          fingerprint: fingerprint, // Required for deduplication
           status: "new",
         };
 
@@ -180,7 +179,6 @@ export class LeadDeliveryService {
             city: leadData.city || "Unknown City", 
             state: leadData.state || "Unknown State",
             zipCode: leadData.zipCode || "00000",
-            fingerprint: fingerprint,
             status: "new",
           };
 
