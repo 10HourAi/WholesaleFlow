@@ -1470,14 +1470,14 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
 
   const sellerTypes = [
     {
-      value: "distressed",
+      value: "preforeclosure",
       label: "Distressed Properties (Pre-foreclosure, Vacant)",
     },
-    { value: "absentee", label: "Absentee Owners (Out-of-state/Non-resident)" },
-    { value: "high_equity", label: "High Equity Owners (70%+ equity)" },
+    { value: "out-of-state-absentee-owner", label: "Absentee Owners (Out-of-state/Non-resident)" },
+    { value: "high-equity", label: "High Equity Owners (70%+ equity)" },
     { value: "inherited", label: "Inherited Properties" },
-    { value: "corporate", label: "Corporate Owned Properties" },
-    { value: "tired_landlord", label: "Tired Landlords" },
+    { value: "corporate-owned", label: "Corporate Owned Properties" },
+    { value: "tired-landlord", label: "Tired Landlords" },
   ];
 
   const propertyTypes = [

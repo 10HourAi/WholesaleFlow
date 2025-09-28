@@ -165,18 +165,18 @@ export class LeadDeliveryService {
           .values(propertyData)
           .onConflictDoNothing()
           .returning();
-        
+
         property = insertedProperty;
         console.log("✅ Property saved with schema-compatible fields");
       } catch (propertyError: any) {
         console.log("⚠️ Property insert failed:", propertyError.message);
-        
+
         // Fallback: Try with minimal required fields only
         try {
           const minimalPropertyData = {
             userId: userId,
             address: leadData.address || "Unknown Address",
-            city: leadData.city || "Unknown City", 
+            city: leadData.city || "Unknown City",
             state: leadData.state || "Unknown State",
             zipCode: leadData.zipCode || "00000",
             status: "new",
@@ -187,7 +187,7 @@ export class LeadDeliveryService {
             .values(minimalPropertyData)
             .onConflictDoNothing()
             .returning();
-          
+
           property = fallbackProperty;
           console.log("✅ Property saved with minimal fallback fields");
         } catch (fallbackError: any) {
@@ -244,12 +244,12 @@ export class LeadDeliveryService {
           .values(ownerData)
           .onConflictDoNothing()
           .returning();
-        
+
         owner = insertedOwner;
         console.log("✅ Owner saved with available fields");
       } catch (ownerError: any) {
         console.log("⚠️ Owner insert failed:", ownerError.message);
-        
+
         // Fallback: Try with minimal required fields only
         try {
           const minimalOwnerData = {
@@ -262,7 +262,7 @@ export class LeadDeliveryService {
             .values(minimalOwnerData)
             .onConflictDoNothing()
             .returning();
-          
+
           owner = fallbackOwner;
           console.log("✅ Owner saved with minimal fallback fields");
         } catch (fallbackError: any) {
@@ -644,6 +644,12 @@ export class LeadDeliveryService {
 
     // Use the saved criteria to search and deliver properties
     const searchCriteria = savedSearch.criteriaJson as any;
+
+    // Ensure sellerType is properly mapped for BatchData API
+    if (searchCriteria.sellerType) {
+      console.log(`🔍 Using saved search criteria with sellerType: ${searchCriteria.sellerType}`);
+    }
+
     const result = await this.searchAndDeliverProperties(
       userId,
       searchCriteria,

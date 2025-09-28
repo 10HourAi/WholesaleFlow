@@ -63,6 +63,7 @@ interface SearchCriteria {
   motivationScore?: number;
   minBedrooms?: number;
   quickLists?: string[];
+  sellerType?: string; // Added for mapping
 }
 
 class BatchLeadsService {
@@ -126,10 +127,39 @@ class BatchLeadsService {
     };
 
     // Apply quicklists from search criteria (mapped from wizard step 2)
-    if (criteria.quickLists && criteria.quickLists.length > 0) {
+    if (criteria.sellerType) {
+      // Map seller type to BatchData quicklist format
+      let quickList: string;
+      switch (criteria.sellerType) {
+        case "preforeclosure":
+          quickList = "preforeclosure";
+          break;
+        case "out-of-state-absentee-owner":
+          quickList = "out-of-state-absentee-owner";
+          break;
+        case "high-equity":
+          quickList = "high-equity";
+          break;
+        case "inherited":
+          quickList = "inherited";
+          break;
+        case "corporate-owned":
+          quickList = "corporate-owned";
+          break;
+        case "tired-landlord":
+          quickList = "tired-landlord";
+          break;
+        default:
+          quickList = "preforeclosure"; // Default fallback
+      }
+
+      requestBody.searchCriteria.quickLists = [quickList];
+      console.log(`🎯 Using quicklist: ${quickList} (mapped from ${criteria.sellerType})`);
+    } else if (criteria.quickLists && criteria.quickLists.length > 0) {
       requestBody.searchCriteria.quickLists = criteria.quickLists;
       console.log(`🎯 Using quicklists: ${criteria.quickLists.join(", ")}`);
     } else {
+      requestBody.searchCriteria.quickLists = ["preforeclosure"];
       console.log(`🎯 Using default quicklists: preforeclosure`);
     }
 
@@ -348,9 +378,6 @@ class BatchLeadsService {
             continue;
           }
 
-          console.log(`🏠 Processing property: ${property.address?.street}`);
-
-          // Direct conversion - no additional API calls needed
           const convertedProperty = this.convertToProperty(
             property,
             "demo-user",
@@ -1345,7 +1372,7 @@ class BatchLeadsService {
     const requestBody: any = {
       searchCriteria: {
         query: criteria.location,
-        quickLists: ["cash-buyer"], // Use the quicklists.cash-buyer endpoint
+        quickLists: ["cash-buyer"],
       },
       options: {
         skip: 0,
