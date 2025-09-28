@@ -55,7 +55,7 @@ export interface IStorage {
   getProperties(userId: string): Promise<Property[]>;
   getProperty(id: string, userId: string): Promise<Property | undefined>;
   createProperty(
-    property: InsertProperty & { userId: string },
+    property: InsertProperty,
   ): Promise<Property>;
   updateProperty(
     id: string,
@@ -186,7 +186,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProperty(
-    propertyData: InsertProperty & { userId: string },
+    propertyData: InsertProperty,
   ): Promise<Property> {
     const [property] = await db
       .insert(properties)

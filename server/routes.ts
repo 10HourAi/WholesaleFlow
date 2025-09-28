@@ -60,8 +60,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("🏠 Creating property for user:", userId);
       console.log("🏠 Request body:", req.body);
       
-      // Clean the data before validation
-      const cleanedData = { ...req.body };
+      // Clean the data before validation and ADD userId
+      const cleanedData = { 
+        ...req.body,
+        userId // Add userId from authenticated user
+      };
       
       // Convert string numbers to actual numbers
       if (cleanedData.bedrooms && typeof cleanedData.bedrooms === 'string') {
@@ -83,15 +86,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         cleanedData.confidenceScore = parseInt(cleanedData.confidenceScore);
       }
       
-      console.log("🏠 Cleaned data:", cleanedData);
+      console.log("🏠 Cleaned data with userId:", cleanedData);
       
       const validatedData = insertPropertySchema.parse(cleanedData);
       console.log("🏠 Validated data:", validatedData);
       
-      const property = await storage.createProperty({
-        ...validatedData,
-        userId,
-      });
+      const property = await storage.createProperty(validatedData);
       
       console.log("🏠 Property created successfully:", property.id);
       res.json(property);
