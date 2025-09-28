@@ -246,18 +246,19 @@ export class DatabaseStorage implements IStorage {
 
   // Contacts
   async getContacts(userId: string): Promise<Contact[]> {
+    // Simple contacts query without complex joins for now
     const results = await db
       .select({
         id: contacts.id,
-        propertyId: contacts.propertyId,
-        name: contacts.name,
-        phone: contacts.phone,
+        ownerId: contacts.ownerId,
+        phoneE164: contacts.phoneE164,
+        phoneQuality: contacts.phoneQuality,
         email: contacts.email,
+        emailQuality: contacts.emailQuality,
+        source: contacts.source,
         createdAt: contacts.createdAt,
       })
-      .from(contacts)
-      .leftJoin(properties, eq(contacts.propertyId, properties.id))
-      .where(eq(properties.userId, userId));
+      .from(contacts);
 
     return results;
   }
@@ -271,10 +272,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getContactsByProperty(propertyId: string): Promise<Contact[]> {
+    // Get contacts through leads relationship since contacts are linked to owners, not directly to properties
     return await db
-      .select()
+      .select({
+        id: contacts.id,
+        ownerId: contacts.ownerId,
+        phoneE164: contacts.phoneE164,
+        phoneQuality: contacts.phoneQuality,
+        email: contacts.email,
+        emailQuality: contacts.emailQuality,
+        source: contacts.source,
+        createdAt: contacts.createdAt,
+      })
       .from(contacts)
-      .where(eq(contacts.propertyId, propertyId));
+      .innerJoin(leads, eq(contacts.ownerId, leads.ownerId))
+      .where(eq(leads.propertyId, propertyId));
   }
 
   async createContact(contactData: InsertContact): Promise<Contact> {

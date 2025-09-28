@@ -139,6 +139,7 @@ export class LeadDeliveryService {
       const [property] = await db
         .insert(properties)
         .values({
+          userId: userId, // Fix: Include userId
           address: leadData.address,
           city: leadData.city,
           state: leadData.state,
