@@ -43,7 +43,7 @@ import {
   savedSearches,
   leadContacts,
 } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
@@ -173,7 +173,8 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(properties)
-      .where(eq(properties.userId, userId));
+      .where(eq(properties.userId, userId))
+      .orderBy(desc(properties.createdAt));
   }
 
   async getProperty(id: string, userId: string): Promise<Property | undefined> {
