@@ -252,46 +252,24 @@ export class DatabaseStorage implements IStorage {
   // Contacts
   async getContacts(userId: string): Promise<Contact[]> {
     try {
-      // Try with full schema first
+      // Use current schema fields
       const results = await db
         .select({
           id: contacts.id,
-          ownerId: contacts.ownerId,
-          phoneE164: contacts.phoneE164,
-          phoneQuality: contacts.phoneQuality,
+          propertyId: contacts.propertyId,
+          name: contacts.name,
+          phone: contacts.phone,
           email: contacts.email,
-          emailQuality: contacts.emailQuality,
-          source: contacts.source,
           createdAt: contacts.createdAt,
         })
-        .from(contacts);
+        .from(contacts)
+        .innerJoin(properties, eq(contacts.propertyId, properties.id))
+        .where(eq(properties.userId, userId));
 
       return results;
     } catch (error: any) {
-      console.log("⚠️ Contacts schema mismatch, using fallback:", error.message);
-      
-      // Fallback with basic fields only
-      try {
-        const results = await db
-          .select({
-            id: contacts.id,
-            ownerId: contacts.ownerId,
-            email: contacts.email,
-            createdAt: contacts.createdAt,
-          })
-          .from(contacts);
-
-        return results.map(contact => ({
-          ...contact,
-          phoneE164: null,
-          phoneQuality: null,
-          emailQuality: null,
-          source: null,
-        }));
-      } catch (fallbackError: any) {
-        console.log("❌ Contacts fallback also failed:", fallbackError.message);
-        return [];
-      }
+      console.log("⚠️ Contacts query failed:", error.message);
+      return [];
     }
   }
 
@@ -304,21 +282,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getContactsByProperty(propertyId: string): Promise<Contact[]> {
-    // Get contacts through leads relationship since contacts are linked to owners, not directly to properties
-    return await db
-      .select({
-        id: contacts.id,
-        ownerId: contacts.ownerId,
-        phoneE164: contacts.phoneE164,
-        phoneQuality: contacts.phoneQuality,
-        email: contacts.email,
-        emailQuality: contacts.emailQuality,
-        source: contacts.source,
-        createdAt: contacts.createdAt,
-      })
-      .from(contacts)
-      .innerJoin(leads, eq(contacts.ownerId, leads.ownerId))
-      .where(eq(leads.propertyId, propertyId));
+    try {
+      return await db
+        .select({
+          id: contacts.id,
+          propertyId: contacts.propertyId,
+          name: contacts.name,
+          phone: contacts.phone,
+          email: contacts.email,
+          createdAt: contacts.createdAt,
+        })
+        .from(contacts)
+        .where(eq(contacts.propertyId, propertyId));
+    } catch (error: any) {
+      console.log("⚠️ getContactsByProperty failed:", error.message);
+      return [];
+    }
   }
 
   async createContact(contactData: InsertContact): Promise<Contact> {

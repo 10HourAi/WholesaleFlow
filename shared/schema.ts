@@ -45,30 +45,38 @@ export const properties = pgTable("properties", {
   id: varchar("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
-  userId: varchar("user_id").references(() => users.id),
-  address1: text("address_1").notNull(),
-  address2: text("address_2"),
+  userId: varchar("user_id").notNull(),
+  address: text("address").notNull(),
   city: text("city").notNull(),
   state: text("state").notNull(),
-  postalCode: text("postal_code").notNull(),
-  country: text("country").default("US").notNull(),
-  latitude: decimal("latitude"),
-  longitude: decimal("longitude"),
-  propertyType: text("property_type"),
-  statusFlag: text("status_flag"),
-  fingerprint: text("fingerprint").notNull().unique(),
-  status: text("status").default("new"),
+  zipCode: text("zip_code").notNull(),
   bedrooms: integer("bedrooms"),
   bathrooms: integer("bathrooms"),
   squareFeet: integer("square_feet"),
-  yearBuilt: integer("year_built"),
-  arv: text("arv"),
-  maxOffer: text("max_offer"),
-  lastSalePrice: text("last_sale_price"),
-  lastSaleDate: timestamp("last_sale_date"),
+  arv: decimal("arv", { precision: 10, scale: 2 }),
+  maxOffer: decimal("max_offer", { precision: 10, scale: 2 }),
+  status: text("status").default("active"),
   leadType: text("lead_type"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
+  lastSalePrice: text("last_sale_price"),
+  lastSaleDate: text("last_sale_date"),
+  ownerName: text("owner_name"),
+  ownerPhone: text("owner_phone"),
+  ownerEmail: text("owner_email"),
+  equityPercentage: integer("equity_percentage"),
+  price: decimal("price", { precision: 10, scale: 2 }),
+  condition: text("condition"),
+  notes: text("notes"),
+  propertyType: text("property_type"),
+  yearBuilt: integer("year_built"),
+  ownerMailingAddress: text("owner_mailing_address"),
+  ownerDncPhone: text("owner_dnc_phone"),
+  ownerLandLine: text("owner_land_line"),
+  ownerMobilePhone: text("owner_mobile_phone"),
+  confidenceScore: integer("confidence_score"),
+  equityBalance: text("equity_balance"),
+  distressedIndicator: text("distressed_indicator"),
 });
 
 // Owners table
@@ -83,8 +91,6 @@ export const owners = pgTable("owners", {
   mailingCity: text("mailing_city"),
   mailingState: text("mailing_state"),
   mailingPostal: text("mailing_postal"),
-  phone: text("phone"),
-  email: text("email"),
   isIndividual: boolean("is_individual"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -95,12 +101,10 @@ export const contacts = pgTable("contacts", {
   id: varchar("id")
     .primaryKey()
     .default(sql`gen_random_uuid()`),
-  ownerId: varchar("owner_id").references(() => owners.id),
-  phoneE164: text("phone_e164").unique(),
-  phoneQuality: text("phone_quality"),
-  email: text("email").unique(),
-  emailQuality: text("email_quality"),
-  source: text("source"),
+  propertyId: varchar("property_id"),
+  name: text("name").notNull(),
+  phone: text("phone"),
+  email: text("email"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -231,6 +235,10 @@ export type InsertProperty = z.infer<typeof insertPropertySchema>;
 export type Property = typeof properties.$inferSelect;
 export type InsertContact = z.infer<typeof insertContactSchema>;
 export type Contact = typeof contacts.$inferSelect;
+export type InsertOwner = typeof owners.$inferInsert;
+export type InsertLead = typeof leads.$inferInsert;
+export type InsertLeadRequest = typeof leadRequests.$inferInsert;
+export type InsertUserLead = typeof userLeads.$inferInsert;
 export type Owner = typeof owners.$inferSelect;
 export type Lead = typeof leads.$inferSelect;
 export type LeadContact = typeof leadContacts.$inferSelect;

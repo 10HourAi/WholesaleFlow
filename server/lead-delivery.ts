@@ -205,7 +205,7 @@ export class LeadDeliveryService {
             .from(properties)
             .where(
               and(
-                eq(properties.address, leadData.address), // Use address field from schema
+                eq(properties.address, leadData.address),
                 eq(properties.city, leadData.city),
                 eq(properties.state, leadData.state),
               ),
@@ -273,73 +273,22 @@ export class LeadDeliveryService {
       const ownerId = owner?.id || `temp-owner-${Date.now()}`;
 
       // 4. Insert/get contacts - with field validation
-      if (leadData.ownerPhone) {
+      if (leadData.ownerPhone || leadData.ownerEmail) {
         try {
-          // Try to insert phone contact with all fields
+          // Insert contact with current schema fields
           await db
             .insert(contacts)
             .values({
-              ownerId: ownerId,
-              phoneE164: leadData.ownerPhone,
-              phoneQuality: "verified",
-              email: null,
-              emailQuality: null,
-              source: "batchdata",
+              propertyId: propertyId,
+              name: leadData.ownerName || "Unknown Owner",
+              phone: leadData.ownerPhone || null,
+              email: leadData.ownerEmail || null,
             })
             .onConflictDoNothing();
-        } catch (phoneError: any) {
-          console.log("⚠️ Phone contact insert failed, trying fallback:", phoneError.message);
-          
-          // Fallback: Try with minimal required fields only
-          try {
-            await db
-              .insert(contacts)
-              .values({
-                ownerId: ownerId,
-                phone: leadData.ownerPhone, // Use legacy phone field if phoneE164 doesn't exist
-                source: "batchdata",
-              })
-              .onConflictDoNothing();
-            console.log("✅ Phone contact saved with fallback fields");
-          } catch (fallbackError: any) {
-            console.log("❌ Phone contact fallback also failed:", fallbackError.message);
-            // Skip phone contact if both attempts fail
-          }
-        }
-      }
-
-      if (leadData.ownerEmail) {
-        try {
-          // Try to insert email contact with all fields
-          await db
-            .insert(contacts)
-            .values({
-              ownerId: ownerId,
-              phoneE164: null,
-              phoneQuality: null,
-              email: leadData.ownerEmail,
-              emailQuality: "verified",
-              source: "batchdata",
-            })
-            .onConflictDoNothing();
-        } catch (emailError: any) {
-          console.log("⚠️ Email contact insert failed, trying fallback:", emailError.message);
-          
-          // Fallback: Try with minimal required fields only
-          try {
-            await db
-              .insert(contacts)
-              .values({
-                ownerId: ownerId,
-                email: leadData.ownerEmail,
-                source: "batchdata",
-              })
-              .onConflictDoNothing();
-            console.log("✅ Email contact saved with fallback fields");
-          } catch (fallbackError: any) {
-            console.log("❌ Email contact fallback also failed:", fallbackError.message);
-            // Skip email contact if both attempts fail
-          }
+          console.log("✅ Contact saved successfully");
+        } catch (contactError: any) {
+          console.log("⚠️ Contact insert failed:", contactError.message);
+          // Skip contact creation if it fails
         }
       }
 
