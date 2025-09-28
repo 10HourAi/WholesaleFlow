@@ -1,0 +1,77 @@
+⚠️ LEAD DELIVERY: Could not save lead: 4432 S King Dr
+💾 LEAD DELIVERY: Attempting to save property: 130 N Garland Ct Apt 3001
+❌ Error saving property with schema: error: column "phone_e164" of relation "contacts" does not exist
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async LeadDeliveryService.savePropertyWithSchema (/home/runner/workspace/server/lead-delivery.ts:215:9)
+    at async LeadDeliveryService.searchAndDeliverProperties (/home/runner/workspace/server/lead-delivery.ts:378:26)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:901:22) {
+  length: 131,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '43',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '1066',
+  routine: 'checkInsertTargets'
+}
+⚠️ LEAD DELIVERY: Could not save lead: 130 N Garland Ct Apt 3001
+💾 LEAD DELIVERY: Attempting to save property: 7813 S Evans Ave
+❌ Error saving property with schema: error: column "phone_e164" of relation "contacts" does not exist
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async LeadDeliveryService.savePropertyWithSchema (/home/runner/workspace/server/lead-delivery.ts:215:9)
+    at async LeadDeliveryService.searchAndDeliverProperties (/home/runner/workspace/server/lead-delivery.ts:378:26)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:901:22) {
+  length: 131,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '43',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '1066',
+  routine: 'checkInsertTargets'
+}
+⚠️ LEAD DELIVERY: Could not save lead: 7813 S Evans Ave
+💾 LEAD DELIVERY: Attempting to save property: 4429 S Lawler Ave
+❌ Error saving property with schema: error: column "phone_e164" of relation "contacts" does not exist
+    at file:///home/runner/workspace/node_modules/@neondatabase/serverless/index.mjs:1345:74
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async LeadDeliveryService.savePropertyWithSchema (/home/runner/workspace/server/lead-delivery.ts:215:9)
+    at async LeadDeliveryService.searchAndDeliverProperties (/home/runner/workspace/server/lead-delivery.ts:378:26)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:901:22) {
+  length: 131,
+  severity: 'ERROR',
+  code: '42703',
+  detail: undefined,
+  hint: undefined,
+  position: '43',
+  internalPosition: undefined,
+  internalQuery: undefined,
+  where: undefined,
+  schema: undefined,
+  table: undefined,
+  column: undefined,
+  dataType: undefined,
+  constraint: undefined,
+  file: 'parse_target.c',
+  line: '1066',
+  r
