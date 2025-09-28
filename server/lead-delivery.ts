@@ -146,10 +146,10 @@ export class LeadDeliveryService {
         };
 
         // Add fields based on current schema (from migrations/schema.ts)
-        if (leadData.address) propertyData.address1 = leadData.address;
+        if (leadData.address) propertyData.address = leadData.address;
         if (leadData.city) propertyData.city = leadData.city;
         if (leadData.state) propertyData.state = leadData.state;
-        if (leadData.zipCode) propertyData.postalCode = leadData.zipCode;
+        if (leadData.zipCode) propertyData.zipCode = leadData.zipCode;
         if (leadData.bedrooms) propertyData.bedrooms = leadData.bedrooms;
         if (leadData.bathrooms) propertyData.bathrooms = leadData.bathrooms;
         if (leadData.squareFeet) propertyData.squareFeet = leadData.squareFeet;
@@ -176,10 +176,10 @@ export class LeadDeliveryService {
         try {
           const minimalPropertyData = {
             userId: userId,
-            address1: leadData.address || "Unknown Address",
+            address: leadData.address || "Unknown Address",
             city: leadData.city || "Unknown City", 
             state: leadData.state || "Unknown State",
-            postalCode: leadData.zipCode || "00000",
+            zipCode: leadData.zipCode || "00000",
             fingerprint: fingerprint,
             status: "new",
           };
@@ -207,7 +207,7 @@ export class LeadDeliveryService {
             .from(properties)
             .where(
               and(
-                eq(properties.address1, leadData.address), // Use address1 field from schema
+                eq(properties.address, leadData.address), // Use address field from schema
                 eq(properties.city, leadData.city),
                 eq(properties.state, leadData.state),
               ),
@@ -759,7 +759,7 @@ export class LeadDeliveryService {
     try {
       const deliveredProperties = await db
         .select({
-          address: properties.address1, // Use correct field name from schema
+          address: properties.address, // Use correct field name from schema
           city: properties.city,
           state: properties.state,
         })

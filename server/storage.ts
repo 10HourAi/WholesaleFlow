@@ -246,21 +246,48 @@ export class DatabaseStorage implements IStorage {
 
   // Contacts
   async getContacts(userId: string): Promise<Contact[]> {
-    // Simple contacts query without complex joins for now
-    const results = await db
-      .select({
-        id: contacts.id,
-        ownerId: contacts.ownerId,
-        phoneE164: contacts.phoneE164,
-        phoneQuality: contacts.phoneQuality,
-        email: contacts.email,
-        emailQuality: contacts.emailQuality,
-        source: contacts.source,
-        createdAt: contacts.createdAt,
-      })
-      .from(contacts);
+    try {
+      // Try with full schema first
+      const results = await db
+        .select({
+          id: contacts.id,
+          ownerId: contacts.ownerId,
+          phoneE164: contacts.phoneE164,
+          phoneQuality: contacts.phoneQuality,
+          email: contacts.email,
+          emailQuality: contacts.emailQuality,
+          source: contacts.source,
+          createdAt: contacts.createdAt,
+        })
+        .from(contacts);
 
-    return results;
+      return results;
+    } catch (error: any) {
+      console.log("⚠️ Contacts schema mismatch, using fallback:", error.message);
+      
+      // Fallback with basic fields only
+      try {
+        const results = await db
+          .select({
+            id: contacts.id,
+            ownerId: contacts.ownerId,
+            email: contacts.email,
+            createdAt: contacts.createdAt,
+          })
+          .from(contacts);
+
+        return results.map(contact => ({
+          ...contact,
+          phoneE164: null,
+          phoneQuality: null,
+          emailQuality: null,
+          source: null,
+        }));
+      } catch (fallbackError: any) {
+        console.log("❌ Contacts fallback also failed:", fallbackError.message);
+        return [];
+      }
+    }
   }
 
   async getContact(id: string): Promise<Contact | undefined> {
