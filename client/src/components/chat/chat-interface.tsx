@@ -513,21 +513,22 @@ const PropertyCard = ({ content }: { content: string }) => {
       const [state, zipCode] = stateZip.split(" ");
 
       // Extract building details
-      const bedroomsMatch = content.match(/🏠 (\d+) bed/);
-      const bathroomsMatch = content.match(/(\d+) bath/);
-      const squareFeetMatch = content.match(/(\d{1,3}(?:,\d{3})*) sq ft/);
-      const yearBuiltMatch = content.match(/📅 Built: (\d{4})/);
-      const propertyTypeMatch = content.match(/📐 Property Type: (.+?)\n/);
+      const bedroomsMatch = content.match(/🏠 (\d+) bed/) || content.match(/Bedrooms\s+(\d+)/);
+      const bathroomsMatch = content.match(/(\d+) bath/) || content.match(/Bathrooms\s+(\d+)/);
+      const squareFeetMatch = content.match(/(\d{1,3}(?:,\d{3})*) sq ft/) || content.match(/Total Area\s+(\d{1,3}(?:,\d{3})*) sqft/);
+      const yearBuiltMatch = content.match(/📅 Built: (\d{4})/) || content.match(/Built:\s*(\d{4})/);
+      const propertyTypeMatch = content.match(/📐 Property Type: (.+?)\n/) || content.match(/Property Type\s+(.+?)\n/);
 
       // Extract financial information - updated for new format
       // Try both "Market Value" in BUILDING DETAILS and "Estimated Value" in Valuation Details
       const arvMatch =
         content.match(/💰 Market Value: \$([0-9,]+)/) ||
-        content.match(/Estimated Value\s*\$([0-9,]+)/);
+        content.match(/Estimated Value\s*\$([0-9,]+)/) ||
+        content.match(/Estimated Value\s+\$([0-9,]+)/);
       const maxOfferMatch = content.match(
         /Max Offer \(70% Rule\)\s*\$([0-9,]+)/,
       );
-      const equityMatch = content.match(/Equity Percent\s*(\d+)%/);
+      const equityMatch = content.match(/Equity Percent\s*(\d+)%/) || content.match(/Equity Percentage\s*(\d+)%/);
 
       // Extract owner information - updated to handle both old and new formats
       const ownerNameMatch =
@@ -547,38 +548,42 @@ const PropertyCard = ({ content }: { content: string }) => {
       // Extract confidence score - updated for new format (no emoji, no "/100")
       const confidenceScoreMatch = content.match(/Confidence Score\s*(\d+)/);
 
+      // Clean and validate extracted data
+      const bedrooms = bedroomsMatch ? parseInt(bedroomsMatch[1]) : undefined;
+      const bathrooms = bathroomsMatch ? parseInt(bathroomsMatch[1]) : undefined;
+      const squareFeet = squareFeetMatch ? parseInt(squareFeetMatch[1].replace(/,/g, "")) : undefined;
+      const yearBuilt = yearBuiltMatch ? parseInt(yearBuiltMatch[1]) : undefined;
+      const equityPercentage = equityMatch ? parseInt(equityMatch[1]) : undefined;
+      const confidenceScore = confidenceScoreMatch ? parseInt(confidenceScoreMatch[1]) : undefined;
+
       return {
         address: streetAddress,
         city: city,
         state: state || "",
         zipCode: zipCode || "",
-        bedrooms: bedroomsMatch ? parseInt(bedroomsMatch[1]) : null,
-        bathrooms: bathroomsMatch ? parseInt(bathroomsMatch[1]) : null,
-        squareFeet: squareFeetMatch
-          ? parseInt(squareFeetMatch[1].replace(/,/g, ""))
-          : null,
-        yearBuilt: yearBuiltMatch ? parseInt(yearBuiltMatch[1]) : null,
+        bedrooms: bedrooms && bedrooms > 0 ? bedrooms : undefined,
+        bathrooms: bathrooms && bathrooms > 0 ? bathrooms : undefined,
+        squareFeet: squareFeet && squareFeet > 0 ? squareFeet : undefined,
+        yearBuilt: yearBuilt && yearBuilt > 1800 && yearBuilt <= new Date().getFullYear() + 5 ? yearBuilt : undefined,
         propertyType: propertyTypeMatch
-          ? propertyTypeMatch[1].trim()
+          ? propertyTypeMatch[1].trim().toLowerCase().replace(/\s+/g, "_")
           : "single_family",
-        arv: arvMatch ? arvMatch[1].replace(/,/g, "") : null,
-        maxOffer: maxOfferMatch ? maxOfferMatch[1].replace(/,/g, "") : null,
-        equityPercentage: equityMatch ? parseInt(equityMatch[1]) : null,
-        ownerName: ownerNameMatch ? ownerNameMatch[1].trim() : null,
+        arv: arvMatch ? arvMatch[1].replace(/,/g, "") : undefined,
+        maxOffer: maxOfferMatch ? maxOfferMatch[1].replace(/,/g, "") : undefined,
+        equityPercentage: equityPercentage && equityPercentage >= 0 && equityPercentage <= 100 ? equityPercentage : undefined,
+        ownerName: ownerNameMatch ? ownerNameMatch[1].trim() : undefined,
         ownerPhone:
           ownerPhoneMatch && !isPlaceholderValue(ownerPhoneMatch[1])
             ? ownerPhoneMatch[1].trim()
-            : null,
+            : undefined,
         ownerEmail:
           ownerEmailMatch && !isPlaceholderValue(ownerEmailMatch[1])
             ? ownerEmailMatch[1].trim()
-            : null,
+            : undefined,
         ownerMailingAddress: ownerMailingMatch
           ? ownerMailingMatch[1].trim()
-          : null,
-        confidenceScore: confidenceScoreMatch
-          ? parseInt(confidenceScoreMatch[1])
-          : null,
+          : undefined,
+        confidenceScore: confidenceScore && confidenceScore >= 0 && confidenceScore <= 100 ? confidenceScore : undefined,
         status: "new",
       };
     } catch (error) {

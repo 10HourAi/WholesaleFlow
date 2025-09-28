@@ -57,14 +57,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/properties", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validatedData = insertPropertySchema.parse(req.body);
+      console.log("🏠 Creating property for user:", userId);
+      console.log("🏠 Request body:", req.body);
+      
+      // Clean the data before validation
+      const cleanedData = { ...req.body };
+      
+      // Convert string numbers to actual numbers
+      if (cleanedData.bedrooms && typeof cleanedData.bedrooms === 'string') {
+        cleanedData.bedrooms = parseInt(cleanedData.bedrooms);
+      }
+      if (cleanedData.bathrooms && typeof cleanedData.bathrooms === 'string') {
+        cleanedData.bathrooms = parseFloat(cleanedData.bathrooms);
+      }
+      if (cleanedData.squareFeet && typeof cleanedData.squareFeet === 'string') {
+        cleanedData.squareFeet = parseInt(cleanedData.squareFeet);
+      }
+      if (cleanedData.yearBuilt && typeof cleanedData.yearBuilt === 'string') {
+        cleanedData.yearBuilt = parseInt(cleanedData.yearBuilt);
+      }
+      if (cleanedData.equityPercentage && typeof cleanedData.equityPercentage === 'string') {
+        cleanedData.equityPercentage = parseInt(cleanedData.equityPercentage);
+      }
+      if (cleanedData.confidenceScore && typeof cleanedData.confidenceScore === 'string') {
+        cleanedData.confidenceScore = parseInt(cleanedData.confidenceScore);
+      }
+      
+      console.log("🏠 Cleaned data:", cleanedData);
+      
+      const validatedData = insertPropertySchema.parse(cleanedData);
+      console.log("🏠 Validated data:", validatedData);
+      
       const property = await storage.createProperty({
         ...validatedData,
         userId,
       });
+      
+      console.log("🏠 Property created successfully:", property.id);
       res.json(property);
     } catch (error: any) {
-      res.status(400).json({ message: error.message });
+      console.error("❌ Property creation error:", error);
+      if (error.name === 'ZodError') {
+        console.error("❌ Validation errors:", error.errors);
+        res.status(400).json({ 
+          message: "Validation failed", 
+          errors: error.errors,
+          details: error.errors.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ')
+        });
+      } else {
+        res.status(400).json({ message: error.message });
+      }
     }
   });
 
