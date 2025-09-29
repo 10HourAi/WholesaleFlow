@@ -44,10 +44,9 @@ export function Auth() {
           window.location.href = "/";
         } else {
           // For signup, show success message and switch to login
-          alert("Account created successfully! Please log in.");
+          alert("Account created successfully! Please log in with your email and password.");
           setIsLogin(true);
-          // Clear form
-          setEmail("");
+          // Clear form but keep email for convenience
           setPassword("");
           setFirstName("");
           setLastName("");

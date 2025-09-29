@@ -166,6 +166,7 @@ export class DatabaseStorage implements IStorage {
           firstName: userData.firstName,
           lastName: userData.lastName,
           profileImageUrl: userData.profileImageUrl,
+          password: userData.password, // Include password in updates
           preferences: userData.preferences,
           updatedAt: new Date(),
         },
