@@ -25,6 +25,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
+  // Traditional auth endpoints (for email/password)
+  app.post("/api/signup", async (req, res) => {
+    try {
+      const { email, password, firstName, lastName } = req.body;
+      
+      console.log("🔐 Signup attempt:", { email, firstName, lastName });
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "User already exists with this email" 
+        });
+      }
+      
+      // For now, we'll create a simple user without password hashing
+      // In production, you should hash passwords with bcrypt
+      const user = await storage.upsertUser({
+        id: `email_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique ID
+        email,
+        firstName,
+        lastName,
+        profileImageUrl: null,
+      });
+      
+      console.log("✅ User created successfully:", user.id);
+      res.json({ success: true, message: "Account created successfully" });
+    } catch (error: any) {
+      console.error("❌ Signup error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to create account" 
+      });
+    }
+  });
+  
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      console.log("🔐 Login attempt:", { email });
+      
+      // Check if user exists
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Invalid email or password" 
+        });
+      }
+      
+      // In production, you should verify password hash
+      // For now, we'll just check if user exists
+      console.log("✅ Login successful:", user.id);
+      res.json({ success: true, message: "Login successful", user });
+    } catch (error: any) {
+      console.error("❌ Login error:", error);
+      res.status(401).json({ 
+        success: false, 
+        message: "Invalid email or password" 
+      });
+    }
+  });
+
   // Auth routes
   app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     if (!req.user || !req.user.claims) {

@@ -37,9 +37,21 @@ export function Auth() {
       const result = await response.json();
       console.log("🔐 Auth response:", result);
 
-      if (result.success) {
+      if (response.ok && result.success) {
         console.log("✅ Auth successful, redirecting...");
-        window.location.href = "/";
+        if (isLogin) {
+          // For login, redirect to home
+          window.location.href = "/";
+        } else {
+          // For signup, show success message and switch to login
+          alert("Account created successfully! Please log in.");
+          setIsLogin(true);
+          // Clear form
+          setEmail("");
+          setPassword("");
+          setFirstName("");
+          setLastName("");
+        }
       } else {
         alert(result.message || "Authentication failed");
       }
