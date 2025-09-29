@@ -476,9 +476,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Conversations
-  app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
+  app.get("/api/conversations", async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
+      
+      if (req.session && req.session.user) {
+        // Traditional session
+        userId = req.session.user.id;
+      } else if (req.user && req.user.claims) {
+        // Replit Auth session
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const conversations = await storage.getConversations(userId);
       res.json(conversations);
     } catch (error: any) {
@@ -486,8 +497,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/conversations", isAuthenticated, async (req: any, res) => {
+  app.post("/api/conversations", async (req: any, res) => {
     try {
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
+      
+      if (req.session && req.session.user) {
+        // Traditional session
+        userId = req.session.user.id;
+      } else if (req.user && req.user.claims) {
+        // Replit Auth session
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const validatedData = insertConversationSchema.parse(req.body);
       const conversation = await storage.createConversation(validatedData);
       res.json(conversation);
@@ -499,9 +523,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Messages
   app.get(
     "/api/conversations/:id/messages",
-    isAuthenticated,
     async (req: any, res) => {
       try {
+        // Check authentication for both traditional and Replit Auth sessions
+        if (!req.session?.user && !req.user?.claims) {
+          return res.status(401).json({ message: "Unauthorized" });
+        }
+        
         const messages = await storage.getMessagesByConversation(req.params.id);
         res.json(messages);
       } catch (error: any) {
@@ -512,10 +540,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(
     "/api/conversations/:id/messages",
-    isAuthenticated,
     async (req: any, res) => {
       try {
-        const userId = req.user.claims.sub;
+        // Check authentication for both traditional and Replit Auth sessions
+        let userId: string;
+        
+        if (req.session && req.session.user) {
+          // Traditional session
+          userId = req.session.user.id;
+        } else if (req.user && req.user.claims) {
+          // Replit Auth session
+          userId = req.user.claims.sub;
+        } else {
+          return res.status(401).json({ message: "Unauthorized" });
+        }
         const validatedData = insertMessageSchema.parse({
           ...req.body,
           conversationId: req.params.id,
@@ -1082,13 +1120,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get multiple properties at once - WITH LEAD DELIVERY DEDUPLICATION & AUTO-SAVE SEARCH
-  app.post("/api/properties/batch", isAuthenticated, async (req: any, res) => {
+  app.post("/api/properties/batch", async (req: any, res) => {
     console.log(
       "🔥🔥🔥 ENHANCED BATCH ROUTE WITH LEAD DELIVERIES - TIMESTAMP:",
       new Date().toISOString(),
     );
     try {
-      const userId = req.user.claims.sub;
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
+      
+      if (req.session && req.session.user) {
+        // Traditional session
+        userId = req.session.user.id;
+        console.log("🔐 Using traditional session userId:", userId);
+      } else if (req.user && req.user.claims) {
+        // Replit Auth session
+        userId = req.user.claims.sub;
+        console.log("🔐 Using Replit Auth session userId:", userId);
+      } else {
+        console.log("❌ No valid session found");
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const { count = 5, criteria = {} } = req.body;
 
       console.log(
