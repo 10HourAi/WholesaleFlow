@@ -26,22 +26,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await setupAuth(app);
 
   // Auth routes
-  app.get("/api/auth/user", isAuthenticated, (req: any, res) => {
+  app.get("/api/auth/user", isAuthenticated, async (req: any, res) => {
     if (!req.user || !req.user.claims) {
       return res.status(401).json({ message: "Unauthorized" });
     }
     
-    // Return user data in the expected format
-    const userData = {
-      id: req.user.claims.sub,
-      email: req.user.claims.email,
-      firstName: req.user.claims.first_name,
-      lastName: req.user.claims.last_name,
-      name: req.user.claims.name,
-      profileImage: req.user.claims.profile_image_url,
-    };
-    
-    res.json(userData);
+    try {
+      // Try to get full user data from database
+      const userId = req.user.claims.sub;
+      const user = await storage.getUser(userId);
+      
+      if (user) {
+        // Return full user data from database
+        const userData = {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email,
+          profileImage: user.profileImageUrl,
+        };
+        res.json(userData);
+      } else {
+        // Fallback to session data
+        const userData = {
+          id: req.user.claims.sub,
+          email: req.user.claims.email,
+          firstName: req.user.claims.first_name,
+          lastName: req.user.claims.last_name,
+          name: req.user.claims.name,
+          profileImage: req.user.claims.profile_image_url,
+        };
+        res.json(userData);
+      }
+    } catch (error) {
+      console.error("❌ Error fetching user:", error);
+      // Fallback to session data
+      const userData = {
+        id: req.user.claims.sub,
+        email: req.user.claims.email,
+        firstName: req.user.claims.first_name,
+        lastName: req.user.claims.last_name,
+        name: req.user.claims.name,
+        profileImage: req.user.claims.profile_image_url,
+      };
+      res.json(userData);
+    }
   });
   // Properties
   app.get("/api/properties", isAuthenticated, async (req: any, res) => {
