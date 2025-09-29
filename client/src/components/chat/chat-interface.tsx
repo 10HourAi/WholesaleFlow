@@ -278,6 +278,23 @@ const PropertyDetailsModal = ({
     return email || "Contact for details";
   };
 
+  // Helper function to format phone numbers with country code and area code grouping
+  const formatPhoneNumbers = (property: Property) => {
+    const phones: string[] = [];
+    if (property.ownerPhone) phones.push(property.ownerPhone);
+    if (property.ownerMobilePhone) phones.push(property.ownerMobilePhone);
+    if (property.ownerLandLine) phones.push(property.ownerLandLine);
+    return phones.length > 0 ? phones.join(", ") : "Contact for details";
+  };
+
+  // Helper function to format DNC phone numbers
+  const formatDNCPhones = (property: Property) => {
+    if (property.ownerDNCPhone) {
+      return property.ownerDNCPhone;
+    }
+    return null; // Return null if no DNC phone is available
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl bg-gray-50">
@@ -312,10 +329,8 @@ const PropertyDetailsModal = ({
 
 📞 CONTACT INFORMATION
    Email(s)                     ${formatEmail(property.ownerEmail)}
-   Phone(s)                     ${formatPhone(property.ownerPhone)}
-   Mobile Phone                 ${formatPhone(property.ownerMobilePhone)}
-   Land Line                    ${formatPhone(property.ownerLandLine)}
-   DNC Phone(s)                 ${formatPhone(property.ownerDNCPhone)}
+   Phone(s)                     ${formatPhoneNumbers(property)}
+   ${formatDNCPhones(property) ? `DNC Phone(s)                 ${formatDNCPhones(property)}` : ""}
    Mailing Address              ${property.ownerMailingAddress || "N/A"}
 
 💰 VALUATION DETAILS
@@ -702,7 +717,7 @@ const PropertyCard = ({ content }: { content: string }) => {
   // Remove any action sections from content for display
   const displayContent = content
     .replace(
-      /� ACTIONS[\s\S]*?━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━/g,
+      / ACTIONS[\s\S]*?━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━/g,
       "",
     )
     .trim();
@@ -1908,7 +1923,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
 
           // Create modern, sleek card design
           let cardContent = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-� QUALIFIED CASH BUYER #${index + 1}
+ QUALIFIED CASH BUYER #${index + 1}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 `;
@@ -1968,7 +1983,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
         });
       } else {
         // Send intro message immediately
-        const introMessage = `� **CASH BUYER SEARCH COMPLETE**\n\nFound **5 qualified ${buyerWizardData.buyerType.replace(/_/g, " ")}** in **${location}**!\n\nHere are your investor leads:`;
+        const introMessage = ` **CASH BUYER SEARCH COMPLETE**\n\nFound **5 qualified ${buyerWizardData.buyerType.replace(/_/g, " ")}** in **${location}**!\n\nHere are your investor leads:`;
 
         await apiRequest(
           "POST",

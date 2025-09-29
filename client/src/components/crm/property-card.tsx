@@ -335,28 +335,60 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                     {property.ownerMailingAddress || "Same as property address"}
                   </div>
                 </div>
-                {property.ownerPhone && (
-                  <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-slate-500" />
-                    <span>{property.ownerPhone}</span>
+                {/* Phone Numbers */}
+                <div>
+                  <span className="font-medium text-slate-700">Phone Numbers:</span>
+                  <div className="mt-1 space-y-1">
+                    {property.ownerPhone && (
+                      <div className="flex items-center gap-2">
+                        <Phone className="w-4 h-4 text-slate-500" />
+                        <span>{property.ownerPhone}</span>
+                      </div>
+                    )}
+                    {property.ownerLandLine && (
+                      <div className="text-sm">
+                        <span className="text-slate-600">Land Line:</span> {property.ownerLandLine}
+                      </div>
+                    )}
+                    {property.ownerMobilePhone && (
+                      <div className="text-sm">
+                        <span className="text-slate-600">Mobile:</span> {property.ownerMobilePhone}
+                      </div>
+                    )}
+                    {!property.ownerPhone && !property.ownerLandLine && !property.ownerMobilePhone && (
+                      <span className="text-slate-500 text-sm">No phone numbers available</span>
+                    )}
                   </div>
-                )}
-                {property.ownerEmail && (
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-slate-500" />
-                    <span>{property.ownerEmail}</span>
+                </div>
+
+                {/* Email Addresses */}
+                <div>
+                  <span className="font-medium text-slate-700">Email Addresses:</span>
+                  <div className="mt-1">
+                    {property.ownerEmail ? (
+                      <div className="flex items-center gap-2">
+                        <Mail className="w-4 h-4 text-slate-500" />
+                        <span>{property.ownerEmail}</span>
+                      </div>
+                    ) : (
+                      <span className="text-slate-500 text-sm">No email available</span>
+                    )}
                   </div>
-                )}
-                {property.ownerLandLine && (
+                </div>
+
+                {/* DNC Phone Numbers */}
+                {property.ownerDNCPhone && (
                   <div>
-                    <span className="font-medium text-slate-700">Land Line:</span>
-                    <div className="mt-1">{property.ownerLandLine}</div>
-                  </div>
-                )}
-                {property.ownerMobilePhone && (
-                  <div>
-                    <span className="font-medium text-slate-700">Mobile Phone:</span>
-                    <div className="mt-1">{property.ownerMobilePhone}</div>
+                    <span className="font-medium text-slate-700">DNC Phone Numbers:</span>
+                    <div className="mt-1 text-sm text-red-600">
+                      {property.ownerDNCPhone.split(',').map((phone, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Phone className="w-3 h-3" />
+                          <span>{phone.trim()}</span>
+                          <span className="text-xs bg-red-100 text-red-800 px-1 rounded">DNC</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
