@@ -26,12 +26,19 @@ export default function LeadsTable() {
     enabled: properties.length > 0, // Only fetch contacts if we have properties
   });
 
-  const filteredProperties = properties.filter(property => {
-    const matchesStatus = statusFilter === "all" || property.status === statusFilter;
-    const matchesSearch = property.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         property.city.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesStatus && matchesSearch;
-  });
+  const filteredProperties = properties
+    .filter(property => {
+      const matchesStatus = statusFilter === "all" || property.status === statusFilter;
+      const matchesSearch = property.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           property.city.toLowerCase().includes(searchTerm.toLowerCase());
+      return matchesStatus && matchesSearch;
+    })
+    .sort((a, b) => {
+      // Sort by creation date, newest first
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
 
   const getStatusColor = (status: string) => {
     switch (status) {

@@ -9,18 +9,61 @@ import { Building2, Mail, Lock, User, ArrowRight } from "lucide-react";
 
 export function Auth() {
   const [isLogin, setIsLogin] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Since we're using Replit Auth, redirect to the auth endpoint
-    window.location.href = "/api/login";
+    setLoading(true);
+    
+    try {
+      const endpoint = isLogin ? "/api/auth/login" : "/api/signup";
+      const body = isLogin 
+        ? { email, password }
+        : { email, password, firstName, lastName };
+
+      console.log("🔐 Submitting auth request:", { endpoint, email, isLogin });
+
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        credentials: 'include', // Important for session cookies
+      });
+
+      const result = await response.json();
+      console.log("🔐 Auth response:", result);
+
+      if (response.ok && result.success) {
+        console.log("✅ Auth successful, redirecting...");
+        if (isLogin) {
+          // For login, redirect to home
+          window.location.href = "/";
+        } else {
+          // For signup, show success message and switch to login
+          alert("Account created successfully! Please log in with your email and password.");
+          setIsLogin(true);
+          // Clear form but keep email for convenience
+          setPassword("");
+          setFirstName("");
+          setLastName("");
+        }
+      } else {
+        alert(result.message || "Authentication failed");
+      }
+    } catch (error) {
+      console.error("❌ Auth error:", error);
+      alert("Authentication failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleReplitAuth = () => {
+    // For development, redirect to login endpoint
     window.location.href = "/api/login";
   };
 
@@ -57,9 +100,10 @@ export function Auth() {
               onClick={handleReplitAuth}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               size="lg"
+              disabled={loading}
             >
               <ArrowRight className="w-4 h-4 mr-2" />
-              Continue with Replit
+              {loading ? "Loading..." : "Continue with Replit"}
             </Button>
 
             <div className="relative">
@@ -139,8 +183,8 @@ export function Auth() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" variant="outline">
-                {isLogin ? "Sign in" : "Create account"}
+              <Button type="submit" className="w-full" variant="outline" disabled={loading}>
+                {loading ? "Processing..." : (isLogin ? "Sign in" : "Create account")}
               </Button>
             </form>
 

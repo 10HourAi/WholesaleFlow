@@ -63,6 +63,7 @@ interface SearchCriteria {
   motivationScore?: number;
   minBedrooms?: number;
   quickLists?: string[];
+  sellerType?: string; // Added for mapping
 }
 
 class BatchLeadsService {
@@ -126,10 +127,39 @@ class BatchLeadsService {
     };
 
     // Apply quicklists from search criteria (mapped from wizard step 2)
-    if (criteria.quickLists && criteria.quickLists.length > 0) {
+    if (criteria.sellerType) {
+      // Map seller type to BatchData quicklist format
+      let quickList: string;
+      switch (criteria.sellerType) {
+        case "preforeclosure":
+          quickList = "preforeclosure";
+          break;
+        case "out-of-state-absentee-owner":
+          quickList = "out-of-state-absentee-owner";
+          break;
+        case "high-equity":
+          quickList = "high-equity";
+          break;
+        case "inherited":
+          quickList = "inherited";
+          break;
+        case "corporate-owned":
+          quickList = "corporate-owned";
+          break;
+        case "tired-landlord":
+          quickList = "tired-landlord";
+          break;
+        default:
+          quickList = "preforeclosure"; // Default fallback
+      }
+
+      requestBody.searchCriteria.quickLists = [quickList];
+      console.log(`🎯 Using quicklist: ${quickList} (mapped from ${criteria.sellerType})`);
+    } else if (criteria.quickLists && criteria.quickLists.length > 0) {
       requestBody.searchCriteria.quickLists = criteria.quickLists;
       console.log(`🎯 Using quicklists: ${criteria.quickLists.join(", ")}`);
     } else {
+      requestBody.searchCriteria.quickLists = ["preforeclosure"];
       console.log(`🎯 Using default quicklists: preforeclosure`);
     }
 
@@ -170,17 +200,16 @@ class BatchLeadsService {
       if (!requestBody.searchCriteria.building) {
         requestBody.searchCriteria.building = {};
       }
-      // Try multiple filter approaches for better API compatibility
-      requestBody.searchCriteria.building.bedrooms = {
+      // Use the correct BatchData API format for bedroom count
+      requestBody.searchCriteria.building.bedroomCount = {
         min: criteria.minBedrooms,
-        gte: criteria.minBedrooms, // Also try "greater than or equal" syntax
       };
 
-      // Also try filtering out null/empty bedroom data
-      requestBody.searchCriteria.building.bedroomsExists = true;
-
       console.log(
-        `🛏️ Added comprehensive bedroom filter: min ${criteria.minBedrooms} bedrooms (with existence check)`,
+        `🛏️ Added bedroom filter to API request: min ${criteria.minBedrooms} bedrooms using bedroomCount.min format`,
+      );
+      console.log(
+        `🛏️ Full building criteria:`, JSON.stringify(requestBody.searchCriteria.building, null, 2),
       );
     }
 
@@ -348,9 +377,6 @@ class BatchLeadsService {
             continue;
           }
 
-          console.log(`🏠 Processing property: ${property.address?.street}`);
-
-          // Direct conversion - no additional API calls needed
           const convertedProperty = this.convertToProperty(
             property,
             "demo-user",
@@ -358,10 +384,21 @@ class BatchLeadsService {
           );
 
           if (convertedProperty !== null) {
+            // Additional bedroom validation as backup
+            if (criteria.minBedrooms && convertedProperty.bedrooms !== null && convertedProperty.bedrooms !== undefined) {
+              if (convertedProperty.bedrooms < criteria.minBedrooms) {
+                console.log(
+                  `❌ BACKUP FILTER: Property ${convertedProperty.address} has ${convertedProperty.bedrooms} bedrooms, minimum ${criteria.minBedrooms} required`,
+                );
+                filtered++;
+                continue;
+              }
+            }
+
             convertedProperty.id = propertyId;
             validProperties.push(convertedProperty);
             console.log(
-              `✅ Added property ${validProperties.length}/${count}: ${convertedProperty.address}`,
+              `✅ Added property ${validProperties.length}/${count}: ${convertedProperty.address} (${convertedProperty.bedrooms || 'N/A'} bedrooms)`,
             );
 
             if (validProperties.length >= count) {
@@ -1077,16 +1114,21 @@ class BatchLeadsService {
       // Continue processing with fallback values instead of rejecting
     }
 
-    // Apply bedroom filter if provided in criteria - DISABLED for UI demonstration
+    // Apply bedroom filter if provided in criteria
     if (criteria?.minBedrooms && bedrooms !== null && bedrooms !== undefined) {
-      // Log bedroom mismatches but don't filter out - allow for UI demonstration
       if (bedrooms < criteria.minBedrooms) {
         console.log(
-          `⚠️ Bedroom requirement not met (${bedrooms} bedrooms found, ${criteria.minBedrooms} required) - keeping for UI demonstration`,
+          `❌ FILTERED OUT: Property has ${bedrooms} bedrooms, but minimum ${criteria.minBedrooms} required`,
         );
+        return null;
       }
     }
-    // Note: We allow properties with missing bedroom data to pass through since API often lacks this info
+    // Allow properties with missing bedroom data to pass through, but log it
+    if (criteria?.minBedrooms && (bedrooms === null || bedrooms === undefined)) {
+      console.log(
+        `⚠️ Property has no bedroom data but minBedrooms filter (${criteria.minBedrooms}) is active - allowing through`,
+      );
+    }
 
     // Apply price filter if provided in criteria - DISABLED for UI demonstration
     // Note: We'll use fallback pricing so all properties pass through for beautiful UI display
@@ -1345,7 +1387,7 @@ class BatchLeadsService {
     const requestBody: any = {
       searchCriteria: {
         query: criteria.location,
-        quickLists: ["cash-buyer"], // Use the quicklists.cash-buyer endpoint
+        quickLists: ["cash-buyer"],
       },
       options: {
         skip: 0,

@@ -270,12 +270,116 @@ const PropertyDetailsModal = ({
 }) => {
   if (!property) return null;
 
-  const formatPhone = (phone: string | null) => {
-    return phone || "Contact for details";
+  const formatEmail = (property: any) => {
+    // Check for direct email field
+    if (property.ownerEmail && 
+        property.ownerEmail !== "null" && 
+        property.ownerEmail !== null && 
+        property.ownerEmail !== "undefined" && 
+        property.ownerEmail.trim() !== "") {
+      return property.ownerEmail;
+    }
+    
+    // Check for emails array
+    if (property.ownerEmails && Array.isArray(property.ownerEmails) && property.ownerEmails.length > 0) {
+      const validEmails = property.ownerEmails.filter((email: string) => 
+        email && email !== "null" && email !== "undefined" && email.trim() !== ""
+      );
+      if (validEmails.length > 0) {
+        return validEmails.join(", ");
+      }
+    }
+    
+    return "Contact for details";
   };
 
-  const formatEmail = (email: string | null) => {
-    return email || "Contact for details";
+  const formatPhoneNumbers = (property: any) => {
+    const phones = [];
+
+    // Primary phone
+    if (property.ownerPhone && 
+        property.ownerPhone !== "null" && 
+        property.ownerPhone !== null && 
+        property.ownerPhone.trim() !== "") {
+      phones.push(`${property.ownerPhone} (Primary)`);
+    }
+    
+    // Landline (if different from primary)
+    if (property.ownerLandLine && 
+        property.ownerLandLine !== "null" && 
+        property.ownerLandLine !== null && 
+        property.ownerLandLine.trim() !== "" &&
+        property.ownerLandLine !== property.ownerPhone) {
+      phones.push(`${property.ownerLandLine} (Landline)`);
+    }
+    
+    // Mobile (if different from primary and landline)
+    if (property.ownerMobilePhone && 
+        property.ownerMobilePhone !== "null" && 
+        property.ownerMobilePhone !== null && 
+        property.ownerMobilePhone.trim() !== "" &&
+        property.ownerMobilePhone !== property.ownerPhone && 
+        property.ownerMobilePhone !== property.ownerLandLine) {
+      phones.push(`${property.ownerMobilePhone} (Mobile)`);
+    }
+
+    // Check for phone numbers array
+    if (property.ownerPhoneNumbers && Array.isArray(property.ownerPhoneNumbers) && property.ownerPhoneNumbers.length > 0) {
+      const validPhones = property.ownerPhoneNumbers.filter((phone: any) => 
+        phone && phone.number && !phone.dnc && phone.number !== "null" && phone.number.trim() !== ""
+      );
+      
+      validPhones.forEach((phone: any) => {
+        const phoneNumber = phone.number;
+        const phoneType = phone.type || "Unknown";
+        const phoneStr = `${phoneNumber} (${phoneType})`;
+        
+        // Only add if not already in the list
+        if (!phones.some(p => p.includes(phoneNumber))) {
+          phones.push(phoneStr);
+        }
+      });
+    }
+
+    return phones.length > 0 ? phones.join(", ") : "Contact for details";
+  };
+
+  const formatDNCPhones = (property: any) => {
+    const dncPhones = [];
+    
+    // Check direct DNC phone field
+    if (property.ownerDNCPhone && 
+        property.ownerDNCPhone !== "null" && 
+        property.ownerDNCPhone !== null && 
+        property.ownerDNCPhone.trim() !== "") {
+      const directDncPhones = property.ownerDNCPhone.split(',').map((phone: string) => phone.trim()).filter(Boolean);
+      dncPhones.push(.....directDncPhones);
+    }
+    
+    // Check for DNC phones in phone numbers array
+    if (property.ownerPhoneNumbers && Array.isArray(property.ownerPhoneNumbers)) {
+      const dncFromArray = property.ownerPhoneNumbers
+        .filter((phone: any) => phone && phone.number && phone.dnc && phone.number !== "null" && phone.number.trim() !== "")
+        .map((phone: any) => `${phone.number} (${phone.type || "Unknown"})`);
+      
+      dncFromArray.forEach((phone: string) => {
+        if (!dncPhones.some(p => phone.includes(p.split(' ')[0]))) {
+          dncPhones.push(phone);
+        }
+      });
+    }
+    
+    return dncPhones.length > 0 ? dncPhones.join(", ") : "None on record";
+  };
+
+  const formatMailingAddress = (property: any) => {
+    if (property.ownerMailingAddress && 
+        property.ownerMailingAddress !== "null" && 
+        property.ownerMailingAddress !== null && 
+        property.ownerMailingAddress.trim() !== "") {
+      return property.ownerMailingAddress;
+    }
+    return "Same as property address";
   };
 
   return (
@@ -311,12 +415,10 @@ const PropertyDetailsModal = ({
    Mailing Address              ${property.ownerMailingAddress || "N/A"}
 
 📞 CONTACT INFORMATION
-   Email(s)                     ${formatEmail(property.ownerEmail)}
-   Phone(s)                     ${formatPhone(property.ownerPhone)}
-   Mobile Phone                 ${formatPhone(property.ownerMobilePhone)}
-   Land Line                    ${formatPhone(property.ownerLandLine)}
-   DNC Phone(s)                 ${formatPhone(property.ownerDNCPhone)}
-   Mailing Address              ${property.ownerMailingAddress || "N/A"}
+   Email(s)                     ${formatEmail(property)}
+   Phone(s)                     ${formatPhoneNumbers(property)}
+   DNC Phone(s)                 ${formatDNCPhones(property)}
+   Mailing Address              ${formatMailingAddress(property)}
 
 💰 VALUATION DETAILS
    As of Date                   ${new Date().toLocaleDateString("en-US")}
@@ -513,21 +615,22 @@ const PropertyCard = ({ content }: { content: string }) => {
       const [state, zipCode] = stateZip.split(" ");
 
       // Extract building details
-      const bedroomsMatch = content.match(/🏠 (\d+) bed/);
-      const bathroomsMatch = content.match(/(\d+) bath/);
-      const squareFeetMatch = content.match(/(\d{1,3}(?:,\d{3})*) sq ft/);
-      const yearBuiltMatch = content.match(/📅 Built: (\d{4})/);
-      const propertyTypeMatch = content.match(/📐 Property Type: (.+?)\n/);
+      const bedroomsMatch = content.match(/🏠 (\d+) bed/) || content.match(/Bedrooms\s+(\d+)/);
+      const bathroomsMatch = content.match(/(\d+) bath/) || content.match(/Bathrooms\s+(\d+)/);
+      const squareFeetMatch = content.match(/(\d{1,3}(?:,\d{3})*) sq ft/) || content.match(/Total Area\s+(\d{1,3}(?:,\d{3})*) sqft/);
+      const yearBuiltMatch = content.match(/📅 Built: (\d{4})/) || content.match(/Built:\s*(\d{4})/);
+      const propertyTypeMatch = content.match(/📐 Property Type: (.+?)\n/) || content.match(/Property Type\s+(.+?)\n/);
 
       // Extract financial information - updated for new format
       // Try both "Market Value" in BUILDING DETAILS and "Estimated Value" in Valuation Details
       const arvMatch =
         content.match(/💰 Market Value: \$([0-9,]+)/) ||
-        content.match(/Estimated Value\s*\$([0-9,]+)/);
+        content.match(/Estimated Value\s*\$([0-9,]+)/) ||
+        content.match(/Estimated Value\s+\$([0-9,]+)/);
       const maxOfferMatch = content.match(
         /Max Offer \(70% Rule\)\s*\$([0-9,]+)/,
       );
-      const equityMatch = content.match(/Equity Percent\s*(\d+)%/);
+      const equityMatch = content.match(/Equity Percent\s*(\d+)%/) || content.match(/Equity Percentage\s*(\d+)%/);
 
       // Extract owner information - updated to handle both old and new formats
       const ownerNameMatch =
@@ -547,38 +650,42 @@ const PropertyCard = ({ content }: { content: string }) => {
       // Extract confidence score - updated for new format (no emoji, no "/100")
       const confidenceScoreMatch = content.match(/Confidence Score\s*(\d+)/);
 
+      // Clean and validate extracted data
+      const bedrooms = bedroomsMatch ? parseInt(bedroomsMatch[1]) : undefined;
+      const bathrooms = bathroomsMatch ? parseInt(bathroomsMatch[1]) : undefined;
+      const squareFeet = squareFeetMatch ? parseInt(squareFeetMatch[1].replace(/,/g, "")) : undefined;
+      const yearBuilt = yearBuiltMatch ? parseInt(yearBuiltMatch[1]) : undefined;
+      const equityPercentage = equityMatch ? parseInt(equityMatch[1]) : undefined;
+      const confidenceScore = confidenceScoreMatch ? parseInt(confidenceScoreMatch[1]) : undefined;
+
       return {
         address: streetAddress,
         city: city,
         state: state || "",
         zipCode: zipCode || "",
-        bedrooms: bedroomsMatch ? parseInt(bedroomsMatch[1]) : null,
-        bathrooms: bathroomsMatch ? parseInt(bathroomsMatch[1]) : null,
-        squareFeet: squareFeetMatch
-          ? parseInt(squareFeetMatch[1].replace(/,/g, ""))
-          : null,
-        yearBuilt: yearBuiltMatch ? parseInt(yearBuiltMatch[1]) : null,
+        bedrooms: bedrooms && bedrooms > 0 ? bedrooms : undefined,
+        bathrooms: bathrooms && bathrooms > 0 ? bathrooms : undefined,
+        squareFeet: squareFeet && squareFeet > 0 ? squareFeet : undefined,
+        yearBuilt: yearBuilt && yearBuilt > 1800 && yearBuilt <= new Date().getFullYear() + 5 ? yearBuilt : undefined,
         propertyType: propertyTypeMatch
-          ? propertyTypeMatch[1].trim()
+          ? propertyTypeMatch[1].trim().toLowerCase().replace(/\s+/g, "_")
           : "single_family",
-        arv: arvMatch ? arvMatch[1].replace(/,/g, "") : null,
-        maxOffer: maxOfferMatch ? maxOfferMatch[1].replace(/,/g, "") : null,
-        equityPercentage: equityMatch ? parseInt(equityMatch[1]) : null,
-        ownerName: ownerNameMatch ? ownerNameMatch[1].trim() : null,
+        arv: arvMatch ? arvMatch[1].replace(/,/g, "") : undefined,
+        maxOffer: maxOfferMatch ? maxOfferMatch[1].replace(/,/g, "") : undefined,
+        equityPercentage: equityPercentage && equityPercentage >= 0 && equityPercentage <= 100 ? equityPercentage : undefined,
+        ownerName: ownerNameMatch ? ownerNameMatch[1].trim() : undefined,
         ownerPhone:
           ownerPhoneMatch && !isPlaceholderValue(ownerPhoneMatch[1])
             ? ownerPhoneMatch[1].trim()
-            : null,
+            : undefined,
         ownerEmail:
           ownerEmailMatch && !isPlaceholderValue(ownerEmailMatch[1])
             ? ownerEmailMatch[1].trim()
-            : null,
+            : undefined,
         ownerMailingAddress: ownerMailingMatch
           ? ownerMailingMatch[1].trim()
-          : null,
-        confidenceScore: confidenceScoreMatch
-          ? parseInt(confidenceScoreMatch[1])
-          : null,
+          : undefined,
+        confidenceScore: confidenceScore && confidenceScore >= 0 && confidenceScore <= 100 ? confidenceScore : undefined,
         status: "new",
       };
     } catch (error) {
@@ -697,7 +804,7 @@ const PropertyCard = ({ content }: { content: string }) => {
   // Remove any action sections from content for display
   const displayContent = content
     .replace(
-      /� ACTIONS[\s\S]*?━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━/g,
+      / ACTIONS[\s\S]*?━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━/g,
       "",
     )
     .trim();
@@ -1070,7 +1177,7 @@ export default function ChatInterface() {
 
       // Add Terry's response
       setTerryMessages([
-        ...newMessages,
+        .....newMessages,
         { role: "assistant" as const, content: data.response },
       ]);
     } catch (error: any) {
@@ -1079,7 +1186,7 @@ export default function ChatInterface() {
         error.message ||
         "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.";
       setTerryMessages([
-        ...newMessages,
+        .....newMessages,
         {
           role: "assistant" as const,
           content: errorMessage,
@@ -1470,14 +1577,14 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
 
   const sellerTypes = [
     {
-      value: "distressed",
+      value: "preforeclosure",
       label: "Distressed Properties (Pre-foreclosure, Vacant)",
     },
-    { value: "absentee", label: "Absentee Owners (Out-of-state/Non-resident)" },
-    { value: "high_equity", label: "High Equity Owners (70%+ equity)" },
+    { value: "out-of-state-absentee-owner", label: "Absentee Owners (Out-of-state/Non-resident)" },
+    { value: "high-equity", label: "High Equity Owners (70%+ equity)" },
     { value: "inherited", label: "Inherited Properties" },
-    { value: "corporate", label: "Corporate Owned Properties" },
-    { value: "tired_landlord", label: "Tired Landlords" },
+    { value: "corporate-owned", label: "Corporate Owned Properties" },
+    { value: "tired-landlord", label: "Tired Landlords" },
   ];
 
   const propertyTypes = [
@@ -1903,7 +2010,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
 
           // Create modern, sleek card design
           let cardContent = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-� QUALIFIED CASH BUYER #${index + 1}
+ QUALIFIED CASH BUYER #${index + 1}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 `;
@@ -1963,7 +2070,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
         });
       } else {
         // Send intro message immediately
-        const introMessage = `� **CASH BUYER SEARCH COMPLETE**\n\nFound **5 qualified ${buyerWizardData.buyerType.replace(/_/g, " ")}** in **${location}**!\n\nHere are your investor leads:`;
+        const introMessage = ` **CASH BUYER SEARCH COMPLETE**\n\nFound **5 qualified ${buyerWizardData.buyerType.replace(/_/g, " ")}** in **${location}**!\n\nHere are your investor leads:`;
 
         await apiRequest(
           "POST",
@@ -2060,7 +2167,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                     value={buyerWizardData.city}
                     onChange={(e) =>
                       setBuyerWizardData({
-                        ...buyerWizardData,
+                        .....buyerWizardData,
                         city: e.target.value,
                       })
                     }
@@ -2071,7 +2178,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                   <Select
                     value={buyerWizardData.state}
                     onValueChange={(value) =>
-                      setBuyerWizardData({ ...buyerWizardData, state: value })
+                      setBuyerWizardData({ .....buyerWizardData, state: value })
                     }
                   >
                     <SelectTrigger>
@@ -2131,7 +2238,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                     }`}
                     onClick={() =>
                       setBuyerWizardData({
-                        ...buyerWizardData,
+                        .....buyerWizardData,
                         buyerType: type.id,
                       })
                     }
@@ -2973,3 +3080,5 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
     </div>
   );
 }
+
+// Contact normalization helpers and JSX rendering added by assistant

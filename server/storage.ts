@@ -43,19 +43,20 @@ import {
   savedSearches,
   leadContacts,
 } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 
 // Interface for storage operations
 export interface IStorage {
   // User operations (Required for Replit Auth)
   getUser(id: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
 
   // Properties
   getProperties(userId: string): Promise<Property[]>;
   getProperty(id: string, userId: string): Promise<Property | undefined>;
   createProperty(
-    property: InsertProperty & { userId: string },
+    property: InsertProperty,
   ): Promise<Property>;
   updateProperty(
     id: string,
@@ -150,6 +151,11 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.email, email));
+    return user;
+  }
+
   async upsertUser(userData: UpsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -160,6 +166,7 @@ export class DatabaseStorage implements IStorage {
           firstName: userData.firstName,
           lastName: userData.lastName,
           profileImageUrl: userData.profileImageUrl,
+          password: userData.password, // Include password in updates
           preferences: userData.preferences,
           updatedAt: new Date(),
         },
@@ -173,7 +180,8 @@ export class DatabaseStorage implements IStorage {
     return await db
       .select()
       .from(properties)
-      .where(eq(properties.userId, userId));
+      .where(eq(properties.userId, userId))
+      .orderBy(desc(properties.createdAt));
   }
 
   async getProperty(id: string, userId: string): Promise<Property | undefined> {
@@ -185,7 +193,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createProperty(
-    propertyData: InsertProperty & { userId: string },
+    propertyData: InsertProperty,
   ): Promise<Property> {
     const [property] = await db
       .insert(properties)
@@ -223,44 +231,54 @@ export class DatabaseStorage implements IStorage {
       leadType?: string;
     },
   ): Promise<Property[]> {
-    let query = db
-      .select()
-      .from(properties)
-      .where(eq(properties.userId, userId));
+    try {
+      let query = db
+        .select()
+        .from(properties)
+        .where(eq(properties.userId, userId));
 
-    if (criteria.city) {
-      query = query.where(eq(properties.city, criteria.city));
-    }
-    if (criteria.state) {
-      query = query.where(eq(properties.state, criteria.state));
-    }
-    if (criteria.status) {
-      query = query.where(eq(properties.status, criteria.status));
-    }
-    if (criteria.leadType) {
-      query = query.where(eq(properties.leadType, criteria.leadType));
-    }
+      if (criteria.city) {
+        query = query.where(eq(properties.city, criteria.city));
+      }
+      if (criteria.state) {
+        query = query.where(eq(properties.state, criteria.state));
+      }
+      if (criteria.status) {
+        query = query.where(eq(properties.status, criteria.status));
+      }
+      if (criteria.leadType) {
+        query = query.where(eq(properties.leadType, criteria.leadType));
+      }
 
-    return await query;
+      return await query;
+    } catch (error: any) {
+      console.log("⚠️ Properties search failed:", error.message);
+      return [];
+    }
   }
 
   // Contacts
   async getContacts(userId: string): Promise<Contact[]> {
-    // Simple contacts query without complex joins for now
-    const results = await db
-      .select({
-        id: contacts.id,
-        ownerId: contacts.ownerId,
-        phoneE164: contacts.phoneE164,
-        phoneQuality: contacts.phoneQuality,
-        email: contacts.email,
-        emailQuality: contacts.emailQuality,
-        source: contacts.source,
-        createdAt: contacts.createdAt,
-      })
-      .from(contacts);
+    try {
+      // Use current schema fields
+      const results = await db
+        .select({
+          id: contacts.id,
+          propertyId: contacts.propertyId,
+          name: contacts.name,
+          phone: contacts.phone,
+          email: contacts.email,
+          createdAt: contacts.createdAt,
+        })
+        .from(contacts)
+        .innerJoin(properties, eq(contacts.propertyId, properties.id))
+        .where(eq(properties.userId, userId));
 
-    return results;
+      return results;
+    } catch (error: any) {
+      console.log("⚠️ Contacts query failed:", error.message);
+      return [];
+    }
   }
 
   async getContact(id: string): Promise<Contact | undefined> {
@@ -272,21 +290,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getContactsByProperty(propertyId: string): Promise<Contact[]> {
-    // Get contacts through leads relationship since contacts are linked to owners, not directly to properties
-    return await db
-      .select({
-        id: contacts.id,
-        ownerId: contacts.ownerId,
-        phoneE164: contacts.phoneE164,
-        phoneQuality: contacts.phoneQuality,
-        email: contacts.email,
-        emailQuality: contacts.emailQuality,
-        source: contacts.source,
-        createdAt: contacts.createdAt,
-      })
-      .from(contacts)
-      .innerJoin(leads, eq(contacts.ownerId, leads.ownerId))
-      .where(eq(leads.propertyId, propertyId));
+    try {
+      return await db
+        .select({
+          id: contacts.id,
+          propertyId: contacts.propertyId,
+          name: contacts.name,
+          phone: contacts.phone,
+          email: contacts.email,
+          createdAt: contacts.createdAt,
+        })
+        .from(contacts)
+        .where(eq(contacts.propertyId, propertyId));
+    } catch (error: any) {
+      console.log("⚠️ getContactsByProperty failed:", error.message);
+      return [];
+    }
   }
 
   async createContact(contactData: InsertContact): Promise<Contact> {

@@ -18,6 +18,7 @@ import {
   generatePropertyLeads,
 } from "./openai";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import bcrypt from "bcrypt";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   console.log("🟢 ROUTES FILE LOADED - NEW VERSION WITH SKIP TRACE!");
@@ -25,23 +26,214 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
   await setupAuth(app);
 
-  // Auth routes
-  app.get("/api/auth/user", isAuthenticated, (req: any, res) => {
-    if (!req.user || !req.user.claims) {
+  // Traditional auth endpoints (for email/password)
+  app.post("/api/signup", async (req, res) => {
+    try {
+      const { email, password, firstName, lastName } = req.body;
+      
+      console.log("🔐 Signup attempt:", { email, firstName, lastName });
+      
+      // Validate required fields
+      if (!email || !password || !firstName || !lastName) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "All fields are required" 
+        });
+      }
+
+      // Validate password strength
+      if (password.length < 6) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Password must be at least 6 characters long" 
+        });
+      }
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByEmail(email);
+      if (existingUser) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "User already exists with this email" 
+        });
+      }
+      
+      // Hash password with bcrypt
+      const saltRounds = 12;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+      
+      // Create user with hashed password
+      const user = await storage.upsertUser({
+        id: `email_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique ID
+        email,
+        password: hashedPassword, // Store hashed password
+        firstName,
+        lastName,
+        profileImageUrl: null,
+      });
+      
+      console.log("✅ User created successfully:", user.id);
+      console.log("🔐 Password hashed and stored securely");
+      
+      res.json({ success: true, message: "Account created successfully" });
+    } catch (error: any) {
+      console.error("❌ Signup error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to create account" 
+      });
+    }
+  });
+  
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { email, password } = req.body;
+      
+      console.log("🔐 Login attempt:", { email });
+      
+      // Validate required fields
+      if (!email || !password) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Email and password are required" 
+        });
+      }
+      
+      // Check if user exists
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Invalid email or password" 
+        });
+      }
+
+      // Check if user has a password (might be Replit Auth only user)
+      if (!user.password) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Please use 'Continue with Replit' to login" 
+        });
+      }
+      
+      // Verify password with bcrypt
+      const isPasswordValid = await bcrypt.compare(password, user.password);
+      if (!isPasswordValid) {
+        return res.status(401).json({ 
+          success: false, 
+          message: "Invalid email or password" 
+        });
+      }
+      
+      // Create session for traditional auth
+      (req as any).session.user = {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        name: `${user.firstName} ${user.lastName}`,
+        profileImage: user.profileImageUrl,
+      };
+      
+      console.log("✅ Login successful:", user.id);
+      console.log("🔐 Password verified and session created");
+      
+      res.json({ 
+        success: true, 
+        message: "Login successful", 
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          name: `${user.firstName} ${user.lastName}`,
+          profileImage: user.profileImageUrl,
+        }
+      });
+    } catch (error: any) {
+      console.error("❌ Login error:", error);
+      res.status(401).json({ 
+        success: false, 
+        message: "Invalid email or password" 
+      });
+    }
+  });
+
+  // Logout endpoint
+  app.post("/api/auth/logout", async (req: any, res) => {
+    try {
+      if (req.session) {
+        req.session.destroy((err: any) => {
+          if (err) {
+            console.error("❌ Session destroy error:", err);
+            return res.status(500).json({ 
+              success: false, 
+              message: "Failed to logout" 
+            });
+          }
+          res.json({ success: true, message: "Logged out successfully" });
+        });
+      } else {
+        res.json({ success: true, message: "Already logged out" });
+      }
+    } catch (error: any) {
+      console.error("❌ Logout error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to logout" 
+      });
+    }
+  });
+
+  // Auth routes - Updated to handle both Replit Auth and traditional sessions
+  app.get("/api/auth/user", async (req: any, res) => {
+    try {
+      // Check for traditional session first
+      if (req.session && req.session.user) {
+        console.log("🔐 Traditional session found");
+        return res.json(req.session.user);
+      }
+
+      // Check for Replit Auth
+      if (req.user && req.user.claims) {
+        console.log("🔐 Replit Auth session found");
+        
+        // Try to get full user data from database
+        const userId = req.user.claims.sub;
+        const user = await storage.getUser(userId);
+        
+        if (user) {
+          // Return full user data from database
+          const userData = {
+            id: user.id,
+            email: user.email,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email,
+            profileImage: user.profileImageUrl,
+          };
+          return res.json(userData);
+        } else {
+          // Fallback to session data
+          const userData = {
+            id: req.user.claims.sub,
+            email: req.user.claims.email,
+            firstName: req.user.claims.first_name,
+            lastName: req.user.claims.last_name,
+            name: req.user.claims.name,
+            profileImage: req.user.claims.profile_image_url,
+          };
+          return res.json(userData);
+        }
+      }
+
+      // No authentication found
+      return res.status(401).json({ message: "Unauthorized" });
+      
+    } catch (error) {
+      console.error("❌ Error fetching user:", error);
       return res.status(401).json({ message: "Unauthorized" });
     }
-    
-    // Return user data in the expected format
-    const userData = {
-      id: req.user.claims.sub,
-      email: req.user.claims.email,
-      firstName: req.user.claims.first_name,
-      lastName: req.user.claims.last_name,
-      name: req.user.claims.name,
-      profileImage: req.user.claims.profile_image_url,
-    };
-    
-    res.json(userData);
   });
   // Properties
   app.get("/api/properties", isAuthenticated, async (req: any, res) => {
@@ -57,14 +249,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/properties", isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      const validatedData = insertPropertySchema.parse(req.body);
-      const property = await storage.createProperty({
-        ...validatedData,
-        userId,
-      });
+      console.log("🏠 Creating property for user:", userId);
+      console.log("🏠 Request body:", req.body);
+      
+      // Clean the data before validation and ADD userId
+      const cleanedData = { 
+        ...req.body,
+        userId // Add userId from authenticated user
+      };
+      
+      // Convert string numbers to actual numbers
+      if (cleanedData.bedrooms && typeof cleanedData.bedrooms === 'string') {
+        cleanedData.bedrooms = parseInt(cleanedData.bedrooms);
+      }
+      if (cleanedData.bathrooms && typeof cleanedData.bathrooms === 'string') {
+        cleanedData.bathrooms = parseFloat(cleanedData.bathrooms);
+      }
+      if (cleanedData.squareFeet && typeof cleanedData.squareFeet === 'string') {
+        cleanedData.squareFeet = parseInt(cleanedData.squareFeet);
+      }
+      if (cleanedData.yearBuilt && typeof cleanedData.yearBuilt === 'string') {
+        cleanedData.yearBuilt = parseInt(cleanedData.yearBuilt);
+      }
+      if (cleanedData.equityPercentage && typeof cleanedData.equityPercentage === 'string') {
+        cleanedData.equityPercentage = parseInt(cleanedData.equityPercentage);
+      }
+      if (cleanedData.confidenceScore && typeof cleanedData.confidenceScore === 'string') {
+        cleanedData.confidenceScore = parseInt(cleanedData.confidenceScore);
+      }
+      
+      console.log("🏠 Cleaned data with userId:", cleanedData);
+      
+      const validatedData = insertPropertySchema.parse(cleanedData);
+      console.log("🏠 Validated data:", validatedData);
+      
+      const property = await storage.createProperty(validatedData);
+      
+      console.log("🏠 Property created successfully:", property.id);
       res.json(property);
     } catch (error: any) {
-      res.status(400).json({ message: error.message });
+      console.error("❌ Property creation error:", error);
+      if (error.name === 'ZodError') {
+        console.error("❌ Validation errors:", error.errors);
+        res.status(400).json({ 
+          message: "Validation failed", 
+          errors: error.errors,
+          details: error.errors.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ')
+        });
+      } else {
+        res.status(400).json({ message: error.message });
+      }
     }
   });
 
@@ -242,9 +476,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Conversations
-  app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
+  app.get("/api/conversations", async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
+      
+      if (req.session && req.session.user) {
+        // Traditional session
+        userId = req.session.user.id;
+      } else if (req.user && req.user.claims) {
+        // Replit Auth session
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const conversations = await storage.getConversations(userId);
       res.json(conversations);
     } catch (error: any) {
@@ -252,8 +497,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/conversations", isAuthenticated, async (req: any, res) => {
+  app.post("/api/conversations", async (req: any, res) => {
     try {
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
+      
+      if (req.session && req.session.user) {
+        // Traditional session
+        userId = req.session.user.id;
+      } else if (req.user && req.user.claims) {
+        // Replit Auth session
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const validatedData = insertConversationSchema.parse(req.body);
       const conversation = await storage.createConversation(validatedData);
       res.json(conversation);
@@ -265,9 +523,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Messages
   app.get(
     "/api/conversations/:id/messages",
-    isAuthenticated,
     async (req: any, res) => {
       try {
+        // Check authentication for both traditional and Replit Auth sessions
+        if (!req.session?.user && !req.user?.claims) {
+          return res.status(401).json({ message: "Unauthorized" });
+        }
+        
         const messages = await storage.getMessagesByConversation(req.params.id);
         res.json(messages);
       } catch (error: any) {
@@ -278,10 +540,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post(
     "/api/conversations/:id/messages",
-    isAuthenticated,
     async (req: any, res) => {
       try {
-        const userId = req.user.claims.sub;
+        // Check authentication for both traditional and Replit Auth sessions
+        let userId: string;
+        
+        if (req.session && req.session.user) {
+          // Traditional session
+          userId = req.session.user.id;
+        } else if (req.user && req.user.claims) {
+          // Replit Auth session
+          userId = req.user.claims.sub;
+        } else {
+          return res.status(401).json({ message: "Unauthorized" });
+        }
         const validatedData = insertMessageSchema.parse({
           ...req.body,
           conversationId: req.params.id,
@@ -848,13 +1120,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get multiple properties at once - WITH LEAD DELIVERY DEDUPLICATION & AUTO-SAVE SEARCH
-  app.post("/api/properties/batch", isAuthenticated, async (req: any, res) => {
+  app.post("/api/properties/batch", async (req: any, res) => {
     console.log(
       "🔥🔥🔥 ENHANCED BATCH ROUTE WITH LEAD DELIVERIES - TIMESTAMP:",
       new Date().toISOString(),
     );
     try {
-      const userId = req.user.claims.sub;
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
+      
+      if (req.session && req.session.user) {
+        // Traditional session
+        userId = req.session.user.id;
+        console.log("🔐 Using traditional session userId:", userId);
+      } else if (req.user && req.user.claims) {
+        // Replit Auth session
+        userId = req.user.claims.sub;
+        console.log("🔐 Using Replit Auth session userId:", userId);
+      } else {
+        console.log("❌ No valid session found");
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const { count = 5, criteria = {} } = req.body;
 
       console.log(
