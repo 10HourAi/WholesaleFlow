@@ -372,7 +372,6 @@ const PropertyDetailsModal = ({
       }
     };
 
-    // Debug logging to see what we're actually getting
     console.log("🔍 DEBUG: formatPhoneNumbers - property data:", {
       ownerPhone: property.ownerPhone,
       ownerPhoneNumbers: property.ownerPhoneNumbers,
@@ -409,7 +408,7 @@ const PropertyDetailsModal = ({
       addPhone(property.ownerMobilePhone, "Mobile");
     }
 
-    // Check for phone numbers array - the main source from BatchData
+    // Check for phone numbers array - FIXED: Backend sends string arrays, not object arrays
     if (
       property.ownerPhoneNumbers &&
       Array.isArray(property.ownerPhoneNumbers) &&
@@ -417,35 +416,29 @@ const PropertyDetailsModal = ({
     ) {
       console.log("🔍 DEBUG: Processing ownerPhoneNumbers array:", property.ownerPhoneNumbers);
       
-      property.ownerPhoneNumbers.forEach((phone: any, index: number) => {
-        console.log(`🔍 DEBUG: Processing phone ${index}:`, phone, typeof phone);
+      property.ownerPhoneNumbers.forEach((phoneNumber: string, index: number) => {
+        console.log(`🔍 DEBUG: Processing phone ${index}:`, phoneNumber, typeof phoneNumber);
         
-        // Check if phone is a direct string
-        if (typeof phone === 'string' && phone && phone !== "undefined" && phone !== "null") {
-          const cleanNumber = phone.trim();
+        // Backend sends phone numbers as strings, not objects
+        if (typeof phoneNumber === 'string' && phoneNumber && phoneNumber !== "undefined" && phoneNumber !== "null") {
+          const cleanNumber = phoneNumber.trim();
           if (cleanNumber && cleanNumber !== "undefined" && cleanNumber !== "null") {
-            console.log(`🔍 DEBUG: Adding string phone: ${cleanNumber}`);
+            console.log(`🔍 DEBUG: Adding phone number: ${cleanNumber}`);
             addPhone(cleanNumber, `Phone ${index + 1}`);
-          }
-        }
-        // Check if phone is an object with number property
-        else if (phone && typeof phone === 'object' && phone.number) {
-          const phoneNumber = phone.number;
-          if (phoneNumber && phoneNumber !== "undefined" && phoneNumber !== "null") {
-            console.log(`🔍 DEBUG: Adding object phone: ${phoneNumber} (${phone.type || 'Unknown'})`);
-            addPhone(phoneNumber, phone.type || `Phone ${index + 1}`);
           }
         }
       });
     }
 
-    // Check for owner object phone numbers (nested structure)
+    // Check for owner object phone numbers (nested structure) - fallback for other data sources
     if (
       property.owner?.phoneNumbers &&
       Array.isArray(property.owner.phoneNumbers)
     ) {
       property.owner.phoneNumbers.forEach((phone: any) => {
-        if (phone && phone.number && phone.number !== "undefined" && phone.number !== "null") {
+        if (typeof phone === 'string') {
+          addPhone(phone, "Phone");
+        } else if (phone && phone.number && phone.number !== "undefined" && phone.number !== "null") {
           addPhone(phone.number, phone.type || "Phone");
         }
       });
