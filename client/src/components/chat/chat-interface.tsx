@@ -216,7 +216,7 @@ const CondensedPropertyCard = ({
         </div>
       </CardContent>
 
-      {/* Action Buttons */}
+      {/* Action buttons */}
       <div className="bg-gray-50 p-4 flex flex-wrap gap-2 justify-start border-t">
         <Button
           size="sm"
@@ -225,22 +225,6 @@ const CondensedPropertyCard = ({
           onClick={handleAddToCRM}
         >
           <Plus className="h-4 w-4 mr-2" /> Add to CRM
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="bg-white hover:bg-blue-50"
-          onClick={handleAnalyzeDeal}
-        >
-          <BarChart3 className="h-4 w-4 mr-2" /> Analyze Deal
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="bg-white hover:bg-orange-50"
-          onClick={handleContactOwner}
-        >
-          <PhoneCall className="h-4 w-4 mr-2" /> Contact Owner
         </Button>
         <Button size="sm" variant="outline" className="bg-white text-gray-600">
           I'll Pass
