@@ -526,46 +526,147 @@ const PropertyDetailsModal = ({
             Seller Lead Details
           </DialogTitle>
         </DialogHeader>
-        <div className="text-sm whitespace-pre-wrap font-mono text-gray-700 bg-white p-4 rounded-md border max-h-[70vh] overflow-y-auto">
-          {`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🏠 SELLER LEAD
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        <div className="space-y-6 max-h-[70vh] overflow-y-auto">
+          {/* Property Header */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="text-lg font-bold text-blue-800 mb-2">🏠 SELLER LEAD</h3>
+            <div className="text-blue-700">
+              <p className="font-semibold">{property.address}</p>
+              <p>{property.city}, {property.state} {property.zipCode}</p>
+            </div>
+          </div>
 
-📍 LOCATION
-   ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
+          {/* Building Details */}
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+              🏗️ Building Details
+            </h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium text-gray-600">Property Type:</span>
+                <div>{property.propertyType?.replace(/_/g, " ") || "Single Family"}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Year Built:</span>
+                <div>{property.yearBuilt || "N/A"}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Bedrooms:</span>
+                <div>{property.bedrooms || "N/A"}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Bathrooms:</span>
+                <div>{property.bathrooms || "N/A"}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Square Feet:</span>
+                <div>{formatNumber(property.squareFeet)} sq ft</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Market Value:</span>
+                <div className="font-semibold text-blue-600">${formatNumber(property.arv)}</div>
+              </div>
+            </div>
+          </div>
 
-🏗️ BUILDING DETAILS
-   🏠 ${property.bedrooms || "N/A"} bed, ${property.bathrooms || "N/A"} bath | ${formatNumber(property.squareFeet)} sq ft
-   📅 Built: ${property.yearBuilt || "N/A"}
-   📐 Property Type: ${property.propertyType?.replace(/_/g, " ") || "single family"}
-   💰 Market Value: $${formatNumber(property.arv)}
+          {/* Owner Information */}
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+              👤 Owner Information
+            </h4>
+            <div className="grid grid-cols-1 gap-3 text-sm">
+              <div>
+                <span className="font-medium text-gray-600">Owner Name:</span>
+                <div className="font-medium">{property.ownerName || "N/A"}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Mailing Address:</span>
+                <div>{formatMailingAddress(property)}</div>
+              </div>
+            </div>
+          </div>
 
-🏠 PROPERTY DETAILS
-   Total Area                   ${formatNumber(property.squareFeet)} sqft
-   Property Type                ${property.propertyType?.replace(/_/g, " ") || "single family"}
-   Bedrooms                     ${property.bedrooms || "N/A"}
-   Bathrooms                    ${property.bathrooms || "N/A"}
+          {/* Contact Information - Structured Display */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <h4 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+              📞 Contact Information
+            </h4>
+            <div className="space-y-3">
+              {/* Email Addresses */}
+              <div className="bg-white rounded-md p-3 border border-green-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-4 h-4 text-green-600" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M20,8L12,13L4,8V6L12,11L20,6M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,1.89 21.1,4 20,4Z"/>
+                  </svg>
+                  <span className="font-medium text-green-700">Email Addresses</span>
+                </div>
+                <div className="text-sm text-gray-700">{formatEmail(property)}</div>
+              </div>
 
-👤 OWNER INFORMATION
-   Owner Name                   ${property.ownerName || "N/A"}
-   Mailing Address              ${property.ownerMailingAddress || "N/A"}
+              {/* Phone Numbers */}
+              <div className="bg-white rounded-md p-3 border border-green-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-4 h-4 text-green-600" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M6.62,10.79C8.06,13.62 10.38,15.94 13.21,17.38L15.41,15.18C15.69,14.9 16.08,14.82 16.43,14.93C17.55,15.3 18.75,15.5 20,15.5A1,1 0 0,1 21,16.5V20A1,1 0 0,1 20,21A17,17 0 0,1 3,4A1,1 0 0,1 4,3H7.5A1,1 0 0,1 8.5,4C8.5,5.25 8.7,6.45 9.07,7.57C9.18,7.92 9.1,8.31 8.82,8.59L6.62,10.79Z"/>
+                  </svg>
+                  <span className="font-medium text-green-700">Phone Numbers</span>
+                </div>
+                <div className="text-sm text-gray-700">{formatPhoneNumbers(property)}</div>
+              </div>
 
-📞 CONTACT INFORMATION
-   Email(s)                     ${formatEmail(property)}
-   Phone(s)                     ${formatPhoneNumbers(property)}
-   DNC Phone(s)                 ${formatDNCPhones(property)}
-   Mailing Address              ${formatMailingAddress(property)}
+              {/* DNC Phone Numbers */}
+              <div className="bg-white rounded-md p-3 border border-red-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg className="w-4 h-4 text-red-600" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17,7H22V9H19V12A5,5 0 0,1 14,17H10A5,5 0 0,1 5,12V9H2V7H7A2,2 0 0,1 9,5V4A2,2 0 0,1 11,2H13A2,2 0 0,1 15,4V5A2,2 0 0,1 17,7M13,4V7H11V4H13Z"/>
+                  </svg>
+                  <span className="font-medium text-red-700">DNC Phone Numbers</span>
+                </div>
+                <div className="text-sm text-gray-700">{formatDNCPhones(property)}</div>
+              </div>
+            </div>
+          </div>
 
-💰 VALUATION DETAILS
-   As of Date                   ${new Date().toLocaleDateString("en-US")}
-   Confidence Score             ${property.confidenceScore || "N/A"}
-   Equity Balance               $${formatNumber(property.equityBalance)}
-   Equity Percent               ${property.equityPercentage || "N/A"}%
-   Estimated Value              $${formatNumber(property.arv)}
-   Max Offer (70% Rule)         $${formatNumber(property.maxOffer)}
-   Last Sale Price              ${property.lastSalePrice ? `$${formatNumber(property.lastSalePrice)}` : "N/A"}
-   Last Sale Date               ${formatDate(property.lastSaleDate)}
-`}
+          {/* Financial Information */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+              💰 Valuation Details
+            </h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium text-gray-600">As of Date:</span>
+                <div>{new Date().toLocaleDateString("en-US")}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Confidence Score:</span>
+                <div>{property.confidenceScore || "N/A"}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Equity Balance:</span>
+                <div className="font-semibold text-green-600">${formatNumber(property.equityBalance)}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Equity Percent:</span>
+                <div className="font-semibold text-green-600">{property.equityPercentage || "N/A"}%</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Estimated Value:</span>
+                <div className="font-semibold text-blue-600">${formatNumber(property.arv)}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Max Offer (70% Rule):</span>
+                <div className="font-semibold text-orange-600">${formatNumber(property.maxOffer)}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Last Sale Price:</span>
+                <div>{property.lastSalePrice ? `$${formatNumber(property.lastSalePrice)}` : "N/A"}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Last Sale Date:</span>
+                <div>{formatDate(property.lastSaleDate)}</div>
+              </div>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
