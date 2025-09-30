@@ -30,7 +30,6 @@ import {
   ArrowRight,
   ArrowLeft,
   Plus,
-  
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -1125,33 +1124,7 @@ const PropertyCard = ({ content }: { content: string }) => {
     }
   };
 
-  const handleAnalyzeDeal = () => {
-    if (isSellerLead) {
-      toast({
-        title: "Deal Analysis Started",
-        description: `Analyzing deal for property ${cardNumber}...`,
-      });
-    } else {
-      toast({
-        title: "Buyer Profile Analysis",
-        description: `Analyzing investment profile for buyer ${cardNumber}...`,
-      });
-    }
-  };
-
-  const handleContactOwner = () => {
-    if (isSellerLead) {
-      toast({
-        title: "Contact Owner",
-        description: `Preparing to contact property owner...`,
-      });
-    } else {
-      toast({
-        title: "Contact Investor",
-        description: `Preparing to contact cash buyer...`,
-      });
-    }
-  };
+  
 
   // Remove any action sections from content for display
   const displayContent = content
@@ -1162,47 +1135,14 @@ const PropertyCard = ({ content }: { content: string }) => {
     .trim();
 
   // Dynamic button labels based on card type
-  const actionButtons = isSellerLead
-    ? [
-        {
-          label: "Add to CRM",
-          icon: Plus,
-          color: "green",
-          action: handleAddToCRM,
-        },
-        {
-          label: "Analyze Deal",
-          icon: BarChart3,
-          color: "blue",
-          action: handleAnalyzeDeal,
-        },
-        {
-          label: "Contact Owner",
-          icon: PhoneCall,
-          color: "orange",
-          action: handleContactOwner,
-        },
-      ]
-    : [
-        {
-          label: "Add to CRM",
-          icon: Plus,
-          color: "green",
-          action: handleAddToCRM,
-        },
-        {
-          label: "View Portfolio",
-          icon: BarChart3,
-          color: "blue",
-          action: handleAnalyzeDeal,
-        },
-        {
-          label: "Contact Investor",
-          icon: PhoneCall,
-          color: "orange",
-          action: handleContactOwner,
-        },
-      ];
+  const actionButtons = [
+    {
+      label: "Add to CRM",
+      icon: Plus,
+      color: "green",
+      action: handleAddToCRM,
+    },
+  ];
 
   const minimalDetails = extractMinimalDetails(content);
 
@@ -1372,24 +1312,6 @@ const PropertyCard = ({ content }: { content: string }) => {
               <Plus className="h-3 w-3" />
               Add to CRM
             </Button>
-            <Button
-              onClick={handleAnalyzeDeal}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 text-xs px-3 py-1"
-            >
-              <BarChart3 className="h-3 w-3" />
-              Analyze Deal
-            </Button>
-            <Button
-              onClick={handleContactOwner}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 text-xs px-3 py-1"
-            >
-              <PhoneCall className="h-3 w-3" />
-              Contact Owner
-            </Button>
           </div>
 
           <div className="flex gap-2 pt-2">
@@ -1435,22 +1357,6 @@ const PropertyCard = ({ content }: { content: string }) => {
               >
                 <Plus className="h-4 w-4" />
                 Confirm Add to CRM
-              </Button>
-              <Button
-                onClick={handleAnalyzeDeal}
-                variant="outline"
-                className="flex items-center gap-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
-              >
-                <BarChart3 className="h-4 w-4" />
-                Analyze Deal
-              </Button>
-              <Button
-                onClick={handleContactOwner}
-                variant="outline"
-                className="flex items-center gap-2 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
-              >
-                <PhoneCall className="h-4 w-4" />
-                Contact Owner
               </Button>
             </div>
           </div>
