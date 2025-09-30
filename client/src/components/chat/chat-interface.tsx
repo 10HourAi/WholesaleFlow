@@ -352,7 +352,7 @@ const PropertyDetailsModal = ({
       ownerPhoneNumbersType: typeof property.ownerPhoneNumbers,
       ownerPhoneNumbersIsArray: Array.isArray(property.ownerPhoneNumbers),
       ownerPhoneNumbersLength: property.ownerPhoneNumbers?.length,
-      fullPropertyKeys: Object.keys(property)
+      firstPhoneEntry: property.ownerPhoneNumbers?.[0]
     });
 
     const phones = [];
@@ -380,41 +380,59 @@ const PropertyDetailsModal = ({
           phoneEntry,
           phoneEntryType: typeof phoneEntry,
           phoneEntryString: String(phoneEntry),
-          phoneEntryKeys: typeof phoneEntry === 'object' ? Object.keys(phoneEntry) : 'not an object'
+          phoneEntryKeys: typeof phoneEntry === 'object' && phoneEntry !== null ? Object.keys(phoneEntry) : 'not an object'
         });
 
-        // Handle different formats of phone data
         let phoneNumber = null;
-        let phoneType = null;
+        let phoneType = 'Phone';
 
+        // Handle string phone numbers directly
         if (typeof phoneEntry === "string" && phoneEntry && phoneEntry !== 'undefined' && phoneEntry !== 'null' && phoneEntry.trim() !== '') {
           phoneNumber = phoneEntry.trim();
-          phoneType = 'Phone';
           console.log(`🔍 DEBUG formatPhoneNumbers: Found string phone: ${phoneNumber}`);
-        } else if (typeof phoneEntry === "object" && phoneEntry !== null) {
+        } 
+        // Handle object phone numbers with various property names
+        else if (typeof phoneEntry === "object" && phoneEntry !== null) {
           // Try different possible property names for phone numbers
           if (phoneEntry.number && phoneEntry.number !== 'undefined' && phoneEntry.number !== 'null') {
-            phoneNumber = phoneEntry.number.toString().trim();
+            phoneNumber = String(phoneEntry.number).trim();
             phoneType = phoneEntry.type || 'Phone';
             console.log(`🔍 DEBUG formatPhoneNumbers: Found object.number phone: ${phoneNumber} (${phoneType})`);
           } else if (phoneEntry.phoneNumber && phoneEntry.phoneNumber !== 'undefined' && phoneEntry.phoneNumber !== 'null') {
-            phoneNumber = phoneEntry.phoneNumber.toString().trim();
+            phoneNumber = String(phoneEntry.phoneNumber).trim();
             phoneType = phoneEntry.type || 'Phone';
             console.log(`🔍 DEBUG formatPhoneNumbers: Found object.phoneNumber phone: ${phoneNumber} (${phoneType})`);
           } else if (phoneEntry.phone && phoneEntry.phone !== 'undefined' && phoneEntry.phone !== 'null') {
-            phoneNumber = phoneEntry.phone.toString().trim();
+            phoneNumber = String(phoneEntry.phone).trim();
             phoneType = phoneEntry.type || 'Phone';
             console.log(`🔍 DEBUG formatPhoneNumbers: Found object.phone phone: ${phoneNumber} (${phoneType})`);
+          } else {
+            // If it's an object but doesn't have expected properties, log all keys
+            console.log(`🔍 DEBUG formatPhoneNumbers: Object phone entry without standard keys:`, phoneEntry);
           }
         }
 
-        // Add valid phone numbers to the list
-        if (phoneNumber && phoneNumber !== '') {
-          // Skip DNC phones for the main phone list
-          const isDnc = typeof phoneEntry === 'object' && (phoneEntry.dnc === true || phoneEntry.type?.toLowerCase().includes('dnc'));
+        // Add valid phone numbers to the list (excluding DNC phones)
+        if (phoneNumber && phoneNumber !== '' && phoneNumber !== 'undefined' && phoneNumber !== 'null') {
+          // Check if it's a DNC phone
+          const isDnc = (typeof phoneEntry === 'object' && phoneEntry !== null && 
+                         (phoneEntry.dnc === true || 
+                          phoneEntry.type?.toLowerCase().includes('dnc') || 
+                          phoneEntry.type?.toLowerCase().includes('do not call')));
+          
           if (!isDnc) {
-            phones.push(phoneNumber);
-            console.log(`🔍 DEBUG formatPhoneNumbers: Added phone to list: ${phoneNumber}`);
+            // Format phone number for display
+            const cleanedPhone = phoneNumber.replace(/\D/g, '');
+            let formattedPhone = phoneNumber;
+            
+            if (cleanedPhone.length === 10) {
+              formattedPhone = `(${cleanedPhone.slice(0, 3)}) ${cleanedPhone.slice(3, 6)}-${cleanedPhone.slice(6)}`;
+            } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith('1')) {
+              formattedPhone = `+1 (${cleanedPhone.slice(1, 4)}) ${cleanedPhone.slice(4, 7)}-${cleanedPhone.slice(7)}`;
+            }
+            
+            phones.push(`${formattedPhone} (${phoneType})`);
+            console.log(`🔍 DEBUG formatPhoneNumbers: Added formatted phone to list: ${formattedPhone} (${phoneType})`);
           } else {
             console.log(`🔍 DEBUG formatPhoneNumbers: Skipped DNC phone: ${phoneNumber}`);
           }
@@ -424,7 +442,7 @@ const PropertyDetailsModal = ({
 
     console.log('🔍 DEBUG formatPhoneNumbers: Final phones array:', phones);
 
-    // Return raw phone numbers joined with commas, or default message if none
+    // Return formatted phone numbers joined with commas, or default message if none
     const result = phones.length > 0 ? phones.join(", ") : "Contact for details";
     console.log('🔍 DEBUG formatPhoneNumbers: Final result:', result);
     return result;
