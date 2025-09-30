@@ -277,14 +277,14 @@ const PropertyDetailsModal = ({
       hasOwnerEmail: !!property.ownerEmail
     });
     
-    // Check the direct field first (this is where the data is stored)
-    if (property.ownerEmail && property.ownerEmail !== "null" && property.ownerEmail !== null && property.ownerEmail !== "undefined") {
+    // The API stores emails in ownerEmail field directly (not in arrays)
+    if (property.ownerEmail && property.ownerEmail !== "null" && property.ownerEmail !== null && property.ownerEmail !== "undefined" && property.ownerEmail.trim() !== "") {
       return property.ownerEmail;
     }
     
-    // Check array format as fallback
+    // Check array format as fallback (legacy support)
     if (property.ownerEmails && Array.isArray(property.ownerEmails) && property.ownerEmails.length > 0) {
-      return property.ownerEmails[0];
+      return property.ownerEmails.join(", ");
     }
     
     return "Contact for details";
@@ -300,7 +300,8 @@ const PropertyDetailsModal = ({
     
     const phones = [];
 
-    // Check primary phone - use the actual field name from the data
+    // The API stores phones in individual fields (ownerPhone, ownerLandLine, ownerMobilePhone)
+    // Check primary phone
     if (property.ownerPhone && property.ownerPhone !== "null" && property.ownerPhone !== null && property.ownerPhone.trim() !== "") {
       phones.push(`${property.ownerPhone} (Primary)`);
     }
@@ -334,9 +335,11 @@ const PropertyDetailsModal = ({
       hasOwnerDNCPhone: !!property.ownerDNCPhone
     });
     
-    // Check ownerDNCPhone field first (this is where the data is stored)
+    // The API stores DNC phones in ownerDNCPhone field as comma-separated values
     if (property.ownerDNCPhone && property.ownerDNCPhone !== "null" && property.ownerDNCPhone !== null && property.ownerDNCPhone.trim() !== "") {
-      return property.ownerDNCPhone;
+      // Format multiple DNC phones nicely
+      const dncPhones = property.ownerDNCPhone.split(',').map((phone: string) => phone.trim()).filter(Boolean);
+      return dncPhones.join(", ");
     }
     
     return "None on record";
