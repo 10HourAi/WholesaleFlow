@@ -203,22 +203,26 @@ const CondensedPropertyCard = ({
       </CardContent>
 
       {/* Action buttons */}
-      <div className="bg-gray-50 p-4 flex flex-wrap gap-2 justify-start border-t">
+      <div className="bg-gray-50 p-4 flex gap-2 justify-between border-t">
         <Button
           size="sm"
           variant="outline"
-          className="bg-white hover:bg-green-50"
+          className="flex-1 bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
           onClick={handleAddToCRM}
         >
           <Plus className="h-4 w-4 mr-2" /> Add to CRM
         </Button>
-        <Button size="sm" variant="outline" className="bg-white text-gray-600">
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="flex-1 bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
+        >
           I'll Pass
         </Button>
         <Button
           size="sm"
           variant="outline"
-          className="bg-white text-blue-600 hover:bg-blue-50"
+          className="flex-1 bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100"
           onClick={() => onViewDetails(property)}
         >
           View Details
@@ -1302,23 +1306,20 @@ const PropertyCard = ({ content }: { content: string }) => {
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-wrap gap-2 pt-3">
+          <div className="flex gap-2 pt-3">
             <Button
               onClick={handleAddToCRM}
               variant="outline"
               size="sm"
-              className="flex items-center gap-1 bg-green-50 border-green-200 text-green-700 hover:bg-green-100 text-xs px-3 py-1"
+              className="flex-1 items-center gap-1 bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-xs px-3 py-1"
             >
               <Plus className="h-3 w-3" />
               Add to CRM
             </Button>
-          </div>
-
-          <div className="flex gap-2 pt-2">
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 text-xs px-3 py-1 text-gray-600 hover:bg-gray-50"
+              className="flex-1 text-xs px-3 py-1 bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
             >
               I'll Pass
             </Button>
@@ -1326,7 +1327,7 @@ const PropertyCard = ({ content }: { content: string }) => {
               onClick={() => setShowDetailsDialog(true)}
               variant="outline"
               size="sm"
-              className="flex-1 text-xs px-3 py-1 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+              className="flex-1 text-xs px-3 py-1 bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100"
             >
               View Details
             </Button>
