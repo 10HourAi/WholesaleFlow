@@ -343,110 +343,24 @@ const PropertyDetailsModal = ({
   };
 
   const formatPhoneNumbers = (property: any) => {
-    console.log('🔍 DEBUG formatPhoneNumbers: Starting with property:', {
-      address: property.address,
-      ownerPhone: property.ownerPhone,
-      ownerMobilePhone: property.ownerMobilePhone,
-      ownerLandLine: property.ownerLandLine,
-      ownerPhoneNumbers: property.ownerPhoneNumbers,
-      ownerPhoneNumbersType: typeof property.ownerPhoneNumbers,
-      ownerPhoneNumbersIsArray: Array.isArray(property.ownerPhoneNumbers),
-      ownerPhoneNumbersLength: property.ownerPhoneNumbers?.length
-    });
+    const phones = [];
 
-    const uniquePhones = new Set<string>();
-
-    // Helper to add a phone number to the set after cleaning
-    const addPhone = (phone: any, source: string) => {
-      console.log(`🔍 DEBUG addPhone: Processing phone from ${source}:`, {
-        phone,
-        phoneType: typeof phone,
-        phoneString: String(phone),
-        phoneLength: phone?.length
-      });
-
-      // Ensure we're working with a string and it's not a placeholder
-      if (
-        typeof phone !== "string" ||
-        !phone ||
-        phone.toLowerCase() === "null" ||
-        phone.toLowerCase() === "undefined" ||
-        phone.trim() === ""
-      ) {
-        console.log(`🔍 DEBUG addPhone: Rejected phone from ${source} - invalid format`);
-        return;
-      }
-
-      // Remove non-digit characters to get a clean number for formatting and de-duping
-      const digits = phone.replace(/\D/g, "");
-      console.log(`🔍 DEBUG addPhone: Cleaned digits from ${source}:`, {
-        originalPhone: phone,
-        cleanedDigits: digits,
-        digitsLength: digits.length
-      });
-
-      if (digits.length >= 10) {
-        uniquePhones.add(digits);
-        console.log(`🔍 DEBUG addPhone: Added phone from ${source} to set:`, digits);
-      } else {
-        console.log(`🔍 DEBUG addPhone: Rejected phone from ${source} - insufficient digits:`, digits);
-      }
-    };
-
-    // 1. Check for primary phone fields
-    console.log('🔍 DEBUG formatPhoneNumbers: Processing primary phone fields...');
-    addPhone(property.ownerPhone, 'ownerPhone');
-    addPhone(property.ownerMobilePhone, 'ownerMobilePhone');
-    addPhone(property.ownerLandLine, 'ownerLandLine');
-
-    console.log('🔍 DEBUG formatPhoneNumbers: After primary fields, uniquePhones:', Array.from(uniquePhones));
-
-    // 2. Process the ownerPhoneNumbers array (only handles string arrays now)
-    console.log('🔍 DEBUG formatPhoneNumbers: Processing ownerPhoneNumbers array...');
+    // Collect all phone numbers as-is
+    if (property.ownerPhone) {
+      phones.push(property.ownerPhone);
+    }
+    if (property.ownerMobilePhone) {
+      phones.push(property.ownerMobilePhone);
+    }
+    if (property.ownerLandLine) {
+      phones.push(property.ownerLandLine);
+    }
     if (Array.isArray(property.ownerPhoneNumbers)) {
-      console.log(`🔍 DEBUG formatPhoneNumbers: ownerPhoneNumbers is array with ${property.ownerPhoneNumbers.length} items`);
-      
-      property.ownerPhoneNumbers.forEach((phoneEntry: any, index: number) => {
-        console.log(`🔍 DEBUG formatPhoneNumbers: Processing array item ${index}:`, {
-          phoneEntry,
-          phoneEntryType: typeof phoneEntry,
-          phoneEntryString: String(phoneEntry)
-        });
-
-        // Only handle string arrays - phone numbers are strings
-        if (typeof phoneEntry === "string") {
-          addPhone(phoneEntry, `ownerPhoneNumbers[${index}]`);
-        } else {
-          console.log(`🔍 DEBUG formatPhoneNumbers: Skipped non-string array item ${index}:`, phoneEntry);
-        }
-      });
-    } else {
-      console.log('🔍 DEBUG formatPhoneNumbers: ownerPhoneNumbers is not an array:', property.ownerPhoneNumbers);
+      phones.push(...property.ownerPhoneNumbers);
     }
 
-    console.log('🔍 DEBUG formatPhoneNumbers: Final uniquePhones set:', Array.from(uniquePhones));
-
-    // If no valid numbers were found, return the default message
-    if (uniquePhones.size === 0) {
-      console.log('🔍 DEBUG formatPhoneNumbers: No valid phones found, returning default message');
-      return "Contact for details";
-    }
-
-    // Format the unique, clean phone numbers for display
-    const formattedPhones = Array.from(uniquePhones).map((digits) => {
-      console.log('🔍 DEBUG formatPhoneNumbers: Formatting digits:', digits);
-      if (digits.length === 10) {
-        const formatted = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-        console.log('🔍 DEBUG formatPhoneNumbers: Formatted 10-digit number:', formatted);
-        return formatted;
-      }
-      console.log('🔍 DEBUG formatPhoneNumbers: Using fallback format for non-10-digit:', digits);
-      return digits; // Fallback for numbers not exactly 10 digits (e.g., with extensions)
-    });
-
-    const finalResult = formattedPhones.join(", ");
-    console.log('🔍 DEBUG formatPhoneNumbers: Final result:', finalResult);
-    return finalResult;
+    // Return raw phone numbers joined with commas, or default message if none
+    return phones.length > 0 ? phones.join(", ") : "Contact for details";
   };
   const formatDNCPhones = (property: any) => {
     const dncPhones = [];
