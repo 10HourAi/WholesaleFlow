@@ -322,6 +322,16 @@ const PropertyDetailsModal = ({
     return "None on record";
   };
 
+  const formatMailingAddress = (property: any) => {
+    if (property.ownerMailingAddress && 
+        property.ownerMailingAddress !== "null" && 
+        property.ownerMailingAddress !== null && 
+        property.ownerMailingAddress.trim() !== "") {
+      return property.ownerMailingAddress;
+    }
+    return "Same as property address";
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-3xl bg-gray-50">
@@ -358,7 +368,7 @@ const PropertyDetailsModal = ({
    Email(s)                     ${formatEmail(property)}
    Phone(s)                     ${formatPhoneNumbers(property)}
    DNC Phone(s)                 ${formatDNCPhones(property)}
-   Mailing Address              ${property.ownerMailingAddress || "N/A"}
+   Mailing Address              ${formatMailingAddress(property)}
 
 💰 VALUATION DETAILS
    As of Date                   ${new Date().toLocaleDateString("en-US")}
