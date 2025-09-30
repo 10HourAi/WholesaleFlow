@@ -377,7 +377,7 @@ class BatchLeadsService {
             continue;
           }
 
-          const convertedProperty = this.convertToProperty(
+          const convertedProperty = await this.convertToProperty(
             property,
             "demo-user",
             criteria,
@@ -950,7 +950,7 @@ class BatchLeadsService {
             continue;
           }
 
-          const convertedProperty = this.convertToProperty(
+          const convertedProperty = await this.convertToProperty(
             rawProperty,
             "demo-user",
             criteria,
@@ -997,11 +997,11 @@ class BatchLeadsService {
   }
 
   // Convert BatchData property with comprehensive data integration from all sources
-  convertToProperty(
+  async convertToProperty(
     batchProperty: any,
     userId: string,
     criteria?: SearchCriteria,
-  ): any {
+  ): Promise<any> {
     const propertyId = batchProperty._id || batchProperty.id || "unknown";
     console.log(`🔍 SINGLE API: Converting property with ID: ${propertyId}`);
 
