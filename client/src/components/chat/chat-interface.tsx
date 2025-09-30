@@ -333,147 +333,69 @@ const PropertyDetailsModal = ({
   };
 
   const formatPhoneNumbers = (property: any) => {
-    const phones = [];
-    const addedNumbers = new Set();
+    const uniquePhones = new Set<string>();
 
-    // Helper function to clean and format phone number
-    const cleanPhoneNumber = (number: string) => {
-      if (!number || number === "undefined" || number === "null") return "";
-      // Remove all non-digit characters
-      const digits = number.replace(/\D/g, "");
-      // Format as (XXX) XXX-XXXX if 10 digits
+    // Helper to add a phone number to the set after cleaning
+    const addPhone = (phone: any) => {
+      // Ensure we're working with a string and it's not a placeholder
+      if (
+        typeof phone !== "string" ||
+        !phone ||
+        phone.toLowerCase() === "null" ||
+        phone.toLowerCase() === "undefined"
+      ) {
+        return;
+      }
+
+      // Remove non-digit characters to get a clean number for formatting and de-duping
+      const digits = phone.replace(/\D/g, "");
+      if (digits.length >= 10) {
+        uniquePhones.add(digits);
+      }
+    };
+
+    // 1. Check for primary phone fields
+    addPhone(property.ownerPhone);
+    addPhone(property.ownerMobilePhone);
+    addPhone(property.ownerLandLine);
+
+    // 2. Process the ownerPhoneNumbers array (handles string[] and object[])
+    if (Array.isArray(property.ownerPhoneNumbers)) {
+      property.ownerPhoneNumbers.forEach((phoneEntry: any) => {
+        if (typeof phoneEntry === "string") {
+          addPhone(phoneEntry);
+        } else if (typeof phoneEntry === "object" && phoneEntry?.number) {
+          // Handle cases where the array contains objects like { number: '...', type: '...' }
+          addPhone(phoneEntry.number);
+        }
+      });
+    }
+
+    // 3. (Fallback) Check for nested owner object properties
+    if (property.owner) {
+      addPhone(property.owner.phone);
+      if (Array.isArray(property.owner.phoneNumbers)) {
+        property.owner.phoneNumbers.forEach((phone: any) =>
+          addPhone(phone.number || phone),
+        );
+      }
+    }
+
+    // If no valid numbers were found, return the default message
+    if (uniquePhones.size === 0) {
+      return "Contact for details";
+    }
+
+    // Format the unique, clean phone numbers for display
+    const formattedPhones = Array.from(uniquePhones).map((digits) => {
       if (digits.length === 10) {
         return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
       }
-      // Return original if not standard 10 digit format but has digits
-      if (digits.length > 0) {
-        return number;
-      }
-      return ""; // Return empty if no digits found
-    };
-
-    // Helper function to add phone if not duplicate and valid
-    const addPhone = (number: string, type: string) => {
-      if (
-        number &&
-        number !== "null" &&
-        number !== "undefined" &&
-        typeof number === "string" &&
-        number.trim() !== "" &&
-        number.trim() !== "undefined" &&
-        number.trim() !== "null"
-      ) {
-        const cleanNumber = number.trim();
-        const formattedNumber = cleanPhoneNumber(cleanNumber);
-        if (formattedNumber && formattedNumber !== "" && !addedNumbers.has(cleanNumber)) {
-          phones.push(`${formattedNumber} (${type})`);
-          addedNumbers.add(cleanNumber);
-        }
-      }
-    };
-
-    console.log("🔍 DEBUG: formatPhoneNumbers - property data:", {
-      ownerPhone: property.ownerPhone,
-      ownerPhoneNumbers: property.ownerPhoneNumbers,
-      ownerLandLine: property.ownerLandLine,
-      ownerMobilePhone: property.ownerMobilePhone,
-      ownerPhoneNumbersType: typeof property.ownerPhoneNumbers,
-      ownerPhoneNumbersLength: property.ownerPhoneNumbers?.length,
-      firstPhoneElement: property.ownerPhoneNumbers?.[0]
+      return digits; // Fallback for numbers not exactly 10 digits (e.g., with extensions)
     });
 
-    // Primary phone field
-    if (property.ownerPhone && property.ownerPhone !== "undefined" && property.ownerPhone !== "null") {
-      addPhone(property.ownerPhone, "Primary");
-    }
-
-    // Landline
-    if (
-      property.ownerLandLine &&
-      property.ownerLandLine !== "undefined" &&
-      property.ownerLandLine !== "null" &&
-      property.ownerLandLine !== property.ownerPhone
-    ) {
-      addPhone(property.ownerLandLine, "Landline");
-    }
-
-    // Mobile
-    if (
-      property.ownerMobilePhone &&
-      property.ownerMobilePhone !== "undefined" &&
-      property.ownerMobilePhone !== "null" &&
-      property.ownerMobilePhone !== property.ownerPhone &&
-      property.ownerMobilePhone !== property.ownerLandLine
-    ) {
-      addPhone(property.ownerMobilePhone, "Mobile");
-    }
-
-    // Check for phone numbers array - Backend sends string arrays
-    if (
-      property.ownerPhoneNumbers &&
-      Array.isArray(property.ownerPhoneNumbers) &&
-      property.ownerPhoneNumbers.length > 0
-    ) {
-      console.log("🔍 DEBUG: Processing ownerPhoneNumbers array:", property.ownerPhoneNumbers);
-      
-      property.ownerPhoneNumbers.forEach((phoneNumber: any, index: number) => {
-        console.log(`🔍 DEBUG: Processing phone ${index}:`, phoneNumber, typeof phoneNumber);
-        
-        // Handle both string arrays and object arrays
-        let numberToAdd = '';
-        let phoneType = `Phone ${index + 1}`;
-        
-        if (typeof phoneNumber === 'string') {
-          // Direct string phone number
-          numberToAdd = phoneNumber.trim();
-        } else if (typeof phoneNumber === 'object' && phoneNumber.number) {
-          // Object with number property
-          numberToAdd = phoneNumber.number.trim();
-          phoneType = phoneNumber.type || phoneType;
-        }
-        
-        // Validate and add the phone number
-        if (numberToAdd && 
-            numberToAdd !== "undefined" && 
-            numberToAdd !== "null" && 
-            numberToAdd.trim() !== "" &&
-            numberToAdd.trim() !== "undefined" &&
-            numberToAdd.trim() !== "null") {
-          console.log(`🔍 DEBUG: Adding phone number: ${numberToAdd} (${phoneType})`);
-          addPhone(numberToAdd, phoneType);
-        } else {
-          console.log(`🔍 DEBUG: Skipping invalid phone:`, phoneNumber, typeof phoneNumber);
-        }
-      });
-    }
-
-    // Check for owner object phone numbers (nested structure) - fallback for other data sources
-    if (
-      property.owner?.phoneNumbers &&
-      Array.isArray(property.owner.phoneNumbers)
-    ) {
-      property.owner.phoneNumbers.forEach((phone: any) => {
-        if (typeof phone === 'string') {
-          addPhone(phone, "Phone");
-        } else if (phone && phone.number && phone.number !== "undefined" && phone.number !== "null") {
-          addPhone(phone.number, phone.type || "Phone");
-        }
-      });
-    }
-
-    // Check for direct owner phone fields
-    if (
-      property.owner?.phone &&
-      property.owner.phone !== "undefined" &&
-      property.owner.phone !== "null"
-    ) {
-      addPhone(property.owner.phone, "Primary");
-    }
-
-    console.log("🔍 DEBUG: Final phones array:", phones);
-    return phones.length > 0 ? phones.join(", ") : "Contact for details";
+    return formattedPhones.join(", ");
   };
-
   const formatDNCPhones = (property: any) => {
     const dncPhones = [];
     const addedNumbers = new Set();
