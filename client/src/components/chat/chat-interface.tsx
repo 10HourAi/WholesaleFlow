@@ -333,125 +333,69 @@ const PropertyDetailsModal = ({
   };
 
   const formatPhoneNumbers = (property: any) => {
-    const phones = [];
-    const addedNumbers = new Set();
+    const uniquePhones = new Set<string>();
 
-    // Helper function to clean and format phone number
-    const cleanPhoneNumber = (number: string) => {
-      if (!number) return "";
-      // Remove all non-digit characters
-      const digits = number.replace(/\D/g, "");
-      // Format as (XXX) XXX-XXXX if 10 digits
+    // Helper to add a phone number to the set after cleaning
+    const addPhone = (phone: any) => {
+      // Ensure we're working with a string and it's not a placeholder
+      if (
+        typeof phone !== "string" ||
+        !phone ||
+        phone.toLowerCase() === "null" ||
+        phone.toLowerCase() === "undefined"
+      ) {
+        return;
+      }
+
+      // Remove non-digit characters to get a clean number for formatting and de-duping
+      const digits = phone.replace(/\D/g, "");
+      if (digits.length >= 10) {
+        uniquePhones.add(digits);
+      }
+    };
+
+    // 1. Check for primary phone fields
+    addPhone(property.ownerPhone);
+    addPhone(property.ownerMobilePhone);
+    addPhone(property.ownerLandLine);
+
+    // 2. Process the ownerPhoneNumbers array (handles string[] and object[])
+    if (Array.isArray(property.ownerPhoneNumbers)) {
+      property.ownerPhoneNumbers.forEach((phoneEntry: any) => {
+        if (typeof phoneEntry === "string") {
+          addPhone(phoneEntry);
+        } else if (typeof phoneEntry === "object" && phoneEntry?.number) {
+          // Handle cases where the array contains objects like { number: '...', type: '...' }
+          addPhone(phoneEntry.number);
+        }
+      });
+    }
+
+    // 3. (Fallback) Check for nested owner object properties
+    if (property.owner) {
+      addPhone(property.owner.phone);
+      if (Array.isArray(property.owner.phoneNumbers)) {
+        property.owner.phoneNumbers.forEach((phone: any) =>
+          addPhone(phone.number || phone),
+        );
+      }
+    }
+
+    // If no valid numbers were found, return the default message
+    if (uniquePhones.size === 0) {
+      return "Contact for details";
+    }
+
+    // Format the unique, clean phone numbers for display
+    const formattedPhones = Array.from(uniquePhones).map((digits) => {
       if (digits.length === 10) {
         return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
       }
-      return number; // Return original if not 10 digits
-    };
+      return digits; // Fallback for numbers not exactly 10 digits (e.g., with extensions)
+    });
 
-    // Helper function to add phone if not duplicate
-    const addPhone = (number: string, type: string) => {
-      if (
-        number &&
-        number !== "null" &&
-        number !== null &&
-        number !== "undefined" &&
-        number.trim() !== ""
-      ) {
-        const cleanNumber = number.trim();
-        const formattedNumber = cleanPhoneNumber(cleanNumber);
-        if (!addedNumbers.has(cleanNumber)) {
-          phones.push(`${formattedNumber} (${type})`);
-          addedNumbers.add(cleanNumber);
-        }
-      }
-    };
-
-    // Primary phone
-    if (property.ownerPhone) {
-      addPhone(property.ownerPhone, "Primary");
-    }
-
-    // Landline
-    if (
-      property.ownerLandLine &&
-      property.ownerLandLine !== property.ownerPhone
-    ) {
-      addPhone(property.ownerLandLine, "Landline");
-    }
-
-    // Mobile
-    if (
-      property.ownerMobilePhone &&
-      property.ownerMobilePhone !== property.ownerPhone &&
-      property.ownerMobilePhone !== property.ownerLandLine
-    ) {
-      addPhone(property.ownerMobilePhone, "Mobile");
-    }
-
-    // Check for phone numbers array
-    if (
-      property.ownerPhoneNumbers &&
-      Array.isArray(property.ownerPhoneNumbers) &&
-      property.ownerPhoneNumbers.length > 0
-    ) {
-      const validPhones = property.ownerPhoneNumbers.filter(
-        (phone: any) =>
-          phone &&
-          phone.number &&
-          !phone.dnc &&
-          phone.number !== "null" &&
-          phone.number.trim() !== "",
-      );
-
-      validPhones.forEach((phone: any) => {
-        const phoneNumber = phone.number.trim();
-        const phoneType = phone.type || "Phone";
-
-        if (!addedNumbers.has(phoneNumber)) {
-          const formattedNumber = cleanPhoneNumber(phoneNumber);
-          phones.push(`${formattedNumber} (${phoneType})`);
-          addedNumbers.add(phoneNumber);
-        }
-      });
-    }
-
-    // Check for owner object phone numbers
-    if (
-      property.owner?.phoneNumbers &&
-      Array.isArray(property.owner.phoneNumbers)
-    ) {
-      const validOwnerPhones = property.owner.phoneNumbers.filter(
-        (phone: any) =>
-          phone &&
-          phone.number &&
-          !phone.dnc &&
-          phone.number !== "null" &&
-          phone.number.trim() !== "",
-      );
-
-      validOwnerPhones.forEach((phone: any) => {
-        const phoneNumber = phone.number.trim();
-        const phoneType = phone.type || "Phone";
-
-        if (!addedNumbers.has(phoneNumber)) {
-          const formattedNumber = cleanPhoneNumber(phoneNumber);
-          phones.push(`${formattedNumber} (${phoneType})`);
-          addedNumbers.add(phoneNumber);
-        }
-      });
-    }
-
-    // Check for direct owner phone fields
-    if (
-      property.owner?.phone &&
-      !addedNumbers.has(property.owner.phone.trim())
-    ) {
-      addPhone(property.owner.phone, "Primary");
-    }
-
-    return phones.length > 0 ? phones.join(", ") : "Contact for details";
+    return formattedPhones.join(", ");
   };
-
   const formatDNCPhones = (property: any) => {
     const dncPhones = [];
     const addedNumbers = new Set();
