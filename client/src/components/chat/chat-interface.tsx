@@ -95,6 +95,23 @@ const CondensedPropertyCard = ({
     try {
       console.log("🏠 Attempting to add property to CRM:", property.address);
       
+      // Check if property already exists to prevent duplicates
+      const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
+      const propertyExists = existingProperties?.some(p => 
+        p.address === property.address && 
+        p.city === property.city && 
+        p.state === property.state
+      );
+      
+      if (propertyExists) {
+        toast({
+          title: "Already in CRM",
+          description: `Property at ${property.address} is already in your CRM.`,
+          variant: "default",
+        });
+        return;
+      }
+      
       // Prepare property data for API
       const propertyData = {
         address: property.address,
@@ -1114,6 +1131,24 @@ const PropertyCard = ({ content }: { content: string }) => {
 
     try {
       console.log("🏠 Attempting to add property to CRM:", propertyData.address);
+      
+      // Check if property already exists to prevent duplicates
+      const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
+      const propertyExists = existingProperties?.some(p => 
+        p.address === propertyData.address && 
+        p.city === propertyData.city && 
+        p.state === propertyData.state
+      );
+      
+      if (propertyExists) {
+        toast({
+          title: "Already in CRM",
+          description: `Property at ${propertyData.address} is already in your CRM.`,
+          variant: "default",
+        });
+        return;
+      }
+      
       console.log("🏠 Property data being sent:", propertyData);
       
       const result = await apiRequest("POST", "/api/properties", propertyData);
@@ -1162,6 +1197,25 @@ const PropertyCard = ({ content }: { content: string }) => {
 
     try {
       console.log("🏠 Confirming add property to CRM:", propertyData.address);
+      
+      // Check if property already exists to prevent duplicates
+      const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
+      const propertyExists = existingProperties?.some(p => 
+        p.address === propertyData.address && 
+        p.city === propertyData.city && 
+        p.state === propertyData.state
+      );
+      
+      if (propertyExists) {
+        toast({
+          title: "Already in CRM",
+          description: `Property at ${propertyData.address} is already in your CRM.`,
+          variant: "default",
+        });
+        setShowDetailsDialog(false);
+        return;
+      }
+      
       console.log("🏠 Property data being sent:", propertyData);
       
       const result = await apiRequest("POST", "/api/properties", propertyData);

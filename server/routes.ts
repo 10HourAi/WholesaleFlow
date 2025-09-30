@@ -275,6 +275,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log("🏠 Creating property for user:", userId);
       console.log("🏠 Request body:", req.body);
       
+      // Check for existing property to prevent duplicates
+      const existingProperties = await storage.searchProperties(userId, {
+        city: req.body.city,
+        state: req.body.state,
+      });
+      
+      const duplicateProperty = existingProperties.find(p => 
+        p.address === req.body.address &&
+        p.city === req.body.city &&
+        p.state === req.body.state
+      );
+      
+      if (duplicateProperty) {
+        console.log("🏠 Duplicate property found, returning existing:", duplicateProperty.id);
+        return res.status(200).json({
+          ...duplicateProperty,
+          message: "Property already exists in your CRM"
+        });
+      }
+      
       // Clean the data before validation and ADD userId
       const cleanedData = { 
         ...req.body,
