@@ -270,29 +270,33 @@ const PropertyDetailsModal = ({
 }) => {
   if (!property) return null;
 
-  const formatPhone = (phone: string | null) => {
-    return phone || "Contact for details";
+  const formatEmail = (email: string | null | undefined) => {
+    if (!email || email === "null" || email === null) return "Contact for details";
+    return email;
   };
 
-  const formatEmail = (email: string | null) => {
-    return email || "Contact for details";
-  };
+  const formatPhoneNumbers = (property: any) => {
+    const phones = [];
 
-  // Helper function to format phone numbers with country code and area code grouping
-  const formatPhoneNumbers = (property: Property) => {
-    const phones: string[] = [];
-    if (property.ownerPhone) phones.push(property.ownerPhone);
-    if (property.ownerMobilePhone) phones.push(property.ownerMobilePhone);
-    if (property.ownerLandLine) phones.push(property.ownerLandLine);
+    // Check all possible phone fields
+    if (property.ownerPhone && property.ownerPhone !== "null" && property.ownerPhone !== null) {
+      phones.push(`${property.ownerPhone} (Primary)`);
+    }
+    if (property.ownerLandLine && property.ownerLandLine !== "null" && property.ownerLandLine !== null && property.ownerLandLine !== property.ownerPhone) {
+      phones.push(`${property.ownerLandLine} (Landline)`);
+    }
+    if (property.ownerMobilePhone && property.ownerMobilePhone !== "null" && property.ownerMobilePhone !== null && property.ownerMobilePhone !== property.ownerPhone && property.ownerMobilePhone !== property.ownerLandLine) {
+      phones.push(`${property.ownerMobilePhone} (Mobile)`);
+    }
+
     return phones.length > 0 ? phones.join(", ") : "Contact for details";
   };
 
-  // Helper function to format DNC phone numbers
-  const formatDNCPhones = (property: Property) => {
-    if (property.ownerDNCPhone) {
-      return property.ownerDNCPhone;
+  const formatDNCPhones = (property: any) => {
+    if (!property.ownerDNCPhone || property.ownerDNCPhone === "null" || property.ownerDNCPhone === null) {
+      return "None on record";
     }
-    return null; // Return null if no DNC phone is available
+    return property.ownerDNCPhone;
   };
 
   return (
@@ -330,7 +334,7 @@ const PropertyDetailsModal = ({
 📞 CONTACT INFORMATION
    Email(s)                     ${formatEmail(property.ownerEmail)}
    Phone(s)                     ${formatPhoneNumbers(property)}
-   ${formatDNCPhones(property) ? `DNC Phone(s)                 ${formatDNCPhones(property)}` : ""}
+   ${formatDNCPhones(property)}
    Mailing Address              ${property.ownerMailingAddress || "N/A"}
 
 💰 VALUATION DETAILS
