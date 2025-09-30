@@ -284,7 +284,6 @@ const PropertyDetailsModal = ({
   const formatPhoneNumbers = (property: any) => {
     const phones = [];
 
-    // Primary phone
     if (property.ownerPhone && 
         property.ownerPhone !== "null" && 
         property.ownerPhone !== null && 
@@ -292,7 +291,6 @@ const PropertyDetailsModal = ({
       phones.push(`${property.ownerPhone} (Primary)`);
     }
     
-    // Landline (only if different from primary)
     if (property.ownerLandLine && 
         property.ownerLandLine !== "null" && 
         property.ownerLandLine !== null && 
@@ -301,7 +299,6 @@ const PropertyDetailsModal = ({
       phones.push(`${property.ownerLandLine} (Landline)`);
     }
     
-    // Mobile (only if different from primary and landline)
     if (property.ownerMobilePhone && 
         property.ownerMobilePhone !== "null" && 
         property.ownerMobilePhone !== null && 
