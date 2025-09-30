@@ -1171,6 +1171,15 @@ class BatchLeadsService {
     const allPhoneNumbers = enrichedContactData?.phoneNumbers || ownerPhoneNumbers || [];
     const dncPhones = enrichedContactData?.dncPhones || [];
     
+    console.log(`📞 DEBUG: convertToProperty - processing phones for ${propertyAddress}:`, {
+      enrichedContactData: !!enrichedContactData,
+      allPhoneNumbers: allPhoneNumbers,
+      allPhoneNumbersType: typeof allPhoneNumbers,
+      allPhoneNumbersLength: allPhoneNumbers.length,
+      ownerPhoneNumbers: ownerPhoneNumbers,
+      dncPhones: dncPhones
+    });
+    
     // Find best phones by type
     const landLinePhone = allPhoneNumbers.find((phone: any) => {
       const phoneStr = typeof phone === 'string' ? phone : phone?.number;
@@ -1205,7 +1214,11 @@ class BatchLeadsService {
       ownerPhone: enrichedContactData?.bestPhone || (typeof allPhoneNumbers[0] === 'string' ? allPhoneNumbers[0] : allPhoneNumbers[0]?.number) || null,
       ownerEmail: enrichedContactData?.bestEmail || ownerEmails[0] || null,
       ownerEmails: enrichedContactData?.emailAddresses || ownerEmails || [],
-      ownerPhoneNumbers: allPhoneNumbers.map((phone: any) => typeof phone === 'string' ? phone : phone?.number).filter(Boolean),
+      ownerPhoneNumbers: allPhoneNumbers.map((phone: any) => {
+        const phoneNumber = typeof phone === 'string' ? phone : phone?.number;
+        console.log(`📞 DEBUG: Converting phone to string:`, phone, '->', phoneNumber);
+        return phoneNumber;
+      }).filter(Boolean),
       ownerMailingAddress: ownerMailingAddress,
       ownerDncPhone: dncPhones.length > 0 ? dncPhones.join(', ') : null,
       ownerLandLine: typeof landLinePhone === 'string' ? landLinePhone : landLinePhone?.number || null,
@@ -1602,6 +1615,8 @@ class BatchLeadsService {
     console.log(`📞 ENRICHING CONTACT DATA for ${property.address?.street || 'unknown address'}`);
     console.log(`📞 Raw phone numbers:`, phoneNumbers);
     console.log(`📞 Raw email addresses:`, emailAddresses);
+    console.log(`📞 Raw owner object keys:`, Object.keys(owner));
+    console.log(`📞 First phone number detailed:`, phoneNumbers[0]);
 
     // Process phone numbers and identify DNC phones
     let bestPhone: string | null = null;

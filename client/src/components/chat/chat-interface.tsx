@@ -338,7 +338,7 @@ const PropertyDetailsModal = ({
 
     // Helper function to clean and format phone number
     const cleanPhoneNumber = (number: string) => {
-      if (!number || number === "undefined" || number === "null" || number === "null") return "";
+      if (!number || number === "undefined" || number === "null") return "";
       // Remove all non-digit characters
       const digits = number.replace(/\D/g, "");
       // Format as (XXX) XXX-XXXX if 10 digits
@@ -357,7 +357,6 @@ const PropertyDetailsModal = ({
       if (
         number &&
         number !== "null" &&
-        number !== null &&
         number !== "undefined" &&
         typeof number === "string" &&
         number.trim() !== "" &&
@@ -373,8 +372,19 @@ const PropertyDetailsModal = ({
       }
     };
 
-    // Primary phone - check multiple possible fields
-    if (property.ownerPhone && property.ownerPhone !== "undefined") {
+    // Debug logging to see what we're actually getting
+    console.log("🔍 DEBUG: formatPhoneNumbers - property data:", {
+      ownerPhone: property.ownerPhone,
+      ownerPhoneNumbers: property.ownerPhoneNumbers,
+      ownerLandLine: property.ownerLandLine,
+      ownerMobilePhone: property.ownerMobilePhone,
+      ownerPhoneNumbersType: typeof property.ownerPhoneNumbers,
+      ownerPhoneNumbersLength: property.ownerPhoneNumbers?.length,
+      firstPhoneElement: property.ownerPhoneNumbers?.[0]
+    });
+
+    // Primary phone field
+    if (property.ownerPhone && property.ownerPhone !== "undefined" && property.ownerPhone !== "null") {
       addPhone(property.ownerPhone, "Primary");
     }
 
@@ -382,6 +392,7 @@ const PropertyDetailsModal = ({
     if (
       property.ownerLandLine &&
       property.ownerLandLine !== "undefined" &&
+      property.ownerLandLine !== "null" &&
       property.ownerLandLine !== property.ownerPhone
     ) {
       addPhone(property.ownerLandLine, "Landline");
@@ -391,38 +402,44 @@ const PropertyDetailsModal = ({
     if (
       property.ownerMobilePhone &&
       property.ownerMobilePhone !== "undefined" &&
+      property.ownerMobilePhone !== "null" &&
       property.ownerMobilePhone !== property.ownerPhone &&
       property.ownerMobilePhone !== property.ownerLandLine
     ) {
       addPhone(property.ownerMobilePhone, "Mobile");
     }
 
-    // Check for phone numbers array - handle both string arrays and object arrays
+    // Check for phone numbers array - the main source from BatchData
     if (
       property.ownerPhoneNumbers &&
       Array.isArray(property.ownerPhoneNumbers) &&
       property.ownerPhoneNumbers.length > 0
     ) {
+      console.log("🔍 DEBUG: Processing ownerPhoneNumbers array:", property.ownerPhoneNumbers);
+      
       property.ownerPhoneNumbers.forEach((phone: any, index: number) => {
-        if (phone && phone !== "undefined" && phone !== "null") {
-          if (typeof phone === 'string') {
-            // Handle string phone numbers
-            const cleanNumber = phone.trim();
-            if (cleanNumber && cleanNumber !== "undefined" && cleanNumber !== "null") {
-              addPhone(cleanNumber, `Phone ${index + 1}`);
-            }
-          } else if (phone && typeof phone === 'object' && phone.number) {
-            // Handle object phone numbers with number property
-            const phoneNumber = phone.number;
-            if (phoneNumber && phoneNumber !== "undefined" && phoneNumber !== "null") {
-              addPhone(phoneNumber, phone.type || `Phone ${index + 1}`);
-            }
+        console.log(`🔍 DEBUG: Processing phone ${index}:`, phone, typeof phone);
+        
+        // Check if phone is a direct string
+        if (typeof phone === 'string' && phone && phone !== "undefined" && phone !== "null") {
+          const cleanNumber = phone.trim();
+          if (cleanNumber && cleanNumber !== "undefined" && cleanNumber !== "null") {
+            console.log(`🔍 DEBUG: Adding string phone: ${cleanNumber}`);
+            addPhone(cleanNumber, `Phone ${index + 1}`);
+          }
+        }
+        // Check if phone is an object with number property
+        else if (phone && typeof phone === 'object' && phone.number) {
+          const phoneNumber = phone.number;
+          if (phoneNumber && phoneNumber !== "undefined" && phoneNumber !== "null") {
+            console.log(`🔍 DEBUG: Adding object phone: ${phoneNumber} (${phone.type || 'Unknown'})`);
+            addPhone(phoneNumber, phone.type || `Phone ${index + 1}`);
           }
         }
       });
     }
 
-    // Check for owner object phone numbers
+    // Check for owner object phone numbers (nested structure)
     if (
       property.owner?.phoneNumbers &&
       Array.isArray(property.owner.phoneNumbers)
@@ -443,6 +460,7 @@ const PropertyDetailsModal = ({
       addPhone(property.owner.phone, "Primary");
     }
 
+    console.log("🔍 DEBUG: Final phones array:", phones);
     return phones.length > 0 ? phones.join(", ") : "Contact for details";
   };
 
