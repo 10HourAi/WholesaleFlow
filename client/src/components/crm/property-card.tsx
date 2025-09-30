@@ -414,7 +414,7 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                       ))}
                     </div>
                   </div>
-                )}</div>
+                )}
               </div>
             </CardContent>
           </Card>
