@@ -32,6 +32,7 @@ import {
   Plus,
   BarChart3,
   PhoneCall,
+  Phone,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -415,10 +416,10 @@ const PropertyDetailsModal = ({
       property.ownerPhoneNumbers.length > 0
     ) {
       console.log("🔍 DEBUG: Processing ownerPhoneNumbers array:", property.ownerPhoneNumbers);
-      
+
       property.ownerPhoneNumbers.forEach((phoneNumber: string, index: number) => {
         console.log(`🔍 DEBUG: Processing phone ${index}:`, phoneNumber, typeof phoneNumber);
-        
+
         // Backend sends phone numbers as strings - treat them all as strings
         if (typeof phoneNumber === 'string' && 
             phoneNumber && 
@@ -1812,7 +1813,10 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                   "POST",
                   `/api/conversations/${conversation.id}/messages`,
                   {
-                    content: updatedPropertyCard,
+                    content: JSON.stringify({
+                      type: "property_card",
+                      data: property,
+                    }),
                     role: "assistant",
                     isAiGenerated: true,
                   },
