@@ -30,8 +30,6 @@ import {
   ArrowRight,
   ArrowLeft,
   Plus,
-  BarChart3,
-  PhoneCall,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -95,36 +93,67 @@ const CondensedPropertyCard = ({
 
   const handleAddToCRM = async () => {
     try {
-      const result = await apiRequest("POST", "/api/properties", property);
+      console.log("🏠 Attempting to add property to CRM:", property.address);
+      
+      // Prepare property data for API
+      const propertyData = {
+        address: property.address,
+        city: property.city,
+        state: property.state,
+        zipCode: property.zipCode,
+        bedrooms: property.bedrooms,
+        bathrooms: property.bathrooms,
+        squareFeet: property.squareFeet,
+        yearBuilt: property.yearBuilt,
+        propertyType: property.propertyType || "single_family",
+        arv: property.arv,
+        maxOffer: property.maxOffer,
+        equityPercentage: property.equityPercentage,
+        equityBalance: property.equityBalance,
+        confidenceScore: property.confidenceScore,
+        lastSalePrice: property.lastSalePrice,
+        lastSaleDate: property.lastSaleDate,
+        ownerName: property.ownerName,
+        ownerPhone: property.ownerPhone,
+        ownerEmail: property.ownerEmail,
+        ownerEmails: property.ownerEmails,
+        ownerPhoneNumbers: property.ownerPhoneNumbers,
+        ownerMailingAddress: property.ownerMailingAddress,
+        ownerDncPhone: property.ownerDncPhone,
+        status: "new"
+      };
+
+      console.log("🏠 Property data being sent:", propertyData);
+      
+      const result = await apiRequest("POST", "/api/properties", propertyData);
       console.log("🏠 Property successfully added to CRM:", result);
+      
       toast({
         title: "Added to CRM",
-        description: `Property at ${property.address} has been added.`,
+        description: `Property at ${property.address} has been added to your CRM.`,
       });
+      
       await queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
     } catch (error: any) {
       console.error("Error adding property to CRM:", error);
+      console.error("Error details:", error.response || error);
+      
+      let errorMessage = "Failed to add property to CRM.";
+      if (error.response?.status === 401) {
+        errorMessage = "Authentication required. Please log in again.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to add property to CRM.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
   };
 
-  const handleAnalyzeDeal = () => {
-    toast({
-      title: "Deal Analysis Started",
-      description: `Analyzing deal for ${property.address}...`,
-    });
-  };
-
-  const handleContactOwner = () => {
-    toast({
-      title: "Contact Owner",
-      description: `Preparing to contact property owner...`,
-    });
-  };
+  
 
   return (
     <Card className="w-full max-w-2xl mx-auto overflow-hidden bg-white border border-gray-200 shadow-sm">
@@ -216,39 +245,27 @@ const CondensedPropertyCard = ({
         </div>
       </CardContent>
 
-      {/* Action Buttons */}
-      <div className="bg-gray-50 p-4 flex flex-wrap gap-2 justify-start border-t">
+      {/* Action buttons */}
+      <div className="bg-gray-50 p-4 flex gap-2 justify-between border-t">
         <Button
           size="sm"
           variant="outline"
-          className="bg-white hover:bg-green-50"
+          className="flex-1 bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
           onClick={handleAddToCRM}
         >
           <Plus className="h-4 w-4 mr-2" /> Add to CRM
         </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="bg-white hover:bg-blue-50"
-          onClick={handleAnalyzeDeal}
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="flex-1 bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
         >
-          <BarChart3 className="h-4 w-4 mr-2" /> Analyze Deal
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="bg-white hover:bg-orange-50"
-          onClick={handleContactOwner}
-        >
-          <PhoneCall className="h-4 w-4 mr-2" /> Contact Owner
-        </Button>
-        <Button size="sm" variant="outline" className="bg-white text-gray-600">
           I'll Pass
         </Button>
         <Button
           size="sm"
           variant="outline"
-          className="bg-white text-blue-600 hover:bg-blue-50"
+          className="flex-1 bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100"
           onClick={() => onViewDetails(property)}
         >
           View Details
@@ -1096,6 +1113,9 @@ const PropertyCard = ({ content }: { content: string }) => {
     }
 
     try {
+      console.log("🏠 Attempting to add property to CRM:", propertyData.address);
+      console.log("🏠 Property data being sent:", propertyData);
+      
       const result = await apiRequest("POST", "/api/properties", propertyData);
       console.log("🏠 Property successfully added to CRM:", result);
 
@@ -1109,9 +1129,20 @@ const PropertyCard = ({ content }: { content: string }) => {
       await queryClient.refetchQueries({ queryKey: ["/api/properties"] });
     } catch (error: any) {
       console.error("Error adding property to CRM:", error);
+      console.error("Error details:", error.response || error);
+      
+      let errorMessage = "Failed to add property to CRM. Please try again.";
+      if (error.response?.status === 401) {
+        errorMessage = "Authentication required. Please log in again.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.details) {
+        errorMessage = `Validation error: ${error.response.data.details}`;
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to add property to CRM. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -1130,6 +1161,9 @@ const PropertyCard = ({ content }: { content: string }) => {
     }
 
     try {
+      console.log("🏠 Confirming add property to CRM:", propertyData.address);
+      console.log("🏠 Property data being sent:", propertyData);
+      
       const result = await apiRequest("POST", "/api/properties", propertyData);
       console.log("🏠 Property successfully added to CRM:", result);
 
@@ -1146,41 +1180,26 @@ const PropertyCard = ({ content }: { content: string }) => {
       setShowDetailsDialog(false);
     } catch (error: any) {
       console.error("Error adding property to CRM:", error);
+      console.error("Error details:", error.response || error);
+      
+      let errorMessage = "Failed to add property to CRM. Please try again.";
+      if (error.response?.status === 401) {
+        errorMessage = "Authentication required. Please log in again.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.details) {
+        errorMessage = `Validation error: ${error.response.data.details}`;
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to add property to CRM. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
   };
 
-  const handleAnalyzeDeal = () => {
-    if (isSellerLead) {
-      toast({
-        title: "Deal Analysis Started",
-        description: `Analyzing deal for property ${cardNumber}...`,
-      });
-    } else {
-      toast({
-        title: "Buyer Profile Analysis",
-        description: `Analyzing investment profile for buyer ${cardNumber}...`,
-      });
-    }
-  };
-
-  const handleContactOwner = () => {
-    if (isSellerLead) {
-      toast({
-        title: "Contact Owner",
-        description: `Preparing to contact property owner...`,
-      });
-    } else {
-      toast({
-        title: "Contact Investor",
-        description: `Preparing to contact cash buyer...`,
-      });
-    }
-  };
+  
 
   // Remove any action sections from content for display
   const displayContent = content
@@ -1191,47 +1210,14 @@ const PropertyCard = ({ content }: { content: string }) => {
     .trim();
 
   // Dynamic button labels based on card type
-  const actionButtons = isSellerLead
-    ? [
-        {
-          label: "Add to CRM",
-          icon: Plus,
-          color: "green",
-          action: handleAddToCRM,
-        },
-        {
-          label: "Analyze Deal",
-          icon: BarChart3,
-          color: "blue",
-          action: handleAnalyzeDeal,
-        },
-        {
-          label: "Contact Owner",
-          icon: PhoneCall,
-          color: "orange",
-          action: handleContactOwner,
-        },
-      ]
-    : [
-        {
-          label: "Add to CRM",
-          icon: Plus,
-          color: "green",
-          action: handleAddToCRM,
-        },
-        {
-          label: "View Portfolio",
-          icon: BarChart3,
-          color: "blue",
-          action: handleAnalyzeDeal,
-        },
-        {
-          label: "Contact Investor",
-          icon: PhoneCall,
-          color: "orange",
-          action: handleContactOwner,
-        },
-      ];
+  const actionButtons = [
+    {
+      label: "Add to CRM",
+      icon: Plus,
+      color: "green",
+      action: handleAddToCRM,
+    },
+  ];
 
   const minimalDetails = extractMinimalDetails(content);
 
@@ -1391,41 +1377,20 @@ const PropertyCard = ({ content }: { content: string }) => {
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-wrap gap-2 pt-3">
+          <div className="flex gap-2 pt-3">
             <Button
               onClick={handleAddToCRM}
               variant="outline"
               size="sm"
-              className="flex items-center gap-1 bg-green-50 border-green-200 text-green-700 hover:bg-green-100 text-xs px-3 py-1"
+              className="flex-1 items-center gap-1 bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-xs px-3 py-1"
             >
               <Plus className="h-3 w-3" />
               Add to CRM
             </Button>
             <Button
-              onClick={handleAnalyzeDeal}
               variant="outline"
               size="sm"
-              className="flex items-center gap-1 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 text-xs px-3 py-1"
-            >
-              <BarChart3 className="h-3 w-3" />
-              Analyze Deal
-            </Button>
-            <Button
-              onClick={handleContactOwner}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 text-xs px-3 py-1"
-            >
-              <PhoneCall className="h-3 w-3" />
-              Contact Owner
-            </Button>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 text-xs px-3 py-1 text-gray-600 hover:bg-gray-50"
+              className="flex-1 text-xs px-3 py-1 bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
             >
               I'll Pass
             </Button>
@@ -1433,7 +1398,7 @@ const PropertyCard = ({ content }: { content: string }) => {
               onClick={() => setShowDetailsDialog(true)}
               variant="outline"
               size="sm"
-              className="flex-1 text-xs px-3 py-1 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+              className="flex-1 text-xs px-3 py-1 bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100"
             >
               View Details
             </Button>
@@ -1464,22 +1429,6 @@ const PropertyCard = ({ content }: { content: string }) => {
               >
                 <Plus className="h-4 w-4" />
                 Confirm Add to CRM
-              </Button>
-              <Button
-                onClick={handleAnalyzeDeal}
-                variant="outline"
-                className="flex items-center gap-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
-              >
-                <BarChart3 className="h-4 w-4" />
-                Analyze Deal
-              </Button>
-              <Button
-                onClick={handleContactOwner}
-                variant="outline"
-                className="flex items-center gap-2 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
-              >
-                <PhoneCall className="h-4 w-4" />
-                Contact Owner
               </Button>
             </div>
           </div>

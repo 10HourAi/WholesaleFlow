@@ -236,9 +236,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   // Properties
-  app.get("/api/properties", isAuthenticated, async (req: any, res) => {
+  app.get("/api/properties", async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
+      
+      if (req.session && req.session.user) {
+        // Traditional session
+        userId = req.session.user.id;
+      } else if (req.user && req.user.claims) {
+        // Replit Auth session
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const properties = await storage.getProperties(userId);
       res.json(properties);
     } catch (error: any) {
@@ -246,9 +258,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/properties", isAuthenticated, async (req: any, res) => {
+  app.post("/api/properties", async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
+      
+      if (req.session && req.session.user) {
+        // Traditional session
+        userId = req.session.user.id;
+      } else if (req.user && req.user.claims) {
+        // Replit Auth session
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       console.log("🏠 Creating property for user:", userId);
       console.log("🏠 Request body:", req.body);
       
@@ -302,9 +325,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/properties/search", isAuthenticated, async (req: any, res) => {
+  app.get("/api/properties/search", async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
+      
+      if (req.session && req.session.user) {
+        // Traditional session
+        userId = req.session.user.id;
+      } else if (req.user && req.user.claims) {
+        // Replit Auth session
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const { city, state, status, leadType } = req.query;
       const properties = await storage.searchProperties(userId, {
         city: city as string,
@@ -318,9 +353,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/properties/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/properties/:id", async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
+      
+      if (req.session && req.session.user) {
+        // Traditional session
+        userId = req.session.user.id;
+      } else if (req.user && req.user.claims) {
+        // Replit Auth session
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const property = await storage.updateProperty(
         req.params.id,
         userId,
@@ -333,9 +379,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contacts
-  app.get("/api/contacts", isAuthenticated, async (req: any, res) => {
+  app.get("/api/contacts", async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
+      
+      if (req.session && req.session.user) {
+        // Traditional session
+        userId = req.session.user.id;
+      } else if (req.user && req.user.claims) {
+        // Replit Auth session
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const contacts = await storage.getContacts(userId);
       res.json(contacts);
     } catch (error: any) {
@@ -344,8 +402,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/contacts", isAuthenticated, async (req: any, res) => {
+  app.post("/api/contacts", async (req: any, res) => {
     try {
+      // Check authentication for both traditional and Replit Auth sessions
+      if (!req.session?.user && !req.user?.claims) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
       const validatedData = insertContactSchema.parse(req.body);
       const contact = await storage.createContact(validatedData);
       res.json(contact);
