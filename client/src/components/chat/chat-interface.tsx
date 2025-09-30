@@ -271,31 +271,24 @@ const PropertyDetailsModal = ({
   if (!property) return null;
 
   const formatEmail = (property: any) => {
-    console.log("🔍 Formatting email for property:", {
-      ownerEmail: property.ownerEmail,
-      hasOwnerEmail: !!property.ownerEmail
-    });
-    
-    // Use the actual database field name: ownerEmail
-    if (property.ownerEmail && property.ownerEmail !== "null" && property.ownerEmail !== null && property.ownerEmail !== "undefined" && property.ownerEmail.trim() !== "") {
+    if (property.ownerEmail && 
+        property.ownerEmail !== "null" && 
+        property.ownerEmail !== null && 
+        property.ownerEmail !== "undefined" && 
+        property.ownerEmail.trim() !== "") {
       return property.ownerEmail;
     }
-    
     return "Contact for details";
   };
 
   const formatPhoneNumbers = (property: any) => {
-    console.log("🔍 Formatting phones for property:", {
-      ownerPhone: property.ownerPhone,
-      ownerLandLine: property.ownerLandLine,
-      ownerMobilePhone: property.ownerMobilePhone
-    });
-    
     const phones = [];
 
-    // Use the actual database field names
     // Primary phone
-    if (property.ownerPhone && property.ownerPhone !== "null" && property.ownerPhone !== null && property.ownerPhone.trim() !== "") {
+    if (property.ownerPhone && 
+        property.ownerPhone !== "null" && 
+        property.ownerPhone !== null && 
+        property.ownerPhone.trim() !== "") {
       phones.push(`${property.ownerPhone} (Primary)`);
     }
     
@@ -318,23 +311,17 @@ const PropertyDetailsModal = ({
       phones.push(`${property.ownerMobilePhone} (Mobile)`);
     }
 
-    console.log("🔍 Found phones:", phones);
     return phones.length > 0 ? phones.join(", ") : "Contact for details";
   };
 
   const formatDNCPhones = (property: any) => {
-    console.log("🔍 Formatting DNC phones for property:", {
-      ownerDNCPhone: property.ownerDNCPhone,
-      hasOwnerDNCPhone: !!property.ownerDNCPhone
-    });
-    
-    // Use the actual database field name: ownerDNCPhone (comma-separated values)
-    if (property.ownerDNCPhone && property.ownerDNCPhone !== "null" && property.ownerDNCPhone !== null && property.ownerDNCPhone.trim() !== "") {
-      // Format multiple DNC phones nicely
+    if (property.ownerDNCPhone && 
+        property.ownerDNCPhone !== "null" && 
+        property.ownerDNCPhone !== null && 
+        property.ownerDNCPhone.trim() !== "") {
       const dncPhones = property.ownerDNCPhone.split(',').map((phone: string) => phone.trim()).filter(Boolean);
       return dncPhones.join(", ");
     }
-    
     return "None on record";
   };
 
