@@ -408,7 +408,7 @@ const PropertyDetailsModal = ({
       addPhone(property.ownerMobilePhone, "Mobile");
     }
 
-    // Check for phone numbers array - FIXED: Backend sends string arrays, not object arrays
+    // Check for phone numbers array - Backend sends string arrays
     if (
       property.ownerPhoneNumbers &&
       Array.isArray(property.ownerPhoneNumbers) &&
@@ -416,15 +416,29 @@ const PropertyDetailsModal = ({
     ) {
       console.log("🔍 DEBUG: Processing ownerPhoneNumbers array:", property.ownerPhoneNumbers);
       
-      property.ownerPhoneNumbers.forEach((phoneNumber: string, index: number) => {
+      property.ownerPhoneNumbers.forEach((phoneNumber: any, index: number) => {
         console.log(`🔍 DEBUG: Processing phone ${index}:`, phoneNumber, typeof phoneNumber);
         
-        // Backend sends phone numbers as strings, not objects
-        if (typeof phoneNumber === 'string' && phoneNumber && phoneNumber !== "undefined" && phoneNumber !== "null") {
-          const cleanNumber = phoneNumber.trim();
+        // Handle both string and object formats for compatibility
+        let actualPhoneNumber: string;
+        let phoneType: string;
+        
+        if (typeof phoneNumber === 'string') {
+          actualPhoneNumber = phoneNumber;
+          phoneType = `Phone ${index + 1}`;
+        } else if (phoneNumber && typeof phoneNumber === 'object' && phoneNumber.number) {
+          actualPhoneNumber = phoneNumber.number;
+          phoneType = phoneNumber.type || `Phone ${index + 1}`;
+        } else {
+          console.log(`🔍 DEBUG: Skipping invalid phone:`, phoneNumber);
+          return;
+        }
+        
+        if (actualPhoneNumber && actualPhoneNumber !== "undefined" && actualPhoneNumber !== "null") {
+          const cleanNumber = actualPhoneNumber.trim();
           if (cleanNumber && cleanNumber !== "undefined" && cleanNumber !== "null") {
-            console.log(`🔍 DEBUG: Adding phone number: ${cleanNumber}`);
-            addPhone(cleanNumber, `Phone ${index + 1}`);
+            console.log(`🔍 DEBUG: Adding phone number: ${cleanNumber} (${phoneType})`);
+            addPhone(cleanNumber, phoneType);
           }
         }
       });
