@@ -1005,6 +1005,21 @@ class BatchLeadsService {
     const propertyId = batchProperty._id || batchProperty.id || "unknown";
     console.log(`🔍 SINGLE API: Converting property with ID: ${propertyId}`);
 
+    // CONTACT ENRICHMENT - Extract contact data from BatchData API
+    let enrichedContactData = null;
+    try {
+      enrichedContactData = await this.enrichContactData(batchProperty);
+      console.log(
+        `📞 Contact enrichment result for ${batchProperty.address?.street}:`,
+        enrichedContactData ? "SUCCESS" : "NO DATA",
+      );
+    } catch (error) {
+      console.log(
+        `📞 Contact enrichment failed for ${batchProperty.address?.street}:`,
+        error,
+      );
+    }
+
     // Extract data directly from comprehensive Property Search API response
     const building = batchProperty.building || {};
     const owner = batchProperty.owner || {};
@@ -1170,20 +1185,20 @@ class BatchLeadsService {
       lastSalePrice: lastSalePrice?.toString() || null,
       lastSaleDate: lastSaleDate || null,
       ownerName: ownerName,
-      ownerPhone: ownerPhoneNumbers.find((p) => !p.dnc)?.number || null,
-      ownerEmail: ownerEmails.length > 0 ? ownerEmails[0] : null, // Use first email for DB schema
-      ownerDNCPhone:
-        ownerPhoneNumbers
-          .filter((p) => p.dnc)
-          .map((p) => p.number)
-          .join(", ") || null,
+      ownerPhone: enrichedContactData?.bestPhone || batchProperty.ownerPhone || null,
+      ownerEmail: enrichedContactData?.bestEmail || batchProperty.ownerEmail || null,
+      ownerEmails: enrichedContactData?.emailAddresses || [],
+      ownerPhoneNumbers: enrichedContactData?.phoneNumbers || [],
+      ownerMailingAddress: batchProperty.ownerMailingAddress || null,
+      ownerDncPhone: enrichedContactData?.dncPhones?.join(', ') || batchProperty.ownerDncPhone || null,
       ownerLandLine:
         ownerPhoneNumbers.find((p) => p.type === "Land Line")?.number || null,
       ownerMobilePhone:
-        ownerPhoneNumbers.find((p) => p.type === "Mobile")?.number || null,
+        ownerPhoneNumbers.find(
+          (p) => p.type === "Mobile" || p.type === "Cell",
+        )?.number || null,
       equityPercentage: Math.round(equityPercent),
       equityBalance: equityBalance?.toString() || null,
-      ownerMailingAddress: ownerMailingAddress,
       confidenceScore: this.calculateConfidenceScore(batchProperty),
       distressedIndicator: this.getDistressedIndicator(batchProperty),
     };
@@ -1556,6 +1571,65 @@ class BatchLeadsService {
   ): boolean {
     if (!propertyAddress?.state || !mailingAddress?.state) return false;
     return propertyAddress.state !== mailingAddress.state;
+  }
+
+  // Add enrichContactData method here
+  private async enrichContactData(property: any): Promise<{
+    phoneNumbers: any[];
+    emailAddresses: any[];
+    bestPhone: string | null;
+    bestEmail: string | null;
+    dncPhones: string[];
+  } | null> {
+    // This is a placeholder. In a real scenario, this method would call
+    // an external service or use internal logic to enrich contact data.
+    // For demonstration, we'll assume it can extract some data from the property object itself.
+
+    const owner = property.owner || {};
+    const phoneNumbers = owner.phoneNumbers || [];
+    const emailAddresses = owner.emails || [];
+
+    // Find the best phone number (e.g., not DNC, preferably mobile or landline)
+    let bestPhone: string | null = null;
+    const dncPhones: string[] = [];
+
+    // Prioritize non-DNC numbers
+    const nonDncPhones = phoneNumbers.filter((p: any) => !p.dnc && p.number);
+    if (nonDncPhones.length > 0) {
+      // Prefer mobile, then landline, then any available
+      const mobile = nonDncPhones.find((p: any) => p.type === "mobile");
+      const landline = nonDncPhones.find((p: any) => p.type === "landline");
+      bestPhone = mobile?.number || landline?.number || nonDncPhones[0].number;
+    }
+
+    // Collect all DNC phones
+    phoneNumbers.forEach((p: any) => {
+      if (p.dnc && p.number) {
+        dncPhones.push(p.number);
+      }
+    });
+
+    // Find the best email address
+    let bestEmail: string | null = null;
+    const validEmails = emailAddresses.filter(
+      (e: any) => (typeof e === "string" ? e : e?.email)?.includes("@"),
+    );
+    if (validEmails.length > 0) {
+      bestEmail =
+        typeof validEmails[0] === "string" ? validEmails[0] : validEmails[0].email;
+    }
+
+    if (phoneNumbers.length > 0 || emailAddresses.length > 0) {
+      return {
+        phoneNumbers: phoneNumbers.map((p: any) => p.number).filter(Boolean),
+        emailAddresses: emailAddresses.map((e: any) => typeof e === "string" ? e : e?.email).filter(Boolean),
+        bestPhone,
+        bestEmail,
+        dncPhones,
+      };
+    }
+
+    return null;
   }
 }
 
