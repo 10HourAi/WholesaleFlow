@@ -290,6 +290,23 @@ const PropertyDetailsModal = ({
       emails.push(...validEmails);
     }
     
+    // Check for owner object with email
+    if (property.owner?.email && 
+        property.owner.email !== "null" && 
+        property.owner.email !== null && 
+        property.owner.email.trim() !== "" && 
+        !emails.includes(property.owner.email.trim())) {
+      emails.push(property.owner.email.trim());
+    }
+    
+    // Check for owner object with emails array
+    if (property.owner?.emails && Array.isArray(property.owner.emails) && property.owner.emails.length > 0) {
+      const validOwnerEmails = property.owner.emails.filter((email: string) => 
+        email && email !== "null" && email !== "undefined" && email.trim() !== "" && !emails.includes(email.trim())
+      );
+      emails.push(...validOwnerEmails);
+    }
+    
     return emails.length > 0 ? emails.join(", ") : "Contact for details";
   };
 
@@ -297,15 +314,31 @@ const PropertyDetailsModal = ({
     const phones = [];
     const addedNumbers = new Set();
 
+    // Helper function to clean and format phone number
+    const cleanPhoneNumber = (number: string) => {
+      if (!number) return "";
+      // Remove all non-digit characters
+      const digits = number.replace(/\D/g, "");
+      // Format as (XXX) XXX-XXXX if 10 digits
+      if (digits.length === 10) {
+        return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+      }
+      return number; // Return original if not 10 digits
+    };
+
     // Helper function to add phone if not duplicate
     const addPhone = (number: string, type: string) => {
       if (number && 
           number !== "null" && 
           number !== null && 
-          number.trim() !== "" && 
-          !addedNumbers.has(number.trim())) {
-        phones.push(`${number.trim()} (${type})`);
-        addedNumbers.add(number.trim());
+          number !== "undefined" &&
+          number.trim() !== "") {
+        const cleanNumber = number.trim();
+        const formattedNumber = cleanPhoneNumber(cleanNumber);
+        if (!addedNumbers.has(cleanNumber)) {
+          phones.push(`${formattedNumber} (${type})`);
+          addedNumbers.add(cleanNumber);
+        }
       }
     };
 
@@ -315,12 +348,14 @@ const PropertyDetailsModal = ({
     }
     
     // Landline
-    if (property.ownerLandLine) {
+    if (property.ownerLandLine && property.ownerLandLine !== property.ownerPhone) {
       addPhone(property.ownerLandLine, "Landline");
     }
     
     // Mobile
-    if (property.ownerMobilePhone) {
+    if (property.ownerMobilePhone && 
+        property.ownerMobilePhone !== property.ownerPhone && 
+        property.ownerMobilePhone !== property.ownerLandLine) {
       addPhone(property.ownerMobilePhone, "Mobile");
     }
 
@@ -332,13 +367,37 @@ const PropertyDetailsModal = ({
       
       validPhones.forEach((phone: any) => {
         const phoneNumber = phone.number.trim();
-        const phoneType = phone.type || "Unknown";
+        const phoneType = phone.type || "Phone";
         
         if (!addedNumbers.has(phoneNumber)) {
-          phones.push(`${phoneNumber} (${phoneType})`);
+          const formattedNumber = cleanPhoneNumber(phoneNumber);
+          phones.push(`${formattedNumber} (${phoneType})`);
           addedNumbers.add(phoneNumber);
         }
       });
+    }
+
+    // Check for owner object phone numbers
+    if (property.owner?.phoneNumbers && Array.isArray(property.owner.phoneNumbers)) {
+      const validOwnerPhones = property.owner.phoneNumbers.filter((phone: any) => 
+        phone && phone.number && !phone.dnc && phone.number !== "null" && phone.number.trim() !== ""
+      );
+      
+      validOwnerPhones.forEach((phone: any) => {
+        const phoneNumber = phone.number.trim();
+        const phoneType = phone.type || "Phone";
+        
+        if (!addedNumbers.has(phoneNumber)) {
+          const formattedNumber = cleanPhoneNumber(phoneNumber);
+          phones.push(`${formattedNumber} (${phoneType})`);
+          addedNumbers.add(phoneNumber);
+        }
+      });
+    }
+
+    // Check for direct owner phone fields
+    if (property.owner?.phone && !addedNumbers.has(property.owner.phone.trim())) {
+      addPhone(property.owner.phone, "Primary");
     }
 
     return phones.length > 0 ? phones.join(", ") : "Contact for details";
@@ -348,10 +407,21 @@ const PropertyDetailsModal = ({
     const dncPhones = [];
     const addedNumbers = new Set();
     
+    // Helper function to clean and format phone number
+    const cleanPhoneNumber = (number: string) => {
+      if (!number) return "";
+      const digits = number.replace(/\D/g, "");
+      if (digits.length === 10) {
+        return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+      }
+      return number;
+    };
+    
     // Check direct DNC phone field
     if (property.ownerDNCPhone && 
         property.ownerDNCPhone !== "null" && 
         property.ownerDNCPhone !== null && 
+        property.ownerDNCPhone !== "undefined" &&
         property.ownerDNCPhone.trim() !== "") {
       const directDncPhones = property.ownerDNCPhone.split(',')
         .map((phone: string) => phone.trim())
@@ -359,7 +429,8 @@ const PropertyDetailsModal = ({
       
       directDncPhones.forEach((phone: string) => {
         if (!addedNumbers.has(phone)) {
-          dncPhones.push(`${phone} (DNC)`);
+          const formattedPhone = cleanPhoneNumber(phone);
+          dncPhones.push(`${formattedPhone} (DNC)`);
           addedNumbers.add(phone);
         }
       });
@@ -373,7 +444,23 @@ const PropertyDetailsModal = ({
       dncFromArray.forEach((phone: any) => {
         const phoneNumber = phone.number.trim();
         if (!addedNumbers.has(phoneNumber)) {
-          dncPhones.push(`${phoneNumber} (${phone.type || "DNC"})`);
+          const formattedPhone = cleanPhoneNumber(phoneNumber);
+          dncPhones.push(`${formattedPhone} (${phone.type || "DNC"})`);
+          addedNumbers.add(phoneNumber);
+        }
+      });
+    }
+    
+    // Check for DNC phones in owner object
+    if (property.owner?.phoneNumbers && Array.isArray(property.owner.phoneNumbers)) {
+      const ownerDncPhones = property.owner.phoneNumbers
+        .filter((phone: any) => phone && phone.number && phone.dnc && phone.number !== "null" && phone.number.trim() !== "");
+      
+      ownerDncPhones.forEach((phone: any) => {
+        const phoneNumber = phone.number.trim();
+        if (!addedNumbers.has(phoneNumber)) {
+          const formattedPhone = cleanPhoneNumber(phoneNumber);
+          dncPhones.push(`${formattedPhone} (${phone.type || "DNC"})`);
           addedNumbers.add(phoneNumber);
         }
       });
@@ -383,20 +470,47 @@ const PropertyDetailsModal = ({
   };
 
   const formatMailingAddress = (property: any) => {
-    // Check for mailing address
+    // Check for direct mailing address field
     if (property.ownerMailingAddress && 
         property.ownerMailingAddress !== "null" && 
         property.ownerMailingAddress !== null && 
+        property.ownerMailingAddress !== "undefined" &&
         property.ownerMailingAddress.trim() !== "") {
       return property.ownerMailingAddress.trim();
     }
     
-    // Check for owner mailing address from owner object
-    if (property.owner && property.owner.mailingAddress &&
+    // Check for owner object mailing address
+    if (property.owner?.mailingAddress &&
         property.owner.mailingAddress !== "null" &&
         property.owner.mailingAddress !== null &&
+        property.owner.mailingAddress !== "undefined" &&
         property.owner.mailingAddress.trim() !== "") {
       return property.owner.mailingAddress.trim();
+    }
+    
+    // Check for structured mailing address in owner object
+    if (property.owner?.mailingAddress) {
+      const addr = property.owner.mailingAddress;
+      if (typeof addr === 'object' && addr.street) {
+        const fullAddress = `${addr.street || ""}, ${addr.city || ""}, ${addr.state || ""} ${addr.zip || ""}`.trim();
+        if (fullAddress && fullAddress !== ", ") {
+          return fullAddress;
+        }
+      }
+    }
+    
+    // Check for mailing address fields separately
+    const mailingParts = [];
+    if (property.mailingStreet) mailingParts.push(property.mailingStreet);
+    if (property.mailingCity) mailingParts.push(property.mailingCity);
+    if (property.mailingState && property.mailingZip) {
+      mailingParts.push(`${property.mailingState} ${property.mailingZip}`);
+    } else if (property.mailingState) {
+      mailingParts.push(property.mailingState);
+    }
+    
+    if (mailingParts.length > 0) {
+      return mailingParts.join(", ");
     }
     
     // Fall back to property address
