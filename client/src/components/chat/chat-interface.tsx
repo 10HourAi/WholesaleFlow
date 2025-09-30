@@ -32,7 +32,6 @@ import {
   Plus,
   BarChart3,
   PhoneCall,
-  Phone,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -227,7 +226,22 @@ const CondensedPropertyCard = ({
         >
           <Plus className="h-4 w-4 mr-2" /> Add to CRM
         </Button>
-        
+        <Button
+          size="sm"
+          variant="outline"
+          className="bg-white hover:bg-blue-50"
+          onClick={handleAnalyzeDeal}
+        >
+          <BarChart3 className="h-4 w-4 mr-2" /> Analyze Deal
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="bg-white hover:bg-orange-50"
+          onClick={handleContactOwner}
+        >
+          <PhoneCall className="h-4 w-4 mr-2" /> Contact Owner
+        </Button>
         <Button size="sm" variant="outline" className="bg-white text-gray-600">
           I'll Pass
         </Button>
@@ -401,10 +415,10 @@ const PropertyDetailsModal = ({
       property.ownerPhoneNumbers.length > 0
     ) {
       console.log("🔍 DEBUG: Processing ownerPhoneNumbers array:", property.ownerPhoneNumbers);
-
+      
       property.ownerPhoneNumbers.forEach((phoneNumber: string, index: number) => {
         console.log(`🔍 DEBUG: Processing phone ${index}:`, phoneNumber, typeof phoneNumber);
-
+        
         // Backend sends phone numbers as strings - treat them all as strings
         if (typeof phoneNumber === 'string' && 
             phoneNumber && 
@@ -1223,6 +1237,18 @@ const PropertyCard = ({ content }: { content: string }) => {
           color: "green",
           action: handleAddToCRM,
         },
+        {
+          label: "Analyze Deal",
+          icon: BarChart3,
+          color: "blue",
+          action: handleAnalyzeDeal,
+        },
+        {
+          label: "Contact Owner",
+          icon: PhoneCall,
+          color: "orange",
+          action: handleContactOwner,
+        },
       ]
     : [
         {
@@ -1230,6 +1256,18 @@ const PropertyCard = ({ content }: { content: string }) => {
           icon: Plus,
           color: "green",
           action: handleAddToCRM,
+        },
+        {
+          label: "View Portfolio",
+          icon: BarChart3,
+          color: "blue",
+          action: handleAnalyzeDeal,
+        },
+        {
+          label: "Contact Investor",
+          icon: PhoneCall,
+          color: "orange",
+          action: handleContactOwner,
         },
       ];
 
@@ -1401,7 +1439,24 @@ const PropertyCard = ({ content }: { content: string }) => {
               <Plus className="h-3 w-3" />
               Add to CRM
             </Button>
-            
+            <Button
+              onClick={handleAnalyzeDeal}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 text-xs px-3 py-1"
+            >
+              <BarChart3 className="h-3 w-3" />
+              Analyze Deal
+            </Button>
+            <Button
+              onClick={handleContactOwner}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-1 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 text-xs px-3 py-1"
+            >
+              <PhoneCall className="h-3 w-3" />
+              Contact Owner
+            </Button>
           </div>
 
           <div className="flex gap-2 pt-2">
@@ -1448,7 +1503,22 @@ const PropertyCard = ({ content }: { content: string }) => {
                 <Plus className="h-4 w-4" />
                 Confirm Add to CRM
               </Button>
-              
+              <Button
+                onClick={handleAnalyzeDeal}
+                variant="outline"
+                className="flex items-center gap-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+              >
+                <BarChart3 className="h-4 w-4" />
+                Analyze Deal
+              </Button>
+              <Button
+                onClick={handleContactOwner}
+                variant="outline"
+                className="flex items-center gap-2 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
+              >
+                <PhoneCall className="h-4 w-4" />
+                Contact Owner
+              </Button>
             </div>
           </div>
         </DialogContent>
@@ -1742,10 +1812,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                   "POST",
                   `/api/conversations/${conversation.id}/messages`,
                   {
-                    content: JSON.stringify({
-                      type: "property_card",
-                      data: property,
-                    }),
+                    content: updatedPropertyCard,
                     role: "assistant",
                     isAiGenerated: true,
                   },
