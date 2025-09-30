@@ -353,7 +353,7 @@ const PropertyDetailsModal = ({
         property.ownerDNCPhone !== null && 
         property.ownerDNCPhone.trim() !== "") {
       const directDncPhones = property.ownerDNCPhone.split(',').map((phone: string) => phone.trim()).filter(Boolean);
-      dncPhones.push(.....directDncPhones);
+      dncPhones.push(...directDncPhones);
     }
     
     // Check for DNC phones in phone numbers array
