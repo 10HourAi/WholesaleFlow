@@ -371,18 +371,18 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                             let phoneType = `Phone ${index + 1}`;
                             
                             if (typeof phone === 'string') {
-                              phoneNumber = phone;
+                              phoneNumber = phone.trim();
                             } else if (typeof phone === 'object' && phone !== null) {
-                              phoneNumber = phone.number || phone;
+                              phoneNumber = (phone.number || phone).toString().trim();
                               phoneType = phone.type || phoneType;
                             }
                             
                             // Check if phoneNumber is valid and not 'undefined'
-                            if (phoneNumber && phoneNumber !== 'undefined' && phoneNumber.toString().trim() !== '') {
+                            if (phoneNumber && phoneNumber !== 'undefined' && phoneNumber !== '' && phoneNumber !== 'null') {
                               return (
-                                <div key={index} className="flex items-center gap-2 pl-2">
+                                <div key={`phone-${index}-${phoneNumber}`} className="flex items-center gap-2 pl-2">
                                   <Phone className="w-3 h-3 text-slate-400" />
-                                  <span className="text-xs">{phoneNumber} ({phoneType})</span>
+                                  <span className="text-xs font-mono">{phoneNumber} ({phoneType})</span>
                                 </div>
                               );
                             }
@@ -390,12 +390,36 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                           }).filter(Boolean)}</div>
                       </div>
                     )}
-                    {/* Fallback: Show any phone numbers from direct property fields */}
-                    {(!property.ownerPhoneNumbers || property.ownerPhoneNumbers.length === 0) && 
-                     (!property.ownerPhone || property.ownerPhone === 'undefined') && 
-                     (!property.ownerLandLine || property.ownerLandLine === 'undefined') && 
-                     (!property.ownerMobilePhone || property.ownerMobilePhone === 'undefined') && (
-                      <span className="text-slate-500 text-sm">No phone numbers available</span>
+                    {/* Fallback: Show direct phone fields if array is empty/missing */}
+                    {(!property.ownerPhoneNumbers || property.ownerPhoneNumbers.length === 0) && (
+                      <>
+                        {property.ownerPhone && property.ownerPhone !== 'undefined' && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="w-3 h-3 text-slate-500" />
+                            <span className="font-mono">{property.ownerPhone}</span>
+                            <span className="text-xs text-blue-600 bg-blue-100 px-1 rounded">Direct</span>
+                          </div>
+                        )}
+                        {property.ownerLandLine && property.ownerLandLine !== 'undefined' && property.ownerLandLine !== property.ownerPhone && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="w-3 h-3 text-slate-500" />
+                            <span className="font-mono">{property.ownerLandLine}</span>
+                            <span className="text-xs text-green-600 bg-green-100 px-1 rounded">Land</span>
+                          </div>
+                        )}
+                        {property.ownerMobilePhone && property.ownerMobilePhone !== 'undefined' && property.ownerMobilePhone !== property.ownerPhone && (
+                          <div className="flex items-center gap-2 text-sm">
+                            <Phone className="w-3 h-3 text-slate-500" />
+                            <span className="font-mono">{property.ownerMobilePhone}</span>
+                            <span className="text-xs text-orange-600 bg-orange-100 px-1 rounded">Mobile</span>
+                          </div>
+                        )}
+                        {(!property.ownerPhone || property.ownerPhone === 'undefined') && 
+                         (!property.ownerLandLine || property.ownerLandLine === 'undefined') && 
+                         (!property.ownerMobilePhone || property.ownerMobilePhone === 'undefined') && (
+                          <span className="text-slate-500 text-sm">No phone numbers available</span>
+                        )}
+                      </>
                     )}
                     
                     {/* Debug: Show raw phone array data */}
