@@ -406,7 +406,7 @@ const PropertyDetailsModal = ({
 
     console.log('🔍 DEBUG formatPhoneNumbers: After primary fields, uniquePhones:', Array.from(uniquePhones));
 
-    // 2. Process the ownerPhoneNumbers array (only handles string arrays now)
+    // 2. Process the ownerPhoneNumbers array (handles string arrays)
     console.log('🔍 DEBUG formatPhoneNumbers: Processing ownerPhoneNumbers array...');
     if (Array.isArray(property.ownerPhoneNumbers)) {
       console.log(`🔍 DEBUG formatPhoneNumbers: ownerPhoneNumbers is array with ${property.ownerPhoneNumbers.length} items`);
@@ -418,14 +418,11 @@ const PropertyDetailsModal = ({
           phoneEntryString: String(phoneEntry)
         });
 
-        // Handle both string and object formats
+        // Since ownerPhoneNumbers is now a string array, treat each entry as a phone number string
         if (typeof phoneEntry === "string") {
           addPhone(phoneEntry, `ownerPhoneNumbers[${index}] (string)`);
-        } else if (phoneEntry && typeof phoneEntry === "object" && phoneEntry.number) {
-          // Handle object format like {number: '1234567890', type: 'mobile'}
-          addPhone(phoneEntry.number, `ownerPhoneNumbers[${index}] (object.number)`);
         } else {
-          console.log(`🔍 DEBUG formatPhoneNumbers: Skipped invalid array item ${index}:`, phoneEntry);
+          console.log(`🔍 DEBUG formatPhoneNumbers: Skipped non-string array item ${index}:`, phoneEntry);
         }
       });
     } else {
