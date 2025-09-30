@@ -334,7 +334,7 @@ const PropertyDetailsModal = ({
 📞 CONTACT INFORMATION
    Email(s)                     ${formatEmail(property.ownerEmail)}
    Phone(s)                     ${formatPhoneNumbers(property)}
-   ${formatDNCPhones(property)}
+   DNC Phone(s)                 ${formatDNCPhones(property)}
    Mailing Address              ${property.ownerMailingAddress || "N/A"}
 
 💰 VALUATION DETAILS
