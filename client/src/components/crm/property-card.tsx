@@ -377,12 +377,16 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                               phoneType = phone.type || phoneType;
                             }
                             
-                            return phoneNumber && phoneNumber !== 'undefined' && (
-                              <div key={index} className="flex items-center gap-2 pl-2">
-                                <Phone className="w-3 h-3 text-slate-400" />
-                                <span className="text-xs">{phoneNumber} ({phoneType})</span>
-                              </div>
-                            );
+                            // Check if phoneNumber is valid and not 'undefined'
+                            if (phoneNumber && phoneNumber !== 'undefined') {
+                              return (
+                                <div key={index} className="flex items-center gap-2 pl-2">
+                                  <Phone className="w-3 h-3 text-slate-400" />
+                                  <span className="text-xs">{phoneNumber} ({phoneType})</span>
+                                </div>
+                              );
+                            }
+                            return null;
                           })}
                         </div>
                       </div>
