@@ -342,7 +342,8 @@ const PropertyDetailsModal = ({
         typeof phone !== "string" ||
         !phone ||
         phone.toLowerCase() === "null" ||
-        phone.toLowerCase() === "undefined"
+        phone.toLowerCase() === "undefined" ||
+        phone.trim() === ""
       ) {
         return;
       }
@@ -359,26 +360,14 @@ const PropertyDetailsModal = ({
     addPhone(property.ownerMobilePhone);
     addPhone(property.ownerLandLine);
 
-    // 2. Process the ownerPhoneNumbers array (handles string[] and object[])
+    // 2. Process the ownerPhoneNumbers array (only handles string arrays now)
     if (Array.isArray(property.ownerPhoneNumbers)) {
       property.ownerPhoneNumbers.forEach((phoneEntry: any) => {
+        // Only handle string arrays - phone numbers are strings
         if (typeof phoneEntry === "string") {
           addPhone(phoneEntry);
-        } else if (typeof phoneEntry === "object" && phoneEntry?.number) {
-          // Handle cases where the array contains objects like { number: '...', type: '...' }
-          addPhone(phoneEntry.number);
         }
       });
-    }
-
-    // 3. (Fallback) Check for nested owner object properties
-    if (property.owner) {
-      addPhone(property.owner.phone);
-      if (Array.isArray(property.owner.phoneNumbers)) {
-        property.owner.phoneNumbers.forEach((phone: any) =>
-          addPhone(phone.number || phone),
-        );
-      }
     }
 
     // If no valid numbers were found, return the default message
