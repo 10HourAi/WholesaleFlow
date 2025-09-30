@@ -271,56 +271,57 @@ const PropertyDetailsModal = ({
   if (!property) return null;
 
   const formatEmail = (property: any) => {
+    const emails = [];
+    
     // Check for direct email field
     if (property.ownerEmail && 
         property.ownerEmail !== "null" && 
         property.ownerEmail !== null && 
         property.ownerEmail !== "undefined" && 
         property.ownerEmail.trim() !== "") {
-      return property.ownerEmail;
+      emails.push(property.ownerEmail.trim());
     }
     
     // Check for emails array
     if (property.ownerEmails && Array.isArray(property.ownerEmails) && property.ownerEmails.length > 0) {
       const validEmails = property.ownerEmails.filter((email: string) => 
-        email && email !== "null" && email !== "undefined" && email.trim() !== ""
+        email && email !== "null" && email !== "undefined" && email.trim() !== "" && !emails.includes(email.trim())
       );
-      if (validEmails.length > 0) {
-        return validEmails.join(", ");
-      }
+      emails.push(...validEmails);
     }
     
-    return "Contact for details";
+    return emails.length > 0 ? emails.join(", ") : "Contact for details";
   };
 
   const formatPhoneNumbers = (property: any) => {
     const phones = [];
+    const addedNumbers = new Set();
+
+    // Helper function to add phone if not duplicate
+    const addPhone = (number: string, type: string) => {
+      if (number && 
+          number !== "null" && 
+          number !== null && 
+          number.trim() !== "" && 
+          !addedNumbers.has(number.trim())) {
+        phones.push(`${number.trim()} (${type})`);
+        addedNumbers.add(number.trim());
+      }
+    };
 
     // Primary phone
-    if (property.ownerPhone && 
-        property.ownerPhone !== "null" && 
-        property.ownerPhone !== null && 
-        property.ownerPhone.trim() !== "") {
-      phones.push(`${property.ownerPhone} (Primary)`);
+    if (property.ownerPhone) {
+      addPhone(property.ownerPhone, "Primary");
     }
     
-    // Landline (if different from primary)
-    if (property.ownerLandLine && 
-        property.ownerLandLine !== "null" && 
-        property.ownerLandLine !== null && 
-        property.ownerLandLine.trim() !== "" &&
-        property.ownerLandLine !== property.ownerPhone) {
-      phones.push(`${property.ownerLandLine} (Landline)`);
+    // Landline
+    if (property.ownerLandLine) {
+      addPhone(property.ownerLandLine, "Landline");
     }
     
-    // Mobile (if different from primary and landline)
-    if (property.ownerMobilePhone && 
-        property.ownerMobilePhone !== "null" && 
-        property.ownerMobilePhone !== null && 
-        property.ownerMobilePhone.trim() !== "" &&
-        property.ownerMobilePhone !== property.ownerPhone && 
-        property.ownerMobilePhone !== property.ownerLandLine) {
-      phones.push(`${property.ownerMobilePhone} (Mobile)`);
+    // Mobile
+    if (property.ownerMobilePhone) {
+      addPhone(property.ownerMobilePhone, "Mobile");
     }
 
     // Check for phone numbers array
@@ -330,13 +331,12 @@ const PropertyDetailsModal = ({
       );
       
       validPhones.forEach((phone: any) => {
-        const phoneNumber = phone.number;
+        const phoneNumber = phone.number.trim();
         const phoneType = phone.type || "Unknown";
-        const phoneStr = `${phoneNumber} (${phoneType})`;
         
-        // Only add if not already in the list
-        if (!phones.some(p => p.includes(phoneNumber))) {
-          phones.push(phoneStr);
+        if (!addedNumbers.has(phoneNumber)) {
+          phones.push(`${phoneNumber} (${phoneType})`);
+          addedNumbers.add(phoneNumber);
         }
       });
     }
@@ -346,25 +346,35 @@ const PropertyDetailsModal = ({
 
   const formatDNCPhones = (property: any) => {
     const dncPhones = [];
+    const addedNumbers = new Set();
     
     // Check direct DNC phone field
     if (property.ownerDNCPhone && 
         property.ownerDNCPhone !== "null" && 
         property.ownerDNCPhone !== null && 
         property.ownerDNCPhone.trim() !== "") {
-      const directDncPhones = property.ownerDNCPhone.split(',').map((phone: string) => phone.trim()).filter(Boolean);
-      dncPhones.push(...directDncPhones);
+      const directDncPhones = property.ownerDNCPhone.split(',')
+        .map((phone: string) => phone.trim())
+        .filter(Boolean);
+      
+      directDncPhones.forEach((phone: string) => {
+        if (!addedNumbers.has(phone)) {
+          dncPhones.push(`${phone} (DNC)`);
+          addedNumbers.add(phone);
+        }
+      });
     }
     
     // Check for DNC phones in phone numbers array
     if (property.ownerPhoneNumbers && Array.isArray(property.ownerPhoneNumbers)) {
       const dncFromArray = property.ownerPhoneNumbers
-        .filter((phone: any) => phone && phone.number && phone.dnc && phone.number !== "null" && phone.number.trim() !== "")
-        .map((phone: any) => `${phone.number} (${phone.type || "Unknown"})`);
+        .filter((phone: any) => phone && phone.number && phone.dnc && phone.number !== "null" && phone.number.trim() !== "");
       
-      dncFromArray.forEach((phone: string) => {
-        if (!dncPhones.some(p => phone.includes(p.split(' ')[0]))) {
-          dncPhones.push(phone);
+      dncFromArray.forEach((phone: any) => {
+        const phoneNumber = phone.number.trim();
+        if (!addedNumbers.has(phoneNumber)) {
+          dncPhones.push(`${phoneNumber} (${phone.type || "DNC"})`);
+          addedNumbers.add(phoneNumber);
         }
       });
     }
@@ -373,13 +383,25 @@ const PropertyDetailsModal = ({
   };
 
   const formatMailingAddress = (property: any) => {
+    // Check for mailing address
     if (property.ownerMailingAddress && 
         property.ownerMailingAddress !== "null" && 
         property.ownerMailingAddress !== null && 
         property.ownerMailingAddress.trim() !== "") {
-      return property.ownerMailingAddress;
+      return property.ownerMailingAddress.trim();
     }
-    return "Same as property address";
+    
+    // Check for owner mailing address from owner object
+    if (property.owner && property.owner.mailingAddress &&
+        property.owner.mailingAddress !== "null" &&
+        property.owner.mailingAddress !== null &&
+        property.owner.mailingAddress.trim() !== "") {
+      return property.owner.mailingAddress.trim();
+    }
+    
+    // Fall back to property address
+    const propertyAddress = `${property.address || ""}, ${property.city || ""}, ${property.state || ""} ${property.zipCode || ""}`.trim();
+    return propertyAddress || "Same as property address";
   };
 
   return (
