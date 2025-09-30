@@ -351,38 +351,73 @@ const PropertyDetailsModal = ({
       ownerPhoneNumbers: property.ownerPhoneNumbers,
       ownerPhoneNumbersType: typeof property.ownerPhoneNumbers,
       ownerPhoneNumbersIsArray: Array.isArray(property.ownerPhoneNumbers),
-      ownerPhoneNumbersLength: property.ownerPhoneNumbers?.length
+      ownerPhoneNumbersLength: property.ownerPhoneNumbers?.length,
+      fullPropertyKeys: Object.keys(property)
     });
 
     const phones = [];
 
     // Collect all phone numbers as-is
-    if (property.ownerPhone && property.ownerPhone !== 'undefined' && property.ownerPhone.trim() !== '') {
+    if (property.ownerPhone && property.ownerPhone !== 'undefined' && property.ownerPhone !== null && property.ownerPhone.trim() !== '') {
+      console.log('🔍 DEBUG formatPhoneNumbers: Added ownerPhone:', property.ownerPhone);
       phones.push(property.ownerPhone);
     }
-    if (property.ownerMobilePhone && property.ownerMobilePhone !== 'undefined' && property.ownerMobilePhone.trim() !== '') {
+    if (property.ownerMobilePhone && property.ownerMobilePhone !== 'undefined' && property.ownerMobilePhone !== null && property.ownerMobilePhone.trim() !== '') {
+      console.log('🔍 DEBUG formatPhoneNumbers: Added ownerMobilePhone:', property.ownerMobilePhone);
       phones.push(property.ownerMobilePhone);
     }
-    if (property.ownerLandLine && property.ownerLandLine !== 'undefined' && property.ownerLandLine.trim() !== '') {
+    if (property.ownerLandLine && property.ownerLandLine !== 'undefined' && property.ownerLandLine !== null && property.ownerLandLine.trim() !== '') {
+      console.log('🔍 DEBUG formatPhoneNumbers: Added ownerLandLine:', property.ownerLandLine);
       phones.push(property.ownerLandLine);
     }
     
     // Handle ownerPhoneNumbers array - it might contain strings or objects
-    if (Array.isArray(property.ownerPhoneNumbers)) {
+    if (Array.isArray(property.ownerPhoneNumbers) && property.ownerPhoneNumbers.length > 0) {
       console.log('🔍 DEBUG formatPhoneNumbers: Processing ownerPhoneNumbers array:', property.ownerPhoneNumbers);
       
       property.ownerPhoneNumbers.forEach((phoneEntry: any, index: number) => {
         console.log(`🔍 DEBUG formatPhoneNumbers: Processing array item ${index}:`, {
           phoneEntry,
           phoneEntryType: typeof phoneEntry,
-          phoneEntryString: String(phoneEntry)
+          phoneEntryString: String(phoneEntry),
+          phoneEntryKeys: typeof phoneEntry === 'object' ? Object.keys(phoneEntry) : 'not an object'
         });
 
-        if (typeof phoneEntry === "string" && phoneEntry && phoneEntry !== 'undefined' && phoneEntry.trim() !== '') {
-          phones.push(phoneEntry);
-        } else if (typeof phoneEntry === "object" && phoneEntry?.number && phoneEntry.number !== 'undefined' && phoneEntry.number.trim() !== '') {
-          // Handle phone objects with number property
-          phones.push(phoneEntry.number);
+        // Handle different formats of phone data
+        let phoneNumber = null;
+        let phoneType = null;
+
+        if (typeof phoneEntry === "string" && phoneEntry && phoneEntry !== 'undefined' && phoneEntry !== 'null' && phoneEntry.trim() !== '') {
+          phoneNumber = phoneEntry.trim();
+          phoneType = 'Phone';
+          console.log(`🔍 DEBUG formatPhoneNumbers: Found string phone: ${phoneNumber}`);
+        } else if (typeof phoneEntry === "object" && phoneEntry !== null) {
+          // Try different possible property names for phone numbers
+          if (phoneEntry.number && phoneEntry.number !== 'undefined' && phoneEntry.number !== 'null') {
+            phoneNumber = phoneEntry.number.toString().trim();
+            phoneType = phoneEntry.type || 'Phone';
+            console.log(`🔍 DEBUG formatPhoneNumbers: Found object.number phone: ${phoneNumber} (${phoneType})`);
+          } else if (phoneEntry.phoneNumber && phoneEntry.phoneNumber !== 'undefined' && phoneEntry.phoneNumber !== 'null') {
+            phoneNumber = phoneEntry.phoneNumber.toString().trim();
+            phoneType = phoneEntry.type || 'Phone';
+            console.log(`🔍 DEBUG formatPhoneNumbers: Found object.phoneNumber phone: ${phoneNumber} (${phoneType})`);
+          } else if (phoneEntry.phone && phoneEntry.phone !== 'undefined' && phoneEntry.phone !== 'null') {
+            phoneNumber = phoneEntry.phone.toString().trim();
+            phoneType = phoneEntry.type || 'Phone';
+            console.log(`🔍 DEBUG formatPhoneNumbers: Found object.phone phone: ${phoneNumber} (${phoneType})`);
+          }
+        }
+
+        // Add valid phone numbers to the list
+        if (phoneNumber && phoneNumber !== '') {
+          // Skip DNC phones for the main phone list
+          const isDnc = typeof phoneEntry === 'object' && (phoneEntry.dnc === true || phoneEntry.type?.toLowerCase().includes('dnc'));
+          if (!isDnc) {
+            phones.push(phoneNumber);
+            console.log(`🔍 DEBUG formatPhoneNumbers: Added phone to list: ${phoneNumber}`);
+          } else {
+            console.log(`🔍 DEBUG formatPhoneNumbers: Skipped DNC phone: ${phoneNumber}`);
+          }
         }
       });
     }
@@ -390,7 +425,9 @@ const PropertyDetailsModal = ({
     console.log('🔍 DEBUG formatPhoneNumbers: Final phones array:', phones);
 
     // Return raw phone numbers joined with commas, or default message if none
-    return phones.length > 0 ? phones.join(", ") : "Contact for details";
+    const result = phones.length > 0 ? phones.join(", ") : "Contact for details";
+    console.log('🔍 DEBUG formatPhoneNumbers: Final result:', result);
+    return result;
   };
   const formatDNCPhones = (property: any) => {
     const dncPhones = [];
