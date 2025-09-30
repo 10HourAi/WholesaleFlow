@@ -360,11 +360,13 @@ const PropertyDetailsModal = ({
         number !== null &&
         number !== "undefined" &&
         typeof number === "string" &&
-        number.trim() !== ""
+        number.trim() !== "" &&
+        number.trim() !== "undefined" &&
+        number.trim() !== "null"
       ) {
         const cleanNumber = number.trim();
         const formattedNumber = cleanPhoneNumber(cleanNumber);
-        if (formattedNumber && !addedNumbers.has(cleanNumber)) {
+        if (formattedNumber && formattedNumber !== "" && !addedNumbers.has(cleanNumber)) {
           phones.push(`${formattedNumber} (${type})`);
           addedNumbers.add(cleanNumber);
         }
@@ -405,10 +407,16 @@ const PropertyDetailsModal = ({
         if (phone && phone !== "undefined" && phone !== "null") {
           if (typeof phone === 'string') {
             // Handle string phone numbers
-            addPhone(phone, `Phone ${index + 1}`);
+            const cleanNumber = phone.trim();
+            if (cleanNumber && cleanNumber !== "undefined" && cleanNumber !== "null") {
+              addPhone(cleanNumber, `Phone ${index + 1}`);
+            }
           } else if (phone && typeof phone === 'object' && phone.number) {
             // Handle object phone numbers with number property
-            addPhone(phone.number, phone.type || `Phone ${index + 1}`);
+            const phoneNumber = phone.number;
+            if (phoneNumber && phoneNumber !== "undefined" && phoneNumber !== "null") {
+              addPhone(phoneNumber, phone.type || `Phone ${index + 1}`);
+            }
           }
         }
       });
