@@ -200,17 +200,13 @@ class BatchLeadsService {
       if (!requestBody.searchCriteria.building) {
         requestBody.searchCriteria.building = {};
       }
-      // Try multiple filter approaches for better API compatibility
-      requestBody.searchCriteria.building.bedrooms = {
+      // Use the correct BatchData API format for bedroom count
+      requestBody.searchCriteria.building.bedroomCount = {
         min: criteria.minBedrooms,
-        gte: criteria.minBedrooms, // Also try "greater than or equal" syntax
       };
 
-      // Also try filtering out null/empty bedroom data
-      requestBody.searchCriteria.building.bedroomsExists = true;
-
       console.log(
-        `🛏️ Added comprehensive bedroom filter: min ${criteria.minBedrooms} bedrooms (with existence check)`,
+        `🛏️ Added bedroom filter: min ${criteria.minBedrooms} bedrooms using bedroomCount.min format`,
       );
     }
 
