@@ -360,19 +360,30 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                         <span>{property.ownerMobilePhone}</span>
                       </div>
                     )}
-                    {/* Show all additional phone numbers from the array */}
+                    {/* Show all phone numbers from the array - handle both string arrays and object arrays */}
                     {property.ownerPhoneNumbers && Array.isArray(property.ownerPhoneNumbers) && property.ownerPhoneNumbers.length > 0 && (
                       <div className="text-sm">
                         <span className="text-slate-600">All Phone Numbers:</span>
                         <div className="mt-1 space-y-1">
-                          {property.ownerPhoneNumbers.map((phone, index) => (
-                            phone && phone !== 'undefined' && (
+                          {property.ownerPhoneNumbers.map((phone, index) => {
+                            // Handle both string arrays and object arrays
+                            let phoneNumber = '';
+                            let phoneType = `Phone ${index + 1}`;
+                            
+                            if (typeof phone === 'string') {
+                              phoneNumber = phone;
+                            } else if (typeof phone === 'object' && phone.number) {
+                              phoneNumber = phone.number;
+                              phoneType = phone.type || phoneType;
+                            }
+                            
+                            return phoneNumber && phoneNumber !== 'undefined' && (
                               <div key={index} className="flex items-center gap-2 pl-2">
                                 <Phone className="w-3 h-3 text-slate-400" />
-                                <span className="text-xs">{phone}</span>
+                                <span className="text-xs">{phoneNumber} ({phoneType})</span>
                               </div>
-                            )
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     )}
