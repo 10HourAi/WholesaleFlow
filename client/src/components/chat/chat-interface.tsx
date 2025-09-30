@@ -416,33 +416,23 @@ const PropertyDetailsModal = ({
     ) {
       console.log("🔍 DEBUG: Processing ownerPhoneNumbers array:", property.ownerPhoneNumbers);
       
-      property.ownerPhoneNumbers.forEach((phoneNumber: any, index: number) => {
+      property.ownerPhoneNumbers.forEach((phoneNumber: string, index: number) => {
         console.log(`🔍 DEBUG: Processing phone ${index}:`, phoneNumber, typeof phoneNumber);
         
-        // Backend sends phone numbers as strings, handle both string and object formats
-        let actualPhoneNumber: string;
-        let phoneType: string;
-        
-        if (typeof phoneNumber === 'string') {
-          actualPhoneNumber = phoneNumber;
-          phoneType = `Phone ${index + 1}`;
-        } else if (phoneNumber && typeof phoneNumber === 'object' && phoneNumber.number) {
-          actualPhoneNumber = phoneNumber.number;
-          phoneType = phoneNumber.type || `Phone ${index + 1}`;
-        } else {
-          console.log(`🔍 DEBUG: Skipping invalid phone:`, phoneNumber);
-          return;
-        }
-        
-        if (actualPhoneNumber && 
-            actualPhoneNumber !== "undefined" && 
-            actualPhoneNumber !== "null" && 
-            actualPhoneNumber.trim() !== "" &&
-            actualPhoneNumber.trim() !== "undefined" &&
-            actualPhoneNumber.trim() !== "null") {
-          const cleanNumber = actualPhoneNumber.trim();
+        // Backend sends phone numbers as strings - treat them all as strings
+        if (typeof phoneNumber === 'string' && 
+            phoneNumber && 
+            phoneNumber !== "undefined" && 
+            phoneNumber !== "null" && 
+            phoneNumber.trim() !== "" &&
+            phoneNumber.trim() !== "undefined" &&
+            phoneNumber.trim() !== "null") {
+          const cleanNumber = phoneNumber.trim();
+          const phoneType = `Phone ${index + 1}`;
           console.log(`🔍 DEBUG: Adding phone number: ${cleanNumber} (${phoneType})`);
           addPhone(cleanNumber, phoneType);
+        } else {
+          console.log(`🔍 DEBUG: Skipping invalid phone:`, phoneNumber, typeof phoneNumber);
         }
       });
     }
