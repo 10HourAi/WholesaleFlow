@@ -335,103 +335,97 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                     {property.ownerMailingAddress || "Same as property address"}
                   </div>
                 </div>
-                {/* Phone Numbers */}
+                {/* Phone Numbers - Rewritten Logic */}
                 <div>
                   <span className="font-medium text-slate-700">Phone Numbers:</span>
                   <div className="mt-1 space-y-1">
-                    {property.ownerPhone && property.ownerPhone !== 'undefined' && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-slate-500" />
-                        <span>{property.ownerPhone}</span>
-                        <span className="text-xs text-green-600 bg-green-100 px-1 rounded">Primary</span>
-                      </div>
-                    )}
-                    {property.ownerLandLine && property.ownerLandLine !== 'undefined' && property.ownerLandLine !== property.ownerPhone && (
-                      <div className="text-sm flex items-center gap-2">
-                        <Phone className="w-3 h-3 text-slate-500" />
-                        <span className="text-slate-600">Land Line:</span> 
-                        <span>{property.ownerLandLine}</span>
-                      </div>
-                    )}
-                    {property.ownerMobilePhone && property.ownerMobilePhone !== 'undefined' && property.ownerMobilePhone !== property.ownerPhone && (
-                      <div className="text-sm flex items-center gap-2">
-                        <Phone className="w-3 h-3 text-slate-500" />
-                        <span className="text-slate-600">Mobile:</span> 
-                        <span>{property.ownerMobilePhone}</span>
-                      </div>
-                    )}
-                    {/* Show all phone numbers from the array - handle both string arrays and object arrays */}
-                    {property.ownerPhoneNumbers && Array.isArray(property.ownerPhoneNumbers) && property.ownerPhoneNumbers.length > 0 && (
-                      <div className="text-sm">
-                        <span className="text-slate-600">All Phone Numbers:</span>
-                        <div className="mt-1 space-y-1">
-                          {property.ownerPhoneNumbers.map((phone, index) => {
-                            // Handle both string arrays and object arrays
-                            let phoneNumber = '';
-                            let phoneType = `Phone ${index + 1}`;
-                            
-                            if (typeof phone === 'string') {
-                              phoneNumber = phone.trim();
-                            } else if (typeof phone === 'object' && phone !== null) {
-                              phoneNumber = (phone.number || phone).toString().trim();
-                              phoneType = phone.type || phoneType;
-                            }
-                            
-                            // Check if phoneNumber is valid and not 'undefined'
-                            if (phoneNumber && phoneNumber !== 'undefined' && phoneNumber !== '' && phoneNumber !== 'null') {
-                              return (
-                                <div key={`phone-${index}-${phoneNumber}`} className="flex items-center gap-2 pl-2">
-                                  <Phone className="w-3 h-3 text-slate-400" />
-                                  <span className="text-xs font-mono">{phoneNumber} ({phoneType})</span>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }).filter(Boolean)}</div>
-                      </div>
-                    )}
-                    {/* Fallback: Show direct phone fields if array is empty/missing */}
-                    {(!property.ownerPhoneNumbers || property.ownerPhoneNumbers.length === 0) && (
-                      <>
-                        {property.ownerPhone && property.ownerPhone !== 'undefined' && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Phone className="w-3 h-3 text-slate-500" />
-                            <span className="font-mono">{property.ownerPhone}</span>
-                            <span className="text-xs text-blue-600 bg-blue-100 px-1 rounded">Direct</span>
-                          </div>
-                        )}
-                        {property.ownerLandLine && property.ownerLandLine !== 'undefined' && property.ownerLandLine !== property.ownerPhone && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Phone className="w-3 h-3 text-slate-500" />
-                            <span className="font-mono">{property.ownerLandLine}</span>
-                            <span className="text-xs text-green-600 bg-green-100 px-1 rounded">Land</span>
-                          </div>
-                        )}
-                        {property.ownerMobilePhone && property.ownerMobilePhone !== 'undefined' && property.ownerMobilePhone !== property.ownerPhone && (
-                          <div className="flex items-center gap-2 text-sm">
-                            <Phone className="w-3 h-3 text-slate-500" />
-                            <span className="font-mono">{property.ownerMobilePhone}</span>
-                            <span className="text-xs text-orange-600 bg-orange-100 px-1 rounded">Mobile</span>
-                          </div>
-                        )}
-                        {(!property.ownerPhone || property.ownerPhone === 'undefined') && 
-                         (!property.ownerLandLine || property.ownerLandLine === 'undefined') && 
-                         (!property.ownerMobilePhone || property.ownerMobilePhone === 'undefined') && (
-                          <span className="text-slate-500 text-sm">No phone numbers available</span>
-                        )}
-                      </>
-                    )}
-                    
-                    {/* Debug: Show raw phone array data */}
-                    {process.env.NODE_ENV === 'development' && property.ownerPhoneNumbers && (
-                      <div className="text-xs text-gray-400 mt-2 p-2 bg-gray-50 rounded">
-                        <div>Debug - Raw phone data:</div>
-                        <div>Type: {typeof property.ownerPhoneNumbers}</div>
-                        <div>Array: {Array.isArray(property.ownerPhoneNumbers) ? 'Yes' : 'No'}</div>
-                        <div>Length: {property.ownerPhoneNumbers.length}</div>
-                        <div>Content: {JSON.stringify(property.ownerPhoneNumbers)}</div>
-                      </div>
-                    )}
+                    {(() => {
+                      // Helper function to clean and validate phone numbers
+                      const cleanPhone = (phone) => {
+                        if (!phone || phone === 'undefined' || phone === 'null' || phone === null) return null;
+                        const cleaned = phone.toString().trim();
+                        return cleaned && cleaned !== 'undefined' && cleaned !== 'null' && cleaned !== '' ? cleaned : null;
+                      };
+
+                      // Helper function to format phone number
+                      const formatPhone = (phone) => {
+                        const digits = phone.replace(/\D/g, '');
+                        if (digits.length === 10) {
+                          return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+                        }
+                        return phone;
+                      };
+
+                      // Collect all unique phone numbers
+                      const allPhones = new Set();
+                      const phoneData = [];
+
+                      // Process ownerPhoneNumbers array first (highest priority)
+                      if (property.ownerPhoneNumbers && Array.isArray(property.ownerPhoneNumbers)) {
+                        property.ownerPhoneNumbers.forEach((phone, index) => {
+                          let phoneNumber = null;
+                          let phoneType = `Phone ${index + 1}`;
+                          
+                          if (typeof phone === 'string') {
+                            phoneNumber = cleanPhone(phone);
+                          } else if (typeof phone === 'object' && phone !== null) {
+                            phoneNumber = cleanPhone(phone.number || phone);
+                            phoneType = phone.type || phoneType;
+                          }
+
+                          if (phoneNumber && !allPhones.has(phoneNumber)) {
+                            allPhones.add(phoneNumber);
+                            phoneData.push({ 
+                              number: phoneNumber, 
+                              type: phoneType,
+                              formatted: formatPhone(phoneNumber),
+                              source: 'array'
+                            });
+                          }
+                        });
+                      }
+
+                      // Add individual phone fields if not already included
+                      const individualPhones = [
+                        { number: cleanPhone(property.ownerPhone), type: 'Primary', source: 'direct' },
+                        { number: cleanPhone(property.ownerLandLine), type: 'Land Line', source: 'direct' },
+                        { number: cleanPhone(property.ownerMobilePhone), type: 'Mobile', source: 'direct' }
+                      ];
+
+                      individualPhones.forEach(({ number, type, source }) => {
+                        if (number && !allPhones.has(number)) {
+                          allPhones.add(number);
+                          phoneData.push({ 
+                            number, 
+                            type,
+                            formatted: formatPhone(number),
+                            source 
+                          });
+                        }
+                      });
+
+                      // Render phone numbers
+                      if (phoneData.length === 0) {
+                        return (
+                          <div className="text-slate-500 text-sm">No phone numbers available</div>
+                        );
+                      }
+
+                      return phoneData.map((phone, index) => (
+                        <div key={`phone-${index}-${phone.number}`} className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-slate-500" />
+                          <span className="font-mono">{phone.formatted}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded ${
+                            phone.type === 'Primary' ? 'bg-blue-100 text-blue-700' :
+                            phone.type === 'Mobile' ? 'bg-green-100 text-green-700' :
+                            phone.type === 'Land Line' ? 'bg-orange-100 text-orange-700' :
+                            'bg-gray-100 text-gray-700'
+                          }`}>
+                            {phone.type}
+                          </span>
+                        </div>
+                      ));
+                    })()}
                   </div>
                 </div>
 
@@ -451,20 +445,42 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                 </div>
 
                 {/* DNC Phone Numbers */}
-                {property.ownerDncPhone && property.ownerDncPhone !== 'undefined' && property.ownerDncPhone.trim() !== '' && (
-                  <div>
-                    <span className="font-medium text-slate-700">DNC Phone Numbers:</span>
-                    <div className="mt-1 text-sm text-red-600">
-                      {property.ownerDncPhone.split(',').filter(phone => phone.trim() && phone.trim() !== 'undefined').map((phone, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <Phone className="w-3 h-3" />
-                          <span>{phone.trim()}</span>
-                          <span className="text-xs bg-red-100 text-red-800 px-1 rounded">DNC</span>
-                        </div>
-                      ))}
+                {(() => {
+                  const dncPhones = [];
+                  
+                  // Process DNC phone string
+                  if (property.ownerDncPhone && property.ownerDncPhone !== 'undefined') {
+                    const phones = property.ownerDncPhone.split(',')
+                      .map(phone => phone.trim())
+                      .filter(phone => phone && phone !== 'undefined' && phone !== 'null');
+                    dncPhones.push(...phones);
+                  }
+
+                  if (dncPhones.length === 0) return null;
+
+                  const formatPhone = (phone) => {
+                    const digits = phone.replace(/\D/g, '');
+                    if (digits.length === 10) {
+                      return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+                    }
+                    return phone;
+                  };
+
+                  return (
+                    <div>
+                      <span className="font-medium text-slate-700">DNC Phone Numbers:</span>
+                      <div className="mt-1 space-y-1">
+                        {dncPhones.map((phone, index) => (
+                          <div key={`dnc-${index}-${phone}`} className="flex items-center gap-2 text-red-600">
+                            <Phone className="w-4 h-4" />
+                            <span className="font-mono">{formatPhone(phone)}</span>
+                            <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded">DNC</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
               </div>
             </CardContent>
           </Card>
@@ -502,7 +518,7 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
           </Card>
 
           {/* Contact Information - Show from either contact prop or embedded property data */}
-          {(contact || property.ownerPhone || property.ownerEmail || property.ownerLandLine || property.ownerMobilePhone) && (
+          {(contact || property.ownerPhone || property.ownerEmail || property.ownerLandLine || property.ownerMobilePhone || property.ownerPhoneNumbers?.length > 0) && (
             <Card className="md:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -517,17 +533,6 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                     <div className="mt-1">{contact?.name || property.ownerName || "Property Owner"}</div>
                   </div>
                   
-                  {/* Primary Phone */}
-                  {(contact?.phone || property.ownerPhone) && (
-                    <div>
-                      <span className="font-medium text-slate-700">Primary Phone:</span>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Phone className="w-4 h-4 text-slate-500" />
-                        <span>{contact?.phone || property.ownerPhone}</span>
-                      </div>
-                    </div>
-                  )}
-
                   {/* Email */}
                   {(contact?.email || property.ownerEmail) && (
                     <div>
@@ -539,42 +544,84 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                     </div>
                   )}
 
-                  {/* Additional Phone Numbers */}
-                  {property.ownerLandLine && property.ownerLandLine !== property.ownerPhone && (
-                    <div>
-                      <span className="font-medium text-slate-700">Land Line:</span>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Phone className="w-4 h-4 text-slate-500" />
-                        <span>{property.ownerLandLine}</span>
-                      </div>
-                    </div>
-                  )}
+                  {/* Phone Numbers */}
+                  <div className="md:col-span-2">
+                    <span className="font-medium text-slate-700">Phone Numbers:</span>
+                    <div className="mt-1 space-y-1">
+                      {(() => {
+                        // Use same phone processing logic as in Owner Information section
+                        const cleanPhone = (phone) => {
+                          if (!phone || phone === 'undefined' || phone === 'null' || phone === null) return null;
+                          const cleaned = phone.toString().trim();
+                          return cleaned && cleaned !== 'undefined' && cleaned !== 'null' && cleaned !== '' ? cleaned : null;
+                        };
 
-                  {property.ownerMobilePhone && property.ownerMobilePhone !== property.ownerPhone && (
-                    <div>
-                      <span className="font-medium text-slate-700">Mobile:</span>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Phone className="w-4 h-4 text-slate-500" />
-                        <span>{property.ownerMobilePhone}</span>
-                      </div>
-                    </div>
-                  )}
+                        const formatPhone = (phone) => {
+                          const digits = phone.replace(/\D/g, '');
+                          if (digits.length === 10) {
+                            return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+                          }
+                          return phone;
+                        };
 
-                  {/* DNC Phone Numbers */}
-                  {property.ownerDncPhone && (
-                    <div className="md:col-span-2">
-                      <span className="font-medium text-slate-700">DNC Phone Numbers:</span>
-                      <div className="mt-1 text-sm text-red-600">
-                        {property.ownerDncPhone.split(',').map((phone, index) => (
-                          <div key={index} className="flex items-center gap-2">
-                            <Phone className="w-3 h-3" />
-                            <span>{phone.trim()}</span>
-                            <span className="text-xs bg-red-100 text-red-800 px-1 rounded">DNC</span>
+                        const allPhones = new Set();
+                        const phoneData = [];
+
+                        // Process ownerPhoneNumbers array
+                        if (property.ownerPhoneNumbers && Array.isArray(property.ownerPhoneNumbers)) {
+                          property.ownerPhoneNumbers.forEach((phone, index) => {
+                            let phoneNumber = null;
+                            let phoneType = `Phone ${index + 1}`;
+                            
+                            if (typeof phone === 'string') {
+                              phoneNumber = cleanPhone(phone);
+                            } else if (typeof phone === 'object' && phone !== null) {
+                              phoneNumber = cleanPhone(phone.number || phone);
+                              phoneType = phone.type || phoneType;
+                            }
+
+                            if (phoneNumber && !allPhones.has(phoneNumber)) {
+                              allPhones.add(phoneNumber);
+                              phoneData.push({ number: phoneNumber, type: phoneType, formatted: formatPhone(phoneNumber) });
+                            }
+                          });
+                        }
+
+                        // Add individual phone fields
+                        const individualPhones = [
+                          { number: cleanPhone(contact?.phone || property.ownerPhone), type: 'Primary' },
+                          { number: cleanPhone(property.ownerLandLine), type: 'Land Line' },
+                          { number: cleanPhone(property.ownerMobilePhone), type: 'Mobile' }
+                        ];
+
+                        individualPhones.forEach(({ number, type }) => {
+                          if (number && !allPhones.has(number)) {
+                            allPhones.add(number);
+                            phoneData.push({ number, type, formatted: formatPhone(number) });
+                          }
+                        });
+
+                        if (phoneData.length === 0) {
+                          return <span className="text-slate-500">No phone numbers available</span>;
+                        }
+
+                        return phoneData.map((phone, index) => (
+                          <div key={`contact-phone-${index}`} className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 text-slate-500" />
+                            <span className="font-mono">{phone.formatted}</span>
+                            <span className={`text-xs px-2 py-0.5 rounded ${
+                              phone.type === 'Primary' ? 'bg-blue-100 text-blue-700' :
+                              phone.type === 'Mobile' ? 'bg-green-100 text-green-700' :
+                              phone.type === 'Land Line' ? 'bg-orange-100 text-orange-700' :
+                              'bg-gray-100 text-gray-700'
+                            }`}>
+                              {phone.type}
+                            </span>
                           </div>
-                        ))}
-                      </div>
+                        ));
+                      })()}
                     </div>
-                  )}
+                  </div>
                 </div>
               </CardContent>
             </Card>
