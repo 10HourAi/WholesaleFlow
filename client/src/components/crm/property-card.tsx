@@ -511,11 +511,11 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                   )}
 
                   {/* DNC Phone Numbers */}
-                  {property.ownerDNCPhone && (
+                  {property.ownerDncPhone && (
                     <div className="md:col-span-2">
                       <span className="font-medium text-slate-700">DNC Phone Numbers:</span>
                       <div className="mt-1 text-sm text-red-600">
-                        {property.ownerDNCPhone.split(',').map((phone, index) => (
+                        {property.ownerDncPhone.split(',').map((phone, index) => (
                           <div key={index} className="flex items-center gap-2">
                             <Phone className="w-3 h-3" />
                             <span>{phone.trim()}</span>
