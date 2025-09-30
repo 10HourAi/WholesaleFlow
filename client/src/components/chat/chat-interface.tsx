@@ -93,18 +93,61 @@ const CondensedPropertyCard = ({
 
   const handleAddToCRM = async () => {
     try {
-      const result = await apiRequest("POST", "/api/properties", property);
+      console.log("🏠 Attempting to add property to CRM:", property.address);
+      
+      // Prepare property data for API
+      const propertyData = {
+        address: property.address,
+        city: property.city,
+        state: property.state,
+        zipCode: property.zipCode,
+        bedrooms: property.bedrooms,
+        bathrooms: property.bathrooms,
+        squareFeet: property.squareFeet,
+        yearBuilt: property.yearBuilt,
+        propertyType: property.propertyType || "single_family",
+        arv: property.arv,
+        maxOffer: property.maxOffer,
+        equityPercentage: property.equityPercentage,
+        equityBalance: property.equityBalance,
+        confidenceScore: property.confidenceScore,
+        lastSalePrice: property.lastSalePrice,
+        lastSaleDate: property.lastSaleDate,
+        ownerName: property.ownerName,
+        ownerPhone: property.ownerPhone,
+        ownerEmail: property.ownerEmail,
+        ownerEmails: property.ownerEmails,
+        ownerPhoneNumbers: property.ownerPhoneNumbers,
+        ownerMailingAddress: property.ownerMailingAddress,
+        ownerDncPhone: property.ownerDncPhone,
+        status: "new"
+      };
+
+      console.log("🏠 Property data being sent:", propertyData);
+      
+      const result = await apiRequest("POST", "/api/properties", propertyData);
       console.log("🏠 Property successfully added to CRM:", result);
+      
       toast({
         title: "Added to CRM",
-        description: `Property at ${property.address} has been added.`,
+        description: `Property at ${property.address} has been added to your CRM.`,
       });
+      
       await queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
     } catch (error: any) {
       console.error("Error adding property to CRM:", error);
+      console.error("Error details:", error.response || error);
+      
+      let errorMessage = "Failed to add property to CRM.";
+      if (error.response?.status === 401) {
+        errorMessage = "Authentication required. Please log in again.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to add property to CRM.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -1070,6 +1113,9 @@ const PropertyCard = ({ content }: { content: string }) => {
     }
 
     try {
+      console.log("🏠 Attempting to add property to CRM:", propertyData.address);
+      console.log("🏠 Property data being sent:", propertyData);
+      
       const result = await apiRequest("POST", "/api/properties", propertyData);
       console.log("🏠 Property successfully added to CRM:", result);
 
@@ -1083,9 +1129,20 @@ const PropertyCard = ({ content }: { content: string }) => {
       await queryClient.refetchQueries({ queryKey: ["/api/properties"] });
     } catch (error: any) {
       console.error("Error adding property to CRM:", error);
+      console.error("Error details:", error.response || error);
+      
+      let errorMessage = "Failed to add property to CRM. Please try again.";
+      if (error.response?.status === 401) {
+        errorMessage = "Authentication required. Please log in again.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.details) {
+        errorMessage = `Validation error: ${error.response.data.details}`;
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to add property to CRM. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -1104,6 +1161,9 @@ const PropertyCard = ({ content }: { content: string }) => {
     }
 
     try {
+      console.log("🏠 Confirming add property to CRM:", propertyData.address);
+      console.log("🏠 Property data being sent:", propertyData);
+      
       const result = await apiRequest("POST", "/api/properties", propertyData);
       console.log("🏠 Property successfully added to CRM:", result);
 
@@ -1120,9 +1180,20 @@ const PropertyCard = ({ content }: { content: string }) => {
       setShowDetailsDialog(false);
     } catch (error: any) {
       console.error("Error adding property to CRM:", error);
+      console.error("Error details:", error.response || error);
+      
+      let errorMessage = "Failed to add property to CRM. Please try again.";
+      if (error.response?.status === 401) {
+        errorMessage = "Authentication required. Please log in again.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.details) {
+        errorMessage = `Validation error: ${error.response.data.details}`;
+      }
+      
       toast({
         title: "Error",
-        description: "Failed to add property to CRM. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
