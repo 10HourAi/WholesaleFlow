@@ -372,13 +372,13 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                             
                             if (typeof phone === 'string') {
                               phoneNumber = phone;
-                            } else if (typeof phone === 'object' && phone.number) {
-                              phoneNumber = phone.number;
+                            } else if (typeof phone === 'object' && phone !== null) {
+                              phoneNumber = phone.number || phone;
                               phoneType = phone.type || phoneType;
                             }
                             
                             // Check if phoneNumber is valid and not 'undefined'
-                            if (phoneNumber && phoneNumber !== 'undefined') {
+                            if (phoneNumber && phoneNumber !== 'undefined' && phoneNumber.toString().trim() !== '') {
                               return (
                                 <div key={index} className="flex items-center gap-2 pl-2">
                                   <Phone className="w-3 h-3 text-slate-400" />
@@ -387,15 +387,26 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                               );
                             }
                             return null;
-                          })}
-                        </div>
+                          }).filter(Boolean)}</div>
                       </div>
                     )}
-                    {(!property.ownerPhone || property.ownerPhone === 'undefined') && 
+                    {/* Fallback: Show any phone numbers from direct property fields */}
+                    {(!property.ownerPhoneNumbers || property.ownerPhoneNumbers.length === 0) && 
+                     (!property.ownerPhone || property.ownerPhone === 'undefined') && 
                      (!property.ownerLandLine || property.ownerLandLine === 'undefined') && 
-                     (!property.ownerMobilePhone || property.ownerMobilePhone === 'undefined') && 
-                     (!property.ownerPhoneNumbers || property.ownerPhoneNumbers.length === 0) && (
+                     (!property.ownerMobilePhone || property.ownerMobilePhone === 'undefined') && (
                       <span className="text-slate-500 text-sm">No phone numbers available</span>
+                    )}
+                    
+                    {/* Debug: Show raw phone array data */}
+                    {process.env.NODE_ENV === 'development' && property.ownerPhoneNumbers && (
+                      <div className="text-xs text-gray-400 mt-2 p-2 bg-gray-50 rounded">
+                        <div>Debug - Raw phone data:</div>
+                        <div>Type: {typeof property.ownerPhoneNumbers}</div>
+                        <div>Array: {Array.isArray(property.ownerPhoneNumbers) ? 'Yes' : 'No'}</div>
+                        <div>Length: {property.ownerPhoneNumbers.length}</div>
+                        <div>Content: {JSON.stringify(property.ownerPhoneNumbers)}</div>
+                      </div>
                     )}
                   </div>
                 </div>
