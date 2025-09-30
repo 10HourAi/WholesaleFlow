@@ -309,6 +309,21 @@ const PropertyDetailsModal = ({
     }
 
     return phones.length > 0 ? phones.join(", ") : "Contact for details";
+      phones.push(`${property.ownerMobilePhone} (Mobile)`);
+    }
+
+    return phones.length > 0 ? phones.join(", ") : "Contact for details";
+  };
+
+  const formatDNCPhones = (property: any) => {
+    if (property.ownerDNCPhone && 
+        property.ownerDNCPhone !== "null" && 
+        property.ownerDNCPhone !== null && 
+        property.ownerDNCPhone.trim() !== "") {
+      const dncPhones = property.ownerDNCPhone.split(',').map((phone: string) => phone.trim()).filter(Boolean);
+      return dncPhones.join(", ");
+    }
+    return "None on record";
   };
 
   const formatDNCPhones = (property: any) => {
