@@ -343,21 +343,51 @@ const PropertyDetailsModal = ({
   };
 
   const formatPhoneNumbers = (property: any) => {
+    console.log('🔍 DEBUG formatPhoneNumbers: Starting with property:', {
+      address: property.address,
+      ownerPhone: property.ownerPhone,
+      ownerMobilePhone: property.ownerMobilePhone,
+      ownerLandLine: property.ownerLandLine,
+      ownerPhoneNumbers: property.ownerPhoneNumbers,
+      ownerPhoneNumbersType: typeof property.ownerPhoneNumbers,
+      ownerPhoneNumbersIsArray: Array.isArray(property.ownerPhoneNumbers),
+      ownerPhoneNumbersLength: property.ownerPhoneNumbers?.length
+    });
+
     const phones = [];
 
     // Collect all phone numbers as-is
-    if (property.ownerPhone) {
+    if (property.ownerPhone && property.ownerPhone !== 'undefined' && property.ownerPhone.trim() !== '') {
       phones.push(property.ownerPhone);
     }
-    if (property.ownerMobilePhone) {
+    if (property.ownerMobilePhone && property.ownerMobilePhone !== 'undefined' && property.ownerMobilePhone.trim() !== '') {
       phones.push(property.ownerMobilePhone);
     }
-    if (property.ownerLandLine) {
+    if (property.ownerLandLine && property.ownerLandLine !== 'undefined' && property.ownerLandLine.trim() !== '') {
       phones.push(property.ownerLandLine);
     }
+    
+    // Handle ownerPhoneNumbers array - it might contain strings or objects
     if (Array.isArray(property.ownerPhoneNumbers)) {
-      phones.push(...property.ownerPhoneNumbers);
+      console.log('🔍 DEBUG formatPhoneNumbers: Processing ownerPhoneNumbers array:', property.ownerPhoneNumbers);
+      
+      property.ownerPhoneNumbers.forEach((phoneEntry: any, index: number) => {
+        console.log(`🔍 DEBUG formatPhoneNumbers: Processing array item ${index}:`, {
+          phoneEntry,
+          phoneEntryType: typeof phoneEntry,
+          phoneEntryString: String(phoneEntry)
+        });
+
+        if (typeof phoneEntry === "string" && phoneEntry && phoneEntry !== 'undefined' && phoneEntry.trim() !== '') {
+          phones.push(phoneEntry);
+        } else if (typeof phoneEntry === "object" && phoneEntry?.number && phoneEntry.number !== 'undefined' && phoneEntry.number.trim() !== '') {
+          // Handle phone objects with number property
+          phones.push(phoneEntry.number);
+        }
+      });
     }
+
+    console.log('🔍 DEBUG formatPhoneNumbers: Final phones array:', phones);
 
     // Return raw phone numbers joined with commas, or default message if none
     return phones.length > 0 ? phones.join(", ") : "Contact for details";
