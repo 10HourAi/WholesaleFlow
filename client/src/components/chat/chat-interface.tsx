@@ -273,18 +273,12 @@ const PropertyDetailsModal = ({
   const formatEmail = (property: any) => {
     console.log("🔍 Formatting email for property:", {
       ownerEmail: property.ownerEmail,
-      ownerEmails: property.ownerEmails,
       hasOwnerEmail: !!property.ownerEmail
     });
     
-    // The API stores emails in ownerEmail field directly (not in arrays)
+    // Use the actual database field name: ownerEmail
     if (property.ownerEmail && property.ownerEmail !== "null" && property.ownerEmail !== null && property.ownerEmail !== "undefined" && property.ownerEmail.trim() !== "") {
       return property.ownerEmail;
-    }
-    
-    // Check array format as fallback (legacy support)
-    if (property.ownerEmails && Array.isArray(property.ownerEmails) && property.ownerEmails.length > 0) {
-      return property.ownerEmails.join(", ");
     }
     
     return "Contact for details";
@@ -294,19 +288,18 @@ const PropertyDetailsModal = ({
     console.log("🔍 Formatting phones for property:", {
       ownerPhone: property.ownerPhone,
       ownerLandLine: property.ownerLandLine,
-      ownerMobilePhone: property.ownerMobilePhone,
-      ownerPhoneNumbers: property.ownerPhoneNumbers
+      ownerMobilePhone: property.ownerMobilePhone
     });
     
     const phones = [];
 
-    // The API stores phones in individual fields (ownerPhone, ownerLandLine, ownerMobilePhone)
-    // Check primary phone
+    // Use the actual database field names
+    // Primary phone
     if (property.ownerPhone && property.ownerPhone !== "null" && property.ownerPhone !== null && property.ownerPhone.trim() !== "") {
       phones.push(`${property.ownerPhone} (Primary)`);
     }
     
-    // Check landline (only if different from primary)
+    // Landline (only if different from primary)
     if (property.ownerLandLine && 
         property.ownerLandLine !== "null" && 
         property.ownerLandLine !== null && 
@@ -315,7 +308,7 @@ const PropertyDetailsModal = ({
       phones.push(`${property.ownerLandLine} (Landline)`);
     }
     
-    // Check mobile (only if different from primary and landline)
+    // Mobile (only if different from primary and landline)
     if (property.ownerMobilePhone && 
         property.ownerMobilePhone !== "null" && 
         property.ownerMobilePhone !== null && 
@@ -335,7 +328,7 @@ const PropertyDetailsModal = ({
       hasOwnerDNCPhone: !!property.ownerDNCPhone
     });
     
-    // The API stores DNC phones in ownerDNCPhone field as comma-separated values
+    // Use the actual database field name: ownerDNCPhone (comma-separated values)
     if (property.ownerDNCPhone && property.ownerDNCPhone !== "null" && property.ownerDNCPhone !== null && property.ownerDNCPhone.trim() !== "") {
       // Format multiple DNC phones nicely
       const dncPhones = property.ownerDNCPhone.split(',').map((phone: string) => phone.trim()).filter(Boolean);
