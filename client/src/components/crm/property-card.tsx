@@ -339,23 +339,47 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                 <div>
                   <span className="font-medium text-slate-700">Phone Numbers:</span>
                   <div className="mt-1 space-y-1">
-                    {property.ownerPhone && (
+                    {property.ownerPhone && property.ownerPhone !== 'undefined' && (
                       <div className="flex items-center gap-2">
                         <Phone className="w-4 h-4 text-slate-500" />
                         <span>{property.ownerPhone}</span>
+                        <span className="text-xs text-green-600 bg-green-100 px-1 rounded">Primary</span>
                       </div>
                     )}
-                    {property.ownerLandLine && (
+                    {property.ownerLandLine && property.ownerLandLine !== 'undefined' && property.ownerLandLine !== property.ownerPhone && (
+                      <div className="text-sm flex items-center gap-2">
+                        <Phone className="w-3 h-3 text-slate-500" />
+                        <span className="text-slate-600">Land Line:</span> 
+                        <span>{property.ownerLandLine}</span>
+                      </div>
+                    )}
+                    {property.ownerMobilePhone && property.ownerMobilePhone !== 'undefined' && property.ownerMobilePhone !== property.ownerPhone && (
+                      <div className="text-sm flex items-center gap-2">
+                        <Phone className="w-3 h-3 text-slate-500" />
+                        <span className="text-slate-600">Mobile:</span> 
+                        <span>{property.ownerMobilePhone}</span>
+                      </div>
+                    )}
+                    {/* Show all additional phone numbers from the array */}
+                    {property.ownerPhoneNumbers && Array.isArray(property.ownerPhoneNumbers) && property.ownerPhoneNumbers.length > 0 && (
                       <div className="text-sm">
-                        <span className="text-slate-600">Land Line:</span> {property.ownerLandLine}
+                        <span className="text-slate-600">All Phone Numbers:</span>
+                        <div className="mt-1 space-y-1">
+                          {property.ownerPhoneNumbers.map((phone, index) => (
+                            phone && phone !== 'undefined' && (
+                              <div key={index} className="flex items-center gap-2 pl-2">
+                                <Phone className="w-3 h-3 text-slate-400" />
+                                <span className="text-xs">{phone}</span>
+                              </div>
+                            )
+                          ))}
+                        </div>
                       </div>
                     )}
-                    {property.ownerMobilePhone && (
-                      <div className="text-sm">
-                        <span className="text-slate-600">Mobile:</span> {property.ownerMobilePhone}
-                      </div>
-                    )}
-                    {!property.ownerPhone && !property.ownerLandLine && !property.ownerMobilePhone && (
+                    {(!property.ownerPhone || property.ownerPhone === 'undefined') && 
+                     (!property.ownerLandLine || property.ownerLandLine === 'undefined') && 
+                     (!property.ownerMobilePhone || property.ownerMobilePhone === 'undefined') && 
+                     (!property.ownerPhoneNumbers || property.ownerPhoneNumbers.length === 0) && (
                       <span className="text-slate-500 text-sm">No phone numbers available</span>
                     )}
                   </div>
@@ -377,11 +401,11 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                 </div>
 
                 {/* DNC Phone Numbers */}
-                {property.ownerDNCPhone && (
+                {property.ownerDncPhone && property.ownerDncPhone !== 'undefined' && property.ownerDncPhone.trim() !== '' && (
                   <div>
                     <span className="font-medium text-slate-700">DNC Phone Numbers:</span>
                     <div className="mt-1 text-sm text-red-600">
-                      {property.ownerDNCPhone.split(',').map((phone, index) => (
+                      {property.ownerDncPhone.split(',').filter(phone => phone.trim() && phone.trim() !== 'undefined').map((phone, index) => (
                         <div key={index} className="flex items-center gap-2">
                           <Phone className="w-3 h-3" />
                           <span>{phone.trim()}</span>
@@ -390,7 +414,7 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                       ))}
                     </div>
                   </div>
-                )}
+                )}</div>
               </div>
             </CardContent>
           </Card>

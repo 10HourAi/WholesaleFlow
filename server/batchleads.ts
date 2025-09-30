@@ -1167,6 +1167,23 @@ class BatchLeadsService {
       }
     }
 
+    // Process phone numbers properly from enriched contact data or original owner data
+    const allPhoneNumbers = enrichedContactData?.phoneNumbers || ownerPhoneNumbers || [];
+    const dncPhones = enrichedContactData?.dncPhones || [];
+    
+    // Find best phones by type
+    const landLinePhone = allPhoneNumbers.find((phone: any) => {
+      const phoneStr = typeof phone === 'string' ? phone : phone?.number;
+      const phoneType = typeof phone === 'string' ? 'unknown' : phone?.type;
+      return phoneType?.toLowerCase().includes('land') || phoneType?.toLowerCase().includes('landline');
+    });
+    
+    const mobilePhone = allPhoneNumbers.find((phone: any) => {
+      const phoneStr = typeof phone === 'string' ? phone : phone?.number;
+      const phoneType = typeof phone === 'string' ? 'unknown' : phone?.type;
+      return phoneType?.toLowerCase().includes('mobile') || phoneType?.toLowerCase().includes('cell');
+    });
+
     const convertedProperty = {
       userId,
       address: propertyAddress,
@@ -1185,18 +1202,14 @@ class BatchLeadsService {
       lastSalePrice: lastSalePrice?.toString() || null,
       lastSaleDate: lastSaleDate || null,
       ownerName: ownerName,
-      ownerPhone: enrichedContactData?.bestPhone || batchProperty.ownerPhone || null,
-      ownerEmail: enrichedContactData?.bestEmail || batchProperty.ownerEmail || null,
-      ownerEmails: enrichedContactData?.emailAddresses || [],
-      ownerPhoneNumbers: enrichedContactData?.phoneNumbers || [],
-      ownerMailingAddress: batchProperty.ownerMailingAddress || null,
-      ownerDncPhone: enrichedContactData?.dncPhones?.join(', ') || batchProperty.ownerDncPhone || null,
-      ownerLandLine:
-        ownerPhoneNumbers.find((p) => p.type === "Land Line")?.number || null,
-      ownerMobilePhone:
-        ownerPhoneNumbers.find(
-          (p) => p.type === "Mobile" || p.type === "Cell",
-        )?.number || null,
+      ownerPhone: enrichedContactData?.bestPhone || (typeof allPhoneNumbers[0] === 'string' ? allPhoneNumbers[0] : allPhoneNumbers[0]?.number) || null,
+      ownerEmail: enrichedContactData?.bestEmail || ownerEmails[0] || null,
+      ownerEmails: enrichedContactData?.emailAddresses || ownerEmails || [],
+      ownerPhoneNumbers: allPhoneNumbers.map((phone: any) => typeof phone === 'string' ? phone : phone?.number).filter(Boolean),
+      ownerMailingAddress: ownerMailingAddress,
+      ownerDncPhone: dncPhones.length > 0 ? dncPhones.join(', ') : null,
+      ownerLandLine: typeof landLinePhone === 'string' ? landLinePhone : landLinePhone?.number || null,
+      ownerMobilePhone: typeof mobilePhone === 'string' ? mobilePhone : mobilePhone?.number || null,
       equityPercentage: Math.round(equityPercent),
       equityBalance: equityBalance?.toString() || null,
       confidenceScore: this.calculateConfidenceScore(batchProperty),
@@ -1575,54 +1588,73 @@ class BatchLeadsService {
 
   // Add enrichContactData method here
   private async enrichContactData(property: any): Promise<{
-    phoneNumbers: any[];
-    emailAddresses: any[];
+    phoneNumbers: string[];
+    emailAddresses: string[];
     bestPhone: string | null;
     bestEmail: string | null;
     dncPhones: string[];
   } | null> {
-    // This is a placeholder. In a real scenario, this method would call
-    // an external service or use internal logic to enrich contact data.
-    // For demonstration, we'll assume it can extract some data from the property object itself.
-
+    // This method enriches contact data from the property object
     const owner = property.owner || {};
     const phoneNumbers = owner.phoneNumbers || [];
     const emailAddresses = owner.emails || [];
 
-    // Find the best phone number (e.g., not DNC, preferably mobile or landline)
+    console.log(`📞 ENRICHING CONTACT DATA for ${property.address?.street || 'unknown address'}`);
+    console.log(`📞 Raw phone numbers:`, phoneNumbers);
+    console.log(`📞 Raw email addresses:`, emailAddresses);
+
+    // Process phone numbers and identify DNC phones
     let bestPhone: string | null = null;
     const dncPhones: string[] = [];
+    const processedPhones: string[] = [];
 
-    // Prioritize non-DNC numbers
-    const nonDncPhones = phoneNumbers.filter((p: any) => !p.dnc && p.number);
-    if (nonDncPhones.length > 0) {
-      // Prefer mobile, then landline, then any available
-      const mobile = nonDncPhones.find((p: any) => p.type === "mobile");
-      const landline = nonDncPhones.find((p: any) => p.type === "landline");
-      bestPhone = mobile?.number || landline?.number || nonDncPhones[0].number;
-    }
-
-    // Collect all DNC phones
-    phoneNumbers.forEach((p: any) => {
-      if (p.dnc && p.number) {
-        dncPhones.push(p.number);
+    phoneNumbers.forEach((phone: any) => {
+      const phoneNumber = typeof phone === 'string' ? phone : phone?.number;
+      if (phoneNumber) {
+        processedPhones.push(phoneNumber);
+        
+        // Check if it's a DNC phone
+        const isDnc = typeof phone === 'object' && (phone?.dnc === true || phone?.type === 'dnc');
+        if (isDnc) {
+          dncPhones.push(phoneNumber);
+        } else if (!bestPhone) {
+          // Use first non-DNC phone as best phone
+          bestPhone = phoneNumber;
+        }
       }
     });
 
-    // Find the best email address
-    let bestEmail: string | null = null;
-    const validEmails = emailAddresses.filter(
-      (e: any) => (typeof e === "string" ? e : e?.email)?.includes("@"),
-    );
-    if (validEmails.length > 0) {
-      bestEmail =
-        typeof validEmails[0] === "string" ? validEmails[0] : validEmails[0].email;
+    // If no non-DNC phone found, use the first phone as best phone
+    if (!bestPhone && processedPhones.length > 0) {
+      bestPhone = processedPhones[0];
     }
 
-    if (phoneNumbers.length > 0 || emailAddresses.length > 0) {
+    // Process email addresses
+    const processedEmails: string[] = [];
+    let bestEmail: string | null = null;
+
+    emailAddresses.forEach((email: any) => {
+      const emailAddress = typeof email === 'string' ? email : email?.email;
+      if (emailAddress && emailAddress.includes('@')) {
+        processedEmails.push(emailAddress);
+        if (!bestEmail) {
+          bestEmail = emailAddress;
+        }
+      }
+    });
+
+    console.log(`📞 PROCESSED CONTACT DATA:`, {
+      phoneCount: processedPhones.length,
+      emailCount: processedEmails.length,
+      bestPhone,
+      bestEmail,
+      dncCount: dncPhones.length
+    });
+
+    if (processedPhones.length > 0 || processedEmails.length > 0) {
       return {
-        phoneNumbers: phoneNumbers.map((p: any) => p.number).filter(Boolean),
-        emailAddresses: emailAddresses.map((e: any) => typeof e === "string" ? e : e?.email).filter(Boolean),
+        phoneNumbers: processedPhones,
+        emailAddresses: processedEmails,
         bestPhone,
         bestEmail,
         dncPhones,
