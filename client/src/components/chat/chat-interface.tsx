@@ -232,7 +232,7 @@ const CondensedPropertyCard = ({
           className="bg-white hover:bg-blue-50"
           onClick={handleAnalyzeDeal}
         >
-          <BarChart3 className="h-4 w-2 mr-2" /> Analyze Deal
+          <BarChart3 className="h-4 w-4 mr-2" /> Analyze Deal
         </Button>
         <Button
           size="sm"
@@ -275,12 +275,12 @@ const PropertyDetailsModal = ({
       ownerEmail: property.ownerEmail,
       hasOwnerEmail: !!property.ownerEmail
     });
-
+    
     // Use the actual database field name: ownerEmail
     if (property.ownerEmail && property.ownerEmail !== "null" && property.ownerEmail !== null && property.ownerEmail !== "undefined" && property.ownerEmail.trim() !== "") {
       return property.ownerEmail;
     }
-
+    
     return "Contact for details";
   };
 
@@ -290,7 +290,7 @@ const PropertyDetailsModal = ({
       ownerLandLine: property.ownerLandLine,
       ownerMobilePhone: property.ownerMobilePhone
     });
-
+    
     const phones = [];
 
     // Use the actual database field names
@@ -298,22 +298,22 @@ const PropertyDetailsModal = ({
     if (property.ownerPhone && property.ownerPhone !== "null" && property.ownerPhone !== null && property.ownerPhone.trim() !== "") {
       phones.push(`${property.ownerPhone} (Primary)`);
     }
-
+    
     // Landline (only if different from primary)
-    if (property.ownerLandLine &&
-        property.ownerLandLine !== "null" &&
-        property.ownerLandLine !== null &&
+    if (property.ownerLandLine && 
+        property.ownerLandLine !== "null" && 
+        property.ownerLandLine !== null && 
         property.ownerLandLine.trim() !== "" &&
         property.ownerLandLine !== property.ownerPhone) {
       phones.push(`${property.ownerLandLine} (Landline)`);
     }
-
+    
     // Mobile (only if different from primary and landline)
-    if (property.ownerMobilePhone &&
-        property.ownerMobilePhone !== "null" &&
-        property.ownerMobilePhone !== null &&
+    if (property.ownerMobilePhone && 
+        property.ownerMobilePhone !== "null" && 
+        property.ownerMobilePhone !== null && 
         property.ownerMobilePhone.trim() !== "" &&
-        property.ownerMobilePhone !== property.ownerPhone &&
+        property.ownerMobilePhone !== property.ownerPhone && 
         property.ownerMobilePhone !== property.ownerLandLine) {
       phones.push(`${property.ownerMobilePhone} (Mobile)`);
     }
@@ -327,14 +327,14 @@ const PropertyDetailsModal = ({
       ownerDNCPhone: property.ownerDNCPhone,
       hasOwnerDNCPhone: !!property.ownerDNCPhone
     });
-
+    
     // Use the actual database field name: ownerDNCPhone (comma-separated values)
     if (property.ownerDNCPhone && property.ownerDNCPhone !== "null" && property.ownerDNCPhone !== null && property.ownerDNCPhone.trim() !== "") {
       // Format multiple DNC phones nicely
       const dncPhones = property.ownerDNCPhone.split(',').map((phone: string) => phone.trim()).filter(Boolean);
       return dncPhones.join(", ");
     }
-
+    
     return "None on record";
   };
 
@@ -592,15 +592,13 @@ const PropertyCard = ({ content }: { content: string }) => {
       const ownerNameMatch =
         content.match(/Owner Name\s+(.+?)\n/) ||
         content.match(/Owner: (.+?)\n/);
-      // The following lines were problematic because they were trying to extract arrays of phones and emails
-      // when the actual data comes as single strings from the API.
-      // The fix is to extract ownerEmail, ownerPhone, ownerLandLine, ownerMobilePhone, ownerDNCPhone directly.
-      const ownerEmail = content.match(/Email\(s\)\s+(.+?)\n/)?.[1]?.trim();
-      const ownerPhone = content.match(/Phone\(s\)\s+(.+?)\n/)?.[1]?.trim();
-      const ownerLandLine = content.match(/Landline Phone\(s\)\s+(.+?)\n/)?.[1]?.trim(); // Assuming a new field for landline
-      const ownerMobilePhone = content.match(/Mobile Phone\(s\)\s+(.+?)\n/)?.[1]?.trim(); // Assuming a new field for mobile
-      const ownerDNCPhone = content.match(/DNC Phone\(s\)\s+(.+?)\n/)?.[1]?.trim();
-
+      const ownerPhoneMatch =
+        content.match(/Phone\(s\)\s+(.+?)\n/) ||
+        content.match(/📱 Phone: (.+?)\n/);
+      const ownerEmailMatch =
+        content.match(/Email\(s\)\s+(.+?)\n/) ||
+        content.match(/✉️ Email: (.+?)\n/);
+      const dncPhoneMatch = content.match(/DNC Phone\(s\)\s+(.+?)\n/);
       const ownerMailingMatch =
         content.match(/Mailing Address\s+(.+?)\n/) ||
         content.match(/📬 Mailing: (.+?)\n/);
@@ -616,7 +614,6 @@ const PropertyCard = ({ content }: { content: string }) => {
       const equityPercentage = equityMatch ? parseInt(equityMatch[1]) : undefined;
       const confidenceScore = confidenceScoreMatch ? parseInt(confidenceScoreMatch[1]) : undefined;
 
-      // Assign extracted phone numbers and emails to the property object
       return {
         address: streetAddress,
         city: city,
@@ -633,11 +630,14 @@ const PropertyCard = ({ content }: { content: string }) => {
         maxOffer: maxOfferMatch ? maxOfferMatch[1].replace(/,/g, "") : undefined,
         equityPercentage: equityPercentage && equityPercentage >= 0 && equityPercentage <= 100 ? equityPercentage : undefined,
         ownerName: ownerNameMatch ? ownerNameMatch[1].trim() : undefined,
-        ownerEmail: ownerEmail && !isPlaceholderValue(ownerEmail) ? ownerEmail : undefined,
-        ownerPhone: ownerPhone && !isPlaceholderValue(ownerPhone) ? ownerPhone : undefined,
-        ownerLandLine: ownerLandLine && !isPlaceholderValue(ownerLandLine) ? ownerLandLine : undefined,
-        ownerMobilePhone: ownerMobilePhone && !isPlaceholderValue(ownerMobilePhone) ? ownerMobilePhone : undefined,
-        ownerDNCPhone: ownerDNCPhone && !isPlaceholderValue(ownerDNCPhone) ? ownerDNCPhone : undefined,
+        ownerPhone:
+          ownerPhoneMatch && !isPlaceholderValue(ownerPhoneMatch[1])
+            ? ownerPhoneMatch[1].trim()
+            : undefined,
+        ownerEmail:
+          ownerEmailMatch && !isPlaceholderValue(ownerEmailMatch[1])
+            ? ownerEmailMatch[1].trim()
+            : undefined,
         ownerMailingAddress: ownerMailingMatch
           ? ownerMailingMatch[1].trim()
           : undefined,
@@ -1349,10 +1349,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                   "POST",
                   `/api/conversations/${conversation.id}/messages`,
                   {
-                    content: JSON.stringify({
-                      type: "property_card",
-                      data: property,
-                    }),
+                    content: updatedPropertyCard,
                     role: "assistant",
                     isAiGenerated: true,
                   },
@@ -1766,11 +1763,6 @@ Would you like to adjust your search criteria and try again?`;
               rawProperty.equityPercentage ||
               rawProperty.equity_percentage ||
               0,
-            ownerEmail: rawProperty.ownerEmail, // Directly use ownerEmail
-            ownerPhone: rawProperty.ownerPhone, // Directly use ownerPhone
-            ownerLandLine: rawProperty.ownerLandLine, // Directly use ownerLandLine
-            ownerMobilePhone: rawProperty.ownerMobilePhone, // Directly use ownerMobilePhone
-            ownerDNCPhone: rawProperty.ownerDNCPhone, // Directly use ownerDNCPhone
           };
 
           console.log("🔍 PropertyCard Template: Normalized property:", {
@@ -1778,11 +1770,6 @@ Would you like to adjust your search criteria and try again?`;
             lastSalePrice: property.lastSalePrice,
             lastSaleDate: property.lastSaleDate,
             equityPercentage: property.equityPercentage,
-            ownerEmail: property.ownerEmail,
-            ownerPhone: property.ownerPhone,
-            ownerLandLine: property.ownerLandLine,
-            ownerMobilePhone: property.ownerMobilePhone,
-            ownerDNCPhone: property.ownerDNCPhone,
             hasLastSalePrice: !!property.lastSalePrice,
             hasLastSaleDate: !!property.lastSaleDate,
             hasEquityPercentage: !!property.equityPercentage,
@@ -1816,15 +1803,24 @@ ${buildingDetails}
    Mailing Address              ${property.ownerMailingAddress}
 
 📞 CONTACT INFORMATION
-   Email(s)                     ${property.ownerEmail && property.ownerEmail !== "null" ? property.ownerEmail : "Contact for details"}
-   Phone(s)                     ${(() => {
-     const phones = [];
-     if (property.ownerPhone && property.ownerPhone !== "null") phones.push(`${property.ownerPhone} (Primary)`);
-     if (property.ownerLandLine && property.ownerLandLine !== "null" && property.ownerLandLine !== property.ownerPhone) phones.push(`${property.ownerLandLine} (Landline)`);
-     if (property.ownerMobilePhone && property.ownerMobilePhone !== "null" && property.ownerMobilePhone !== property.ownerPhone && property.ownerMobilePhone !== property.ownerLandLine) phones.push(`${property.ownerMobilePhone} (Mobile)`);
-     return phones.length > 0 ? phones.join(", ") : "Contact for details";
-   })()}
-   DNC Phone(s)                 ${property.ownerDNCPhone && property.ownerDNCPhone !== "null" ? property.ownerDNCPhone : "None on record"}
+   Email(s)                     ${property.ownerEmails && property.ownerEmails.length > 0 ? property.ownerEmails.join(", ") : "Contact for details"}
+   Phone(s)                     ${
+     property.ownerPhoneNumbers && property.ownerPhoneNumbers.length > 0
+       ? property.ownerPhoneNumbers
+           .filter((p: any) => !p.dnc)
+           .map((p: any) => `${p.number} (${p.type})`)
+           .join(", ") || "Contact for details"
+       : "Contact for details"
+   }
+   DNC Phone(s)                 ${
+     property.ownerPhoneNumbers &&
+     property.ownerPhoneNumbers.filter((p: any) => p.dnc).length > 0
+       ? property.ownerPhoneNumbers
+           .filter((p: any) => p.dnc)
+           .map((p: any) => `${p.number} (${p.type})`)
+           .join(", ")
+       : "None on record"
+   }
    Mailing Address              ${property.ownerMailingAddress}
 
 💰 Valuation Details
