@@ -338,14 +338,111 @@ const PropertyDetailsModal = ({
 
     // Helper function to clean and format phone number
     const cleanPhoneNumber = (number: string) => {
-      if (!number) return "";
+      if (!number || number === "undefined" || number === "null") return "";
       // Remove all non-digit characters
       const digits = number.replace(/\D/g, "");
       // Format as (XXX) XXX-XXXX if 10 digits
       if (digits.length === 10) {
         return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
       }
-      return number; // Return original if not 10 digits
+      return number; // Return original if not standard format
+    };
+
+    // Helper function to add phone if not duplicate
+    const addPhone = (number: string, type: string) => {
+      if (
+        number &&
+        number !== "null" &&
+        number !== null &&
+        number !== "undefined" &&
+        number.trim() !== ""
+      ) {
+        const cleanNumber = number.trim();
+        const formattedNumber = cleanPhoneNumber(cleanNumber);
+        if (formattedNumber && !addedNumbers.has(cleanNumber)) {
+          phones.push(`${formattedNumber} (${type})`);
+          addedNumbers.add(cleanNumber);
+        }
+      }
+    };
+
+    // Primary phone
+    if (property.ownerPhone) {
+      addPhone(property.ownerPhone, "Primary");
+    }
+
+    // Landline
+    if (
+      property.ownerLandLine &&
+      property.ownerLandLine !== property.ownerPhone
+    ) {
+      addPhone(property.ownerLandLine, "Landline");
+    }
+
+    // Mobile
+    if (
+      property.ownerMobilePhone &&
+      property.ownerMobilePhone !== property.ownerPhone &&
+      property.ownerMobilePhone !== property.ownerLandLine
+    ) {
+      addPhone(property.ownerMobilePhone, "Mobile");
+    }
+
+    // Check for phone numbers array
+    if (
+      property.ownerPhoneNumbers &&
+      Array.isArray(property.ownerPhoneNumbers) &&
+      property.ownerPhoneNumbers.length > 0
+    ) {
+      const validPhones = property.ownerPhoneNumbers.filter(
+        (phone: any) =>
+          phone &&
+          phone !== "null" &&
+          phone !== "undefined" &&
+          phone.toString().trim() !== ""
+      );
+
+      validPhones.forEach((phone: any, index: number) => {
+        const phoneNumber = typeof phone === 'string' ? phone : phone?.number;
+        if (phoneNumber) {
+          const phoneType = typeof phone === 'string' ? `Phone ${index + 1}` : (phone?.type || `Phone ${index + 1}`);
+          addPhone(phoneNumber, phoneType);
+        }
+      });
+    }
+
+    // Check for owner object phone numbers
+    if (
+      property.owner?.phoneNumbers &&
+      Array.isArray(property.owner.phoneNumbers)
+    ) {
+      const validOwnerPhones = property.owner.phoneNumbers.filter(
+        (phone: any) =>
+          phone &&
+          phone.number &&
+          phone.number !== "null" &&
+          phone.number !== "undefined" &&
+          phone.number.trim() !== "",
+      );
+
+      validOwnerPhones.forEach((phone: any) => {
+        const phoneNumber = phone.number.trim();
+        const phoneType = phone.type || "Phone";
+        addPhone(phoneNumber, phoneType);
+      });
+    }
+
+    // Check for direct owner phone fields
+    if (
+      property.owner?.phone &&
+      property.owner.phone !== "undefined" &&
+      property.owner.phone !== "null" &&
+      !addedNumbers.has(property.owner.phone.trim())
+    ) {
+      addPhone(property.owner.phone, "Primary");
+    }
+
+    return phones.length > 0 ? phones.join(", ") : "Contact for details";0 digits
     };
 
     // Helper function to add phone if not duplicate
