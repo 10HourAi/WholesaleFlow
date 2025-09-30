@@ -270,14 +270,14 @@ const PropertyDetailsModal = ({
 }) => {
   if (!property) return null;
 
-  console.log('🔍 DEBUG PropertyDetailsModal: Received property data:', {
+  console.log("🔍 DEBUG PropertyDetailsModal: Received property data:", {
     address: property.address,
     ownerPhone: property.ownerPhone,
     ownerPhoneNumbers: property.ownerPhoneNumbers,
     ownerPhoneNumbersType: typeof property.ownerPhoneNumbers,
     ownerPhoneNumbersIsArray: Array.isArray(property.ownerPhoneNumbers),
     ownerPhoneNumbersLength: property.ownerPhoneNumbers?.length,
-    rawProperty: property
+    rawProperty: property,
   });
 
   const formatEmail = (property: any) => {
@@ -343,109 +343,83 @@ const PropertyDetailsModal = ({
   };
 
   const formatPhoneNumbers = (property: any) => {
-    console.log('🔍 DEBUG formatPhoneNumbers: Starting with property:', {
-      address: property.address,
-      ownerPhone: property.ownerPhone,
-      ownerMobilePhone: property.ownerMobilePhone,
-      ownerLandLine: property.ownerLandLine,
-      ownerPhoneNumbers: property.ownerPhoneNumbers,
-      ownerPhoneNumbersType: typeof property.ownerPhoneNumbers,
-      ownerPhoneNumbersIsArray: Array.isArray(property.ownerPhoneNumbers),
-      ownerPhoneNumbersLength: property.ownerPhoneNumbers?.length,
-      firstPhoneEntry: property.ownerPhoneNumbers?.[0]
-    });
-
     const phones = [];
 
-    // Collect all phone numbers as-is
-    if (property.ownerPhone && property.ownerPhone !== 'undefined' && property.ownerPhone !== null && property.ownerPhone.trim() !== '') {
-      console.log('🔍 DEBUG formatPhoneNumbers: Added ownerPhone:', property.ownerPhone);
+    // Collect individual phone fields
+    if (
+      property.ownerPhone &&
+      property.ownerPhone !== "undefined" &&
+      property.ownerPhone !== null &&
+      property.ownerPhone.trim() !== ""
+    ) {
       phones.push(property.ownerPhone);
     }
-    if (property.ownerMobilePhone && property.ownerMobilePhone !== 'undefined' && property.ownerMobilePhone !== null && property.ownerMobilePhone.trim() !== '') {
-      console.log('🔍 DEBUG formatPhoneNumbers: Added ownerMobilePhone:', property.ownerMobilePhone);
+    if (
+      property.ownerMobilePhone &&
+      property.ownerMobilePhone !== "undefined" &&
+      property.ownerMobilePhone !== null &&
+      property.ownerMobilePhone.trim() !== ""
+    ) {
       phones.push(property.ownerMobilePhone);
     }
-    if (property.ownerLandLine && property.ownerLandLine !== 'undefined' && property.ownerLandLine !== null && property.ownerLandLine.trim() !== '') {
-      console.log('🔍 DEBUG formatPhoneNumbers: Added ownerLandLine:', property.ownerLandLine);
+    if (
+      property.ownerLandLine &&
+      property.ownerLandLine !== "undefined" &&
+      property.ownerLandLine !== null &&
+      property.ownerLandLine.trim() !== ""
+    ) {
       phones.push(property.ownerLandLine);
     }
-    
-    // Handle ownerPhoneNumbers array - it might contain strings or objects
-    if (Array.isArray(property.ownerPhoneNumbers) && property.ownerPhoneNumbers.length > 0) {
-      console.log('🔍 DEBUG formatPhoneNumbers: Processing ownerPhoneNumbers array:', property.ownerPhoneNumbers);
-      
-      property.ownerPhoneNumbers.forEach((phoneEntry: any, index: number) => {
-        console.log(`🔍 DEBUG formatPhoneNumbers: Processing array item ${index}:`, {
-          phoneEntry,
-          phoneEntryType: typeof phoneEntry,
-          phoneEntryString: String(phoneEntry),
-          phoneEntryKeys: typeof phoneEntry === 'object' && phoneEntry !== null ? Object.keys(phoneEntry) : 'not an object'
-        });
 
+    // Handle ownerPhoneNumbers array - SIMPLIFIED for strings
+    if (
+      Array.isArray(property.ownerPhoneNumbers) &&
+      property.ownerPhoneNumbers.length > 0
+    ) {
+      property.ownerPhoneNumbers.forEach((phoneEntry: any) => {
         let phoneNumber = null;
-        let phoneType = 'Phone';
 
-        // Handle string phone numbers directly
-        if (typeof phoneEntry === "string" && phoneEntry && phoneEntry !== 'undefined' && phoneEntry !== 'null' && phoneEntry.trim() !== '') {
+        // Handle both string and object formats
+        if (typeof phoneEntry === "string") {
           phoneNumber = phoneEntry.trim();
-          console.log(`🔍 DEBUG formatPhoneNumbers: Found string phone: ${phoneNumber}`);
-        } 
-        // Handle object phone numbers with various property names
-        else if (typeof phoneEntry === "object" && phoneEntry !== null) {
-          // Try different possible property names for phone numbers
-          if (phoneEntry.number && phoneEntry.number !== 'undefined' && phoneEntry.number !== 'null') {
-            phoneNumber = String(phoneEntry.number).trim();
-            phoneType = phoneEntry.type || 'Phone';
-            console.log(`🔍 DEBUG formatPhoneNumbers: Found object.number phone: ${phoneNumber} (${phoneType})`);
-          } else if (phoneEntry.phoneNumber && phoneEntry.phoneNumber !== 'undefined' && phoneEntry.phoneNumber !== 'null') {
-            phoneNumber = String(phoneEntry.phoneNumber).trim();
-            phoneType = phoneEntry.type || 'Phone';
-            console.log(`🔍 DEBUG formatPhoneNumbers: Found object.phoneNumber phone: ${phoneNumber} (${phoneType})`);
-          } else if (phoneEntry.phone && phoneEntry.phone !== 'undefined' && phoneEntry.phone !== 'null') {
-            phoneNumber = String(phoneEntry.phone).trim();
-            phoneType = phoneEntry.type || 'Phone';
-            console.log(`🔍 DEBUG formatPhoneNumbers: Found object.phone phone: ${phoneNumber} (${phoneType})`);
-          } else {
-            // If it's an object but doesn't have expected properties, log all keys
-            console.log(`🔍 DEBUG formatPhoneNumbers: Object phone entry without standard keys:`, phoneEntry);
-          }
+        } else if (
+          typeof phoneEntry === "object" &&
+          phoneEntry !== null &&
+          phoneEntry.number
+        ) {
+          phoneNumber = String(phoneEntry.number).trim();
         }
 
-        // Add valid phone numbers to the list (excluding DNC phones)
-        if (phoneNumber && phoneNumber !== '' && phoneNumber !== 'undefined' && phoneNumber !== 'null') {
-          // Check if it's a DNC phone
-          const isDnc = (typeof phoneEntry === 'object' && phoneEntry !== null && 
-                         (phoneEntry.dnc === true || 
-                          phoneEntry.type?.toLowerCase().includes('dnc') || 
-                          phoneEntry.type?.toLowerCase().includes('do not call')));
-          
-          if (!isDnc) {
-            // Format phone number for display
-            const cleanedPhone = phoneNumber.replace(/\D/g, '');
-            let formattedPhone = phoneNumber;
-            
-            if (cleanedPhone.length === 10) {
-              formattedPhone = `(${cleanedPhone.slice(0, 3)}) ${cleanedPhone.slice(3, 6)}-${cleanedPhone.slice(6)}`;
-            } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith('1')) {
-              formattedPhone = `+1 (${cleanedPhone.slice(1, 4)}) ${cleanedPhone.slice(4, 7)}-${cleanedPhone.slice(7)}`;
-            }
-            
-            phones.push(`${formattedPhone} (${phoneType})`);
-            console.log(`🔍 DEBUG formatPhoneNumbers: Added formatted phone to list: ${formattedPhone} (${phoneType})`);
-          } else {
-            console.log(`🔍 DEBUG formatPhoneNumbers: Skipped DNC phone: ${phoneNumber}`);
-          }
+        // Add if valid and not duplicate
+        if (
+          phoneNumber &&
+          phoneNumber !== "" &&
+          phoneNumber !== "undefined" &&
+          phoneNumber !== "null" &&
+          !phones.includes(phoneNumber)
+        ) {
+          phones.push(phoneNumber);
         }
       });
     }
 
-    console.log('🔍 DEBUG formatPhoneNumbers: Final phones array:', phones);
+    if (phones.length === 0) {
+      return "Contact for details";
+    }
 
-    // Return formatted phone numbers joined with commas, or default message if none
-    const result = phones.length > 0 ? phones.join(", ") : "Contact for details";
-    console.log('🔍 DEBUG formatPhoneNumbers: Final result:', result);
-    return result;
+    // Format phone numbers for display
+    const formattedPhones = phones.map((phoneNumber) => {
+      const cleanedPhone = phoneNumber.replace(/\D/g, "");
+
+      if (cleanedPhone.length === 10) {
+        return `(${cleanedPhone.slice(0, 3)}) ${cleanedPhone.slice(3, 6)}-${cleanedPhone.slice(6)}`;
+      } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith("1")) {
+        return `+1 (${cleanedPhone.slice(1, 4)}) ${cleanedPhone.slice(4, 7)}-${cleanedPhone.slice(7)}`;
+      }
+      return phoneNumber; // Return as-is if format doesn't match
+    });
+
+    return formattedPhones.join(", ");
   };
   const formatDNCPhones = (property: any) => {
     const dncPhones = [];
@@ -970,7 +944,10 @@ const PropertyCard = ({ content }: { content: string }) => {
   const extractPropertyData = (content: string) => {
     if (!isSellerLead) return null;
 
-    console.log('🔍 DEBUG extractPropertyData: Starting extraction from content length:', content.length);
+    console.log(
+      "🔍 DEBUG extractPropertyData: Starting extraction from content length:",
+      content.length,
+    );
 
     try {
       // Extract address information - handle both new format (address on next line) and old format (same line)
@@ -1756,13 +1733,26 @@ ${buildingDetails}
    Owner Name                   ${property.ownerName}
    Mailing Address              ${property.ownerMailingAddress}
 
+
 📞 CONTACT INFORMATION
    Email(s)                     ${property.ownerEmails && property.ownerEmails.length > 0 ? property.ownerEmails.join(", ") : "Contact for details"}
    Phone(s)                     ${
      property.ownerPhoneNumbers && property.ownerPhoneNumbers.length > 0
        ? property.ownerPhoneNumbers
-           .filter((p: any) => !p.dnc)
-           .map((p: any) => `${p.number} (${p.type})`)
+           .filter((p: any) => {
+             if (typeof p === "string") return true;
+             return !p.dnc;
+           })
+           .map((p: any) => {
+             if (typeof p === "string") {
+               const cleaned = p.replace(/\D/g, "");
+               if (cleaned.length === 10) {
+                 return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+               }
+               return p;
+             }
+             return `${p.number} (${p.type})`;
+           })
            .join(", ") || "Contact for details"
        : "Contact for details"
    }
