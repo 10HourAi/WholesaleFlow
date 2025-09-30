@@ -119,11 +119,11 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
   // Stream-based deal analysis function
   const startStreamAnalysis = async () => {
     if (isStreaming || !property) return;
-    
+
     setIsStreaming(true);
     setStreamProgress(0);
     setStreamMessage('Connecting to analysis service...');
-    
+
     try {
       const eventSource = new EventSource(
         `/api/deals/analyze/${property.id}/stream`,
@@ -360,34 +360,23 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                         <span>{property.ownerMobilePhone}</span>
                       </div>
                     )}
-                    {/* Show all phone numbers from the array - handle both string arrays and object arrays */}
+                    {/* Show all phone numbers from the string array */}
                     {property.ownerPhoneNumbers && Array.isArray(property.ownerPhoneNumbers) && property.ownerPhoneNumbers.length > 0 && (
                       <div className="text-sm">
                         <span className="text-slate-600">All Phone Numbers:</span>
                         <div className="mt-1 space-y-1">
                           {property.ownerPhoneNumbers.map((phone, index) => {
-                            // Handle both string arrays and object arrays
-                            let phoneNumber = '';
-                            let phoneType = `Phone ${index + 1}`;
-                            
-                            if (typeof phone === 'string') {
-                              phoneNumber = phone;
-                            } else if (typeof phone === 'object' && phone.number) {
-                              phoneNumber = phone.number;
-                              phoneType = phone.type || phoneType;
-                            }
-                            
-                            // Check if phoneNumber is valid and not 'undefined'
-                            if (phoneNumber && phoneNumber !== 'undefined') {
+                            // Handle only string arrays - phone numbers are strings
+                            if (typeof phone === 'string' && phone && phone !== 'undefined' && phone.trim() !== '') {
                               return (
                                 <div key={index} className="flex items-center gap-2 pl-2">
                                   <Phone className="w-3 h-3 text-slate-400" />
-                                  <span className="text-xs">{phoneNumber} ({phoneType})</span>
+                                  <span className="text-xs">{phone}</span>
                                 </div>
                               );
                             }
                             return null;
-                          })}
+                          }).filter(Boolean)}
                         </div>
                       </div>
                     )}
@@ -481,7 +470,7 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                     <span className="font-medium text-slate-700">Contact Name:</span>
                     <div className="mt-1">{contact?.name || property.ownerName || "Property Owner"}</div>
                   </div>
-                  
+
                   {/* Primary Phone */}
                   {(contact?.phone || property.ownerPhone) && (
                     <div>
