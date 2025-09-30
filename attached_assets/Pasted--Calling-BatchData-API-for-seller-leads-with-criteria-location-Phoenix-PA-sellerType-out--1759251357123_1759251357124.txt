@@ -1,0 +1,126 @@
+🔍 Calling BatchData API for seller leads with criteria: {location: 'Phoenix, PA', sellerType: 'out-of-state-absentee-owner', propertyType: 'multi_family', minBedrooms: undefined, maxPrice: undefined, …}location: "Phoenix, PA"maxPrice: undefinedminBedrooms: undefinedminPrice: undefinedpropertyType: "multi_family"sellerType: "out-of-state-absentee-owner"[[Prototype]]: Object
+chat-interface.tsx:2015 🔍 Frontend received raw response: Response {type: 'basic', url: 'https://a643ea4f-5ec5-42ba-baf8-060aa46e0428-00-1ui7kh5wh2ra1.kirk.replit.dev/api/properties/batch', redirected: false, status: 200, ok: true, …}body: (...)bodyUsed: trueheaders: Headers {}ok: trueredirected: falsestatus: 200statusText: "OK"type: "basic"url: "https://a643ea4f-5ec5-42ba-baf8-060aa46e0428-00-1ui7kh5wh2ra1.kirk.replit.dev/api/properties/batch"[[Prototype]]: Response
+chat-interface.tsx:2016 🔍 Frontend parsed data: {properties: Array(5), total: 8, delivered: 5, savedSearchId: 'a1cbc900-9cc3-4b26-8926-e750d96cc821', message: 'Delivered 5 new properties (8 total found)'}
+chat-interface.tsx:2017 🔍 Data properties: (5) [{…}, {…}, {…}, {…}, {…}]
+chat-interface.tsx:2018 🔍 Data properties length: 5
+chat-interface.tsx:2022 🔍 Final properties array: (5) [{…}, {…}, {…}, {…}, {…}]0: {userId: 'demo-user', address: 'Spruce St', city: 'Phoenix', state: 'PA', zipCode: '85044', …}1: {userId: 'demo-user', address: 'Rt 588', city: 'Phoenix', state: 'PA', zipCode: '85050', …}2: {userId: 'demo-user', address: 'Buseman Ave', city: 'Phoenix', state: 'PA', zipCode: '85044', …}3: {userId: 'demo-user', address: '1361 Rt 588', city: 'Phoenix', state: 'PA', zipCode: '85050', …}4: {userId: 'demo-user', address: 'Hartzell School Rd', city: 'Phoenix', state: 'PA', zipCode: '85050', …}length: 5[[Prototype]]: Array(0)
+chat-interface.tsx:2023 🔍 Final properties length: 5
+chat-interface.tsx:758 🔍 PropertyCard: Extracting details from content: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏠 SELLER LEAD 1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 LOCATION
+   Spruce St, Phoenix, PA 85044
+
+
+🏗️ BUILDING DETAILS
+   🏠 Contact seller bed, Contact seller bath | Contact seller for sq ft
+   📅 Built: Contact seller for year built
+   📐 Property Type: single family
+   💰 Market Value: $31,100
+
+🏠 PROPERTY DETAILS
+   Total Area                   Contact for details
+   Proper...
+chat-interface.tsx:824 🔍 PropertyCard: Equity Percent match: {equityPercentMatch: Array(2), equityPercent: '100'}
+chat-interface.tsx:832 🔍 PropertyCard: Equity Balance match: {equityBalanceMatch: Array(2), equityValue: '31,100'}
+chat-interface.tsx:842 🔍 PropertyCard: Last Sale Price match: {lastSalePriceMatch: Array(2), lastSalePrice: 'N/A'}
+chat-interface.tsx:851 🔍 PropertyCard: Last Sale Date match: {lastSaleDateMatch: Array(2), lastSaleDate: 'N/A'}
+chat-interface.tsx:860 🔍 PropertyCard: Sale section from content: Last Sale Price              N/A
+Last Sale Date               N/A
+
+chat-interface.tsx:758 🔍 PropertyCard: Extracting details from content: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏠 SELLER LEAD 2
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 LOCATION
+   Rt 588, Phoenix, PA 85050
+
+
+🏗️ BUILDING DETAILS
+   🏠 Contact seller bed, Contact seller bath | Contact seller for sq ft
+   📅 Built: Contact seller for year built
+   📐 Property Type: single family
+   💰 Market Value: $27,400
+
+🏠 PROPERTY DETAILS
+   Total Area                   Contact for details
+   Property ...
+chat-interface.tsx:824 🔍 PropertyCard: Equity Percent match: {equityPercentMatch: Array(2), equityPercent: '100'}
+chat-interface.tsx:832 🔍 PropertyCard: Equity Balance match: {equityBalanceMatch: Array(2), equityValue: '27,400'}
+chat-interface.tsx:842 🔍 PropertyCard: Last Sale Price match: {lastSalePriceMatch: Array(2), lastSalePrice: 'N/A'}
+chat-interface.tsx:851 🔍 PropertyCard: Last Sale Date match: {lastSaleDateMatch: Array(2), lastSaleDate: 'N/A'}lastSaleDate: "N/A"lastSaleDateMatch: Array(2)0: "Last Sale Date               N/A"1: "N/A"groups: undefinedindex: 1438input: "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n🏠 SELLER LEAD 2\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n📍 LOCATION\n   Rt 588, Phoenix, PA 85050\n\n\n🏗️ BUILDING DETAILS\n   🏠 Contact seller bed, Contact seller bath | Contact seller for sq ft\n   📅 Built: Contact seller for year built\n   📐 Property Type: single family\n   💰 Market Value: $27,400\n\n🏠 PROPERTY DETAILS\n   Total Area                   Contact for details\n   Property Type                single family\n   Bedrooms                     Contact seller\n   Bathrooms                    Contact seller\n\n👤 OWNER INFORMATION\n   Owner Name                   ALTA GROUP INC\n   Mailing Address              21001 N Tatum Blvd Ste 1630, Phoenix, AZ 85050\n\n📞 CONTACT INFORMATION\n   Email(s)                     ahastey@gmail.com, h8ahastey@yahoo.com, ahastey@excite.com\n   Phone(s)                     undefined (undefined), undefined (undefined), undefined (undefined), undefined (undefined), undefined (undefined)\n   DNC Phone(s)                 None on record\n   Mailing Address              21001 N Tatum Blvd Ste 1630, Phoenix, AZ 85050\n\n💰 Valuation Details\n\nAs of Date                    30/09/2025\nConfidence Score             100\nEquity Balance               $27,400\nEquity Percent               100%\nEstimated Value              $27,400\nMax Offer (70% Rule)         $19,180\nLast Sale Price              N/A\nLast Sale Date               N/A\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"length: 2[[Prototype]]: Array(0)at: ƒ at()concat: ƒ concat()constructor: ƒ Array()copyWithin: ƒ copyWithin()entries: ƒ entries()every: ƒ every()fill: ƒ fill()filter: ƒ filter()find: ƒ find()findIndex: ƒ findIndex()findLast: ƒ findLast()findLastIndex: ƒ findLastIndex()flat: ƒ flat()flatMap: ƒ flatMap()forEach: ƒ forEach()includes: ƒ includes()indexOf: ƒ indexOf()join: ƒ join()keys: ƒ keys()lastIndexOf: ƒ lastIndexOf()length: 0map: ƒ map()pop: ƒ pop()push: ƒ push()reduce: ƒ reduce()reduceRight: ƒ reduceRight()reverse: ƒ reverse()shift: ƒ shift()slice: ƒ slice()some: ƒ some()sort: ƒ sort()splice: ƒ splice()toLocaleString: ƒ toLocaleString()toReversed: ƒ toReversed()toSorted: ƒ toSorted()toSpliced: ƒ toSpliced()toString: ƒ toString()unshift: ƒ unshift()values: ƒ values()with: ƒ with()Symbol(Symbol.iterator): ƒ values()Symbol(Symbol.unscopables): {at: true, copyWithin: true, entries: true, fill: true, find: true, …}[[Prototype]]: Object[[Prototype]]: Object
+chat-interface.tsx:860 🔍 PropertyCard: Sale section from content: Last Sale Price              N/A
+Last Sale Date               N/A
+
+chat-interface.tsx:758 🔍 PropertyCard: Extracting details from content: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏠 SELLER LEAD 3
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 LOCATION
+   Buseman Ave, Phoenix, PA 85044
+
+
+🏗️ BUILDING DETAILS
+   🏠 Contact seller bed, Contact seller bath | Contact seller for sq ft
+   📅 Built: Contact seller for year built
+   📐 Property Type: single family
+   💰 Market Value: $36,300
+
+🏠 PROPERTY DETAILS
+   Total Area                   Contact for details
+   Prop...
+chat-interface.tsx:824 🔍 PropertyCard: Equity Percent match: {equityPercentMatch: Array(2), equityPercent: '100'}
+chat-interface.tsx:832 🔍 PropertyCard: Equity Balance match: {equityBalanceMatch: Array(2), equityValue: '36,300'}
+chat-interface.tsx:842 🔍 PropertyCard: Last Sale Price match: {lastSalePriceMatch: Array(2), lastSalePrice: 'N/A'}
+chat-interface.tsx:851 🔍 PropertyCard: Last Sale Date match: {lastSaleDateMatch: Array(2), lastSaleDate: 'N/A'}
+chat-interface.tsx:860 🔍 PropertyCard: Sale section from content: Last Sale Price              N/A
+Last Sale Date               N/A
+
+chat-interface.tsx:758 🔍 PropertyCard: Extracting details from content: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏠 SELLER LEAD 4
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 LOCATION
+   1361 Rt 588, Phoenix, PA 85050
+
+
+🏗️ BUILDING DETAILS
+   🏠 Contact seller bed, Contact seller bath | 71,250 sq ft
+   📅 Built: 1996
+   📐 Property Type: single family
+   💰 Market Value: $2,079,100
+
+🏠 PROPERTY DETAILS
+   Total Area                   71,250 sqft
+   Property Type                single family
+   ...
+chat-interface.tsx:824 🔍 PropertyCard: Equity Percent match: {equityPercentMatch: Array(2), equityPercent: '100'}
+chat-interface.tsx:832 🔍 PropertyCard: Equity Balance match: {equityBalanceMatch: Array(2), equityValue: '2,079,100'}
+chat-interface.tsx:842 🔍 PropertyCard: Last Sale Price match: {lastSalePriceMatch: Array(2), lastSalePrice: 'N/A'}lastSalePrice: "N/A"lastSalePriceMatch: (2) ['Last Sale Price              N/A', 'N/A', index: 1377, input: '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━…━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', groups: undefined][[Prototype]]: Object
+chat-interface.tsx:851 🔍 PropertyCard: Last Sale Date match: {lastSaleDateMatch: Array(2), lastSaleDate: 'N/A'}
+chat-interface.tsx:860 🔍 PropertyCard: Sale section from content: Last Sale Price              N/A
+Last Sale Date               N/A
+
+chat-interface.tsx:758 🔍 PropertyCard: Extracting details from content: ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏠 SELLER LEAD 5
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📍 LOCATION
+   Hartzell School Rd, Phoenix, PA 85050
+
+
+🏗️ BUILDING DETAILS
+   🏠 Contact seller bed, Contact seller bath | Contact seller for sq ft
+   📅 Built: Contact seller for year built
+   📐 Property Type: single family
+   💰 Market Value: $39,300
+
+🏠 PROPERTY DETAILS
+   Total Area                   Contact for details
+...
+chat-interface.tsx:824 🔍 PropertyCard: Equity Percent match: {equityPercentMatch: Array(2), equityPercent: '100'}
+chat-interface.tsx:832 🔍 PropertyCard: Equity Balance match: {equityBalanceMatch: Array(2), equityValue: '39,300'}
+chat-interface.tsx:842 🔍 PropertyCard: Last Sale Price match: {lastSalePriceMatch: Array(2), lastSalePrice: 'N/A'}
+chat-interface.tsx:851 🔍 PropertyCard: Last Sale Date match: {lastSaleDateMatch: Array(2), lastSaleDate: 'N/A'}
+chat-interface.tsx:860 🔍 PropertyCard: Sale section from content: Last 
