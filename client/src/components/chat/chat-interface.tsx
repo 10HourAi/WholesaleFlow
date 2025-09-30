@@ -365,22 +365,27 @@ const PropertyDetailsModal = ({
         phoneLength: phone?.length
       });
 
-      // Ensure we're working with a string and it's not a placeholder
+      // Convert to string and check if valid
+      const phoneStr = String(phone || '').trim();
+      
+      // Ensure we're working with a valid string and it's not a placeholder
       if (
-        typeof phone !== "string" ||
-        !phone ||
-        phone.toLowerCase() === "null" ||
-        phone.toLowerCase() === "undefined" ||
-        phone.trim() === ""
+        !phoneStr ||
+        phoneStr === 'null' ||
+        phoneStr === 'undefined' ||
+        phoneStr === 'N/A' ||
+        phoneStr.toLowerCase() === "null" ||
+        phoneStr.toLowerCase() === "undefined" ||
+        phoneStr.length === 0
       ) {
         console.log(`🔍 DEBUG addPhone: Rejected phone from ${source} - invalid format`);
         return;
       }
 
       // Remove non-digit characters to get a clean number for formatting and de-duping
-      const digits = phone.replace(/\D/g, "");
+      const digits = phoneStr.replace(/\D/g, "");
       console.log(`🔍 DEBUG addPhone: Cleaned digits from ${source}:`, {
-        originalPhone: phone,
+        originalPhone: phoneStr,
         cleanedDigits: digits,
         digitsLength: digits.length
       });
@@ -413,11 +418,14 @@ const PropertyDetailsModal = ({
           phoneEntryString: String(phoneEntry)
         });
 
-        // Only handle string arrays - phone numbers are strings
+        // Handle both string and object formats
         if (typeof phoneEntry === "string") {
-          addPhone(phoneEntry, `ownerPhoneNumbers[${index}]`);
+          addPhone(phoneEntry, `ownerPhoneNumbers[${index}] (string)`);
+        } else if (phoneEntry && typeof phoneEntry === "object" && phoneEntry.number) {
+          // Handle object format like {number: '1234567890', type: 'mobile'}
+          addPhone(phoneEntry.number, `ownerPhoneNumbers[${index}] (object.number)`);
         } else {
-          console.log(`🔍 DEBUG formatPhoneNumbers: Skipped non-string array item ${index}:`, phoneEntry);
+          console.log(`🔍 DEBUG formatPhoneNumbers: Skipped invalid array item ${index}:`, phoneEntry);
         }
       });
     } else {
@@ -439,9 +447,15 @@ const PropertyDetailsModal = ({
         const formatted = `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
         console.log('🔍 DEBUG formatPhoneNumbers: Formatted 10-digit number:', formatted);
         return formatted;
+      } else if (digits.length === 11 && digits.startsWith('1')) {
+        // Handle 11-digit numbers that start with 1 (US country code)
+        const cleanDigits = digits.slice(1);
+        const formatted = `(${cleanDigits.slice(0, 3)}) ${cleanDigits.slice(3, 6)}-${cleanDigits.slice(6)}`;
+        console.log('🔍 DEBUG formatPhoneNumbers: Formatted 11-digit number (removed 1):', formatted);
+        return formatted;
       }
-      console.log('🔍 DEBUG formatPhoneNumbers: Using fallback format for non-10-digit:', digits);
-      return digits; // Fallback for numbers not exactly 10 digits (e.g., with extensions)
+      console.log('🔍 DEBUG formatPhoneNumbers: Using fallback format for non-standard length:', digits);
+      return digits; // Fallback for numbers not exactly 10 digits
     });
 
     const finalResult = formattedPhones.join(", ");
