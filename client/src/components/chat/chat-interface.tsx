@@ -30,8 +30,7 @@ import {
   ArrowRight,
   ArrowLeft,
   Plus,
-  BarChart3,
-  PhoneCall,
+  
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -112,19 +111,7 @@ const CondensedPropertyCard = ({
     }
   };
 
-  const handleAnalyzeDeal = () => {
-    toast({
-      title: "Deal Analysis Started",
-      description: `Analyzing deal for ${property.address}...`,
-    });
-  };
-
-  const handleContactOwner = () => {
-    toast({
-      title: "Contact Owner",
-      description: `Preparing to contact property owner...`,
-    });
-  };
+  
 
   return (
     <Card className="w-full max-w-2xl mx-auto overflow-hidden bg-white border border-gray-200 shadow-sm">
