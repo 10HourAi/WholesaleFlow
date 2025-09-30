@@ -271,92 +271,56 @@ const PropertyDetailsModal = ({
   if (!property) return null;
 
   const formatEmail = (property: any) => {
-    const emails = [];
-    
     // Check for direct email field
     if (property.ownerEmail && 
         property.ownerEmail !== "null" && 
         property.ownerEmail !== null && 
         property.ownerEmail !== "undefined" && 
         property.ownerEmail.trim() !== "") {
-      emails.push(property.ownerEmail.trim());
+      return property.ownerEmail;
     }
     
     // Check for emails array
     if (property.ownerEmails && Array.isArray(property.ownerEmails) && property.ownerEmails.length > 0) {
       const validEmails = property.ownerEmails.filter((email: string) => 
-        email && email !== "null" && email !== "undefined" && email.trim() !== "" && !emails.includes(email.trim())
+        email && email !== "null" && email !== "undefined" && email.trim() !== ""
       );
-      emails.push(...validEmails);
+      if (validEmails.length > 0) {
+        return validEmails.join(", ");
+      }
     }
     
-    // Check for owner object with email
-    if (property.owner?.email && 
-        property.owner.email !== "null" && 
-        property.owner.email !== null && 
-        property.owner.email.trim() !== "" && 
-        !emails.includes(property.owner.email.trim())) {
-      emails.push(property.owner.email.trim());
-    }
-    
-    // Check for owner object with emails array
-    if (property.owner?.emails && Array.isArray(property.owner.emails) && property.owner.emails.length > 0) {
-      const validOwnerEmails = property.owner.emails.filter((email: string) => 
-        email && email !== "null" && email !== "undefined" && email.trim() !== "" && !emails.includes(email.trim())
-      );
-      emails.push(...validOwnerEmails);
-    }
-    
-    return emails.length > 0 ? emails.join(", ") : "Contact for details";
+    return "Contact for details";
   };
 
   const formatPhoneNumbers = (property: any) => {
     const phones = [];
-    const addedNumbers = new Set();
-
-    // Helper function to clean and format phone number
-    const cleanPhoneNumber = (number: string) => {
-      if (!number) return "";
-      // Remove all non-digit characters
-      const digits = number.replace(/\D/g, "");
-      // Format as (XXX) XXX-XXXX if 10 digits
-      if (digits.length === 10) {
-        return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-      }
-      return number; // Return original if not 10 digits
-    };
-
-    // Helper function to add phone if not duplicate
-    const addPhone = (number: string, type: string) => {
-      if (number && 
-          number !== "null" && 
-          number !== null && 
-          number !== "undefined" &&
-          number.trim() !== "") {
-        const cleanNumber = number.trim();
-        const formattedNumber = cleanPhoneNumber(cleanNumber);
-        if (!addedNumbers.has(cleanNumber)) {
-          phones.push(`${formattedNumber} (${type})`);
-          addedNumbers.add(cleanNumber);
-        }
-      }
-    };
 
     // Primary phone
-    if (property.ownerPhone) {
-      addPhone(property.ownerPhone, "Primary");
+    if (property.ownerPhone && 
+        property.ownerPhone !== "null" && 
+        property.ownerPhone !== null && 
+        property.ownerPhone.trim() !== "") {
+      phones.push(`${property.ownerPhone} (Primary)`);
     }
     
-    // Landline
-    if (property.ownerLandLine && property.ownerLandLine !== property.ownerPhone) {
-      addPhone(property.ownerLandLine, "Landline");
+    // Landline (if different from primary)
+    if (property.ownerLandLine && 
+        property.ownerLandLine !== "null" && 
+        property.ownerLandLine !== null && 
+        property.ownerLandLine.trim() !== "" &&
+        property.ownerLandLine !== property.ownerPhone) {
+      phones.push(`${property.ownerLandLine} (Landline)`);
     }
     
-    // Mobile
+    // Mobile (if different from primary and landline)
     if (property.ownerMobilePhone && 
+        property.ownerMobilePhone !== "null" && 
+        property.ownerMobilePhone !== null && 
+        property.ownerMobilePhone.trim() !== "" &&
         property.ownerMobilePhone !== property.ownerPhone && 
         property.ownerMobilePhone !== property.ownerLandLine) {
-      addPhone(property.ownerMobilePhone, "Mobile");
+      phones.push(`${property.ownerMobilePhone} (Mobile)`);
     }
 
     // Check for phone numbers array
@@ -366,38 +330,15 @@ const PropertyDetailsModal = ({
       );
       
       validPhones.forEach((phone: any) => {
-        const phoneNumber = phone.number.trim();
-        const phoneType = phone.type || "Phone";
+        const phoneNumber = phone.number;
+        const phoneType = phone.type || "Unknown";
+        const phoneStr = `${phoneNumber} (${phoneType})`;
         
-        if (!addedNumbers.has(phoneNumber)) {
-          const formattedNumber = cleanPhoneNumber(phoneNumber);
-          phones.push(`${formattedNumber} (${phoneType})`);
-          addedNumbers.add(phoneNumber);
+        // Only add if not already in the list
+        if (!phones.some(p => p.includes(phoneNumber))) {
+          phones.push(phoneStr);
         }
       });
-    }
-
-    // Check for owner object phone numbers
-    if (property.owner?.phoneNumbers && Array.isArray(property.owner.phoneNumbers)) {
-      const validOwnerPhones = property.owner.phoneNumbers.filter((phone: any) => 
-        phone && phone.number && !phone.dnc && phone.number !== "null" && phone.number.trim() !== ""
-      );
-      
-      validOwnerPhones.forEach((phone: any) => {
-        const phoneNumber = phone.number.trim();
-        const phoneType = phone.type || "Phone";
-        
-        if (!addedNumbers.has(phoneNumber)) {
-          const formattedNumber = cleanPhoneNumber(phoneNumber);
-          phones.push(`${formattedNumber} (${phoneType})`);
-          addedNumbers.add(phoneNumber);
-        }
-      });
-    }
-
-    // Check for direct owner phone fields
-    if (property.owner?.phone && !addedNumbers.has(property.owner.phone.trim())) {
-      addPhone(property.owner.phone, "Primary");
     }
 
     return phones.length > 0 ? phones.join(", ") : "Contact for details";
@@ -405,63 +346,25 @@ const PropertyDetailsModal = ({
 
   const formatDNCPhones = (property: any) => {
     const dncPhones = [];
-    const addedNumbers = new Set();
-    
-    // Helper function to clean and format phone number
-    const cleanPhoneNumber = (number: string) => {
-      if (!number) return "";
-      const digits = number.replace(/\D/g, "");
-      if (digits.length === 10) {
-        return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-      }
-      return number;
-    };
     
     // Check direct DNC phone field
     if (property.ownerDNCPhone && 
         property.ownerDNCPhone !== "null" && 
         property.ownerDNCPhone !== null && 
-        property.ownerDNCPhone !== "undefined" &&
         property.ownerDNCPhone.trim() !== "") {
-      const directDncPhones = property.ownerDNCPhone.split(',')
-        .map((phone: string) => phone.trim())
-        .filter(Boolean);
-      
-      directDncPhones.forEach((phone: string) => {
-        if (!addedNumbers.has(phone)) {
-          const formattedPhone = cleanPhoneNumber(phone);
-          dncPhones.push(`${formattedPhone} (DNC)`);
-          addedNumbers.add(phone);
-        }
-      });
+      const directDncPhones = property.ownerDNCPhone.split(',').map((phone: string) => phone.trim()).filter(Boolean);
+      dncPhones.push(.....directDncPhones);
     }
     
     // Check for DNC phones in phone numbers array
     if (property.ownerPhoneNumbers && Array.isArray(property.ownerPhoneNumbers)) {
       const dncFromArray = property.ownerPhoneNumbers
-        .filter((phone: any) => phone && phone.number && phone.dnc && phone.number !== "null" && phone.number.trim() !== "");
+        .filter((phone: any) => phone && phone.number && phone.dnc && phone.number !== "null" && phone.number.trim() !== "")
+        .map((phone: any) => `${phone.number} (${phone.type || "Unknown"})`);
       
-      dncFromArray.forEach((phone: any) => {
-        const phoneNumber = phone.number.trim();
-        if (!addedNumbers.has(phoneNumber)) {
-          const formattedPhone = cleanPhoneNumber(phoneNumber);
-          dncPhones.push(`${formattedPhone} (${phone.type || "DNC"})`);
-          addedNumbers.add(phoneNumber);
-        }
-      });
-    }
-    
-    // Check for DNC phones in owner object
-    if (property.owner?.phoneNumbers && Array.isArray(property.owner.phoneNumbers)) {
-      const ownerDncPhones = property.owner.phoneNumbers
-        .filter((phone: any) => phone && phone.number && phone.dnc && phone.number !== "null" && phone.number.trim() !== "");
-      
-      ownerDncPhones.forEach((phone: any) => {
-        const phoneNumber = phone.number.trim();
-        if (!addedNumbers.has(phoneNumber)) {
-          const formattedPhone = cleanPhoneNumber(phoneNumber);
-          dncPhones.push(`${formattedPhone} (${phone.type || "DNC"})`);
-          addedNumbers.add(phoneNumber);
+      dncFromArray.forEach((phone: string) => {
+        if (!dncPhones.some(p => phone.includes(p.split(' ')[0]))) {
+          dncPhones.push(phone);
         }
       });
     }
@@ -470,52 +373,13 @@ const PropertyDetailsModal = ({
   };
 
   const formatMailingAddress = (property: any) => {
-    // Check for direct mailing address field
     if (property.ownerMailingAddress && 
         property.ownerMailingAddress !== "null" && 
         property.ownerMailingAddress !== null && 
-        property.ownerMailingAddress !== "undefined" &&
         property.ownerMailingAddress.trim() !== "") {
-      return property.ownerMailingAddress.trim();
+      return property.ownerMailingAddress;
     }
-    
-    // Check for owner object mailing address
-    if (property.owner?.mailingAddress &&
-        property.owner.mailingAddress !== "null" &&
-        property.owner.mailingAddress !== null &&
-        property.owner.mailingAddress !== "undefined" &&
-        property.owner.mailingAddress.trim() !== "") {
-      return property.owner.mailingAddress.trim();
-    }
-    
-    // Check for structured mailing address in owner object
-    if (property.owner?.mailingAddress) {
-      const addr = property.owner.mailingAddress;
-      if (typeof addr === 'object' && addr.street) {
-        const fullAddress = `${addr.street || ""}, ${addr.city || ""}, ${addr.state || ""} ${addr.zip || ""}`.trim();
-        if (fullAddress && fullAddress !== ", ") {
-          return fullAddress;
-        }
-      }
-    }
-    
-    // Check for mailing address fields separately
-    const mailingParts = [];
-    if (property.mailingStreet) mailingParts.push(property.mailingStreet);
-    if (property.mailingCity) mailingParts.push(property.mailingCity);
-    if (property.mailingState && property.mailingZip) {
-      mailingParts.push(`${property.mailingState} ${property.mailingZip}`);
-    } else if (property.mailingState) {
-      mailingParts.push(property.mailingState);
-    }
-    
-    if (mailingParts.length > 0) {
-      return mailingParts.join(", ");
-    }
-    
-    // Fall back to property address
-    const propertyAddress = `${property.address || ""}, ${property.city || ""}, ${property.state || ""} ${property.zipCode || ""}`.trim();
-    return propertyAddress || "Same as property address";
+    return "Same as property address";
   };
 
   return (
@@ -526,147 +390,46 @@ const PropertyDetailsModal = ({
             Seller Lead Details
           </DialogTitle>
         </DialogHeader>
-        <div className="space-y-6 max-h-[70vh] overflow-y-auto">
-          {/* Property Header */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-lg font-bold text-blue-800 mb-2">🏠 SELLER LEAD</h3>
-            <div className="text-blue-700">
-              <p className="font-semibold">{property.address}</p>
-              <p>{property.city}, {property.state} {property.zipCode}</p>
-            </div>
-          </div>
+        <div className="text-sm whitespace-pre-wrap font-mono text-gray-700 bg-white p-4 rounded-md border max-h-[70vh] overflow-y-auto">
+          {`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🏠 SELLER LEAD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-          {/* Building Details */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              🏗️ Building Details
-            </h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="font-medium text-gray-600">Property Type:</span>
-                <div>{property.propertyType?.replace(/_/g, " ") || "Single Family"}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Year Built:</span>
-                <div>{property.yearBuilt || "N/A"}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Bedrooms:</span>
-                <div>{property.bedrooms || "N/A"}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Bathrooms:</span>
-                <div>{property.bathrooms || "N/A"}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Square Feet:</span>
-                <div>{formatNumber(property.squareFeet)} sq ft</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Market Value:</span>
-                <div className="font-semibold text-blue-600">${formatNumber(property.arv)}</div>
-              </div>
-            </div>
-          </div>
+📍 LOCATION
+   ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
 
-          {/* Owner Information */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              👤 Owner Information
-            </h4>
-            <div className="grid grid-cols-1 gap-3 text-sm">
-              <div>
-                <span className="font-medium text-gray-600">Owner Name:</span>
-                <div className="font-medium">{property.ownerName || "N/A"}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Mailing Address:</span>
-                <div>{formatMailingAddress(property)}</div>
-              </div>
-            </div>
-          </div>
+🏗️ BUILDING DETAILS
+   🏠 ${property.bedrooms || "N/A"} bed, ${property.bathrooms || "N/A"} bath | ${formatNumber(property.squareFeet)} sq ft
+   📅 Built: ${property.yearBuilt || "N/A"}
+   📐 Property Type: ${property.propertyType?.replace(/_/g, " ") || "single family"}
+   💰 Market Value: $${formatNumber(property.arv)}
 
-          {/* Contact Information - Structured Display */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <h4 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
-              📞 Contact Information
-            </h4>
-            <div className="space-y-3">
-              {/* Email Addresses */}
-              <div className="bg-white rounded-md p-3 border border-green-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg className="w-4 h-4 text-green-600" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M20,8L12,13L4,8V6L12,11L20,6M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,1.89 21.1,4 20,4Z"/>
-                  </svg>
-                  <span className="font-medium text-green-700">Email Addresses</span>
-                </div>
-                <div className="text-sm text-gray-700">{formatEmail(property)}</div>
-              </div>
+🏠 PROPERTY DETAILS
+   Total Area                   ${formatNumber(property.squareFeet)} sqft
+   Property Type                ${property.propertyType?.replace(/_/g, " ") || "single family"}
+   Bedrooms                     ${property.bedrooms || "N/A"}
+   Bathrooms                    ${property.bathrooms || "N/A"}
 
-              {/* Phone Numbers */}
-              <div className="bg-white rounded-md p-3 border border-green-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg className="w-4 h-4 text-green-600" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M6.62,10.79C8.06,13.62 10.38,15.94 13.21,17.38L15.41,15.18C15.69,14.9 16.08,14.82 16.43,14.93C17.55,15.3 18.75,15.5 20,15.5A1,1 0 0,1 21,16.5V20A1,1 0 0,1 20,21A17,17 0 0,1 3,4A1,1 0 0,1 4,3H7.5A1,1 0 0,1 8.5,4C8.5,5.25 8.7,6.45 9.07,7.57C9.18,7.92 9.1,8.31 8.82,8.59L6.62,10.79Z"/>
-                  </svg>
-                  <span className="font-medium text-green-700">Phone Numbers</span>
-                </div>
-                <div className="text-sm text-gray-700">{formatPhoneNumbers(property)}</div>
-              </div>
+👤 OWNER INFORMATION
+   Owner Name                   ${property.ownerName || "N/A"}
+   Mailing Address              ${property.ownerMailingAddress || "N/A"}
 
-              {/* DNC Phone Numbers */}
-              <div className="bg-white rounded-md p-3 border border-red-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg className="w-4 h-4 text-red-600" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M17,7H22V9H19V12A5,5 0 0,1 14,17H10A5,5 0 0,1 5,12V9H2V7H7A2,2 0 0,1 9,5V4A2,2 0 0,1 11,2H13A2,2 0 0,1 15,4V5A2,2 0 0,1 17,7M13,4V7H11V4H13Z"/>
-                  </svg>
-                  <span className="font-medium text-red-700">DNC Phone Numbers</span>
-                </div>
-                <div className="text-sm text-gray-700">{formatDNCPhones(property)}</div>
-              </div>
-            </div>
-          </div>
+📞 CONTACT INFORMATION
+   Email(s)                     ${formatEmail(property)}
+   Phone(s)                     ${formatPhoneNumbers(property)}
+   DNC Phone(s)                 ${formatDNCPhones(property)}
+   Mailing Address              ${formatMailingAddress(property)}
 
-          {/* Financial Information */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              💰 Valuation Details
-            </h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="font-medium text-gray-600">As of Date:</span>
-                <div>{new Date().toLocaleDateString("en-US")}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Confidence Score:</span>
-                <div>{property.confidenceScore || "N/A"}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Equity Balance:</span>
-                <div className="font-semibold text-green-600">${formatNumber(property.equityBalance)}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Equity Percent:</span>
-                <div className="font-semibold text-green-600">{property.equityPercentage || "N/A"}%</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Estimated Value:</span>
-                <div className="font-semibold text-blue-600">${formatNumber(property.arv)}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Max Offer (70% Rule):</span>
-                <div className="font-semibold text-orange-600">${formatNumber(property.maxOffer)}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Last Sale Price:</span>
-                <div>{property.lastSalePrice ? `$${formatNumber(property.lastSalePrice)}` : "N/A"}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Last Sale Date:</span>
-                <div>{formatDate(property.lastSaleDate)}</div>
-              </div>
-            </div>
-          </div>
+💰 VALUATION DETAILS
+   As of Date                   ${new Date().toLocaleDateString("en-US")}
+   Confidence Score             ${property.confidenceScore || "N/A"}
+   Equity Balance               $${formatNumber(property.equityBalance)}
+   Equity Percent               ${property.equityPercentage || "N/A"}%
+   Estimated Value              $${formatNumber(property.arv)}
+   Max Offer (70% Rule)         $${formatNumber(property.maxOffer)}
+   Last Sale Price              ${property.lastSalePrice ? `$${formatNumber(property.lastSalePrice)}` : "N/A"}
+   Last Sale Date               ${formatDate(property.lastSaleDate)}
+`}
         </div>
       </DialogContent>
     </Dialog>
@@ -1414,7 +1177,7 @@ export default function ChatInterface() {
 
       // Add Terry's response
       setTerryMessages([
-        ...newMessages,
+        .....newMessages,
         { role: "assistant" as const, content: data.response },
       ]);
     } catch (error: any) {
@@ -1423,7 +1186,7 @@ export default function ChatInterface() {
         error.message ||
         "I'm sorry, I'm having trouble connecting right now. Please try again in a moment.";
       setTerryMessages([
-        ...newMessages,
+        .....newMessages,
         {
           role: "assistant" as const,
           content: errorMessage,
@@ -2404,7 +2167,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                     value={buyerWizardData.city}
                     onChange={(e) =>
                       setBuyerWizardData({
-                        ...buyerWizardData,
+                        .....buyerWizardData,
                         city: e.target.value,
                       })
                     }
@@ -2415,7 +2178,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                   <Select
                     value={buyerWizardData.state}
                     onValueChange={(value) =>
-                      setBuyerWizardData({ ...buyerWizardData, state: value })
+                      setBuyerWizardData({ .....buyerWizardData, state: value })
                     }
                   >
                     <SelectTrigger>
@@ -2475,7 +2238,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                     }`}
                     onClick={() =>
                       setBuyerWizardData({
-                        ...buyerWizardData,
+                        .....buyerWizardData,
                         buyerType: type.id,
                       })
                     }
@@ -3317,3 +3080,5 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
     </div>
   );
 }
+
+// Contact normalization helpers and JSX rendering added by assistant
