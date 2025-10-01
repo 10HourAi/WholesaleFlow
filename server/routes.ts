@@ -30,38 +30,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/signup", async (req, res) => {
     try {
       const { email, password, firstName, lastName } = req.body;
-      
+
       console.log("🔐 Signup attempt:", { email, firstName, lastName });
-      
+
       // Validate required fields
       if (!email || !password || !firstName || !lastName) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "All fields are required" 
+        return res.status(400).json({
+          success: false,
+          message: "All fields are required",
         });
       }
 
       // Validate password strength
       if (password.length < 6) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Password must be at least 6 characters long" 
+        return res.status(400).json({
+          success: false,
+          message: "Password must be at least 6 characters long",
         });
       }
-      
+
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "User already exists with this email" 
+        return res.status(400).json({
+          success: false,
+          message: "User already exists with this email",
         });
       }
-      
+
       // Hash password with bcrypt
       const saltRounds = 12;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
-      
+
       // Create user with hashed password
       const user = await storage.upsertUser({
         id: `email_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique ID
@@ -71,60 +71,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName,
         profileImageUrl: null,
       });
-      
+
       console.log("✅ User created successfully:", user.id);
       console.log("🔐 Password hashed and stored securely");
-      
+
       res.json({ success: true, message: "Account created successfully" });
     } catch (error: any) {
       console.error("❌ Signup error:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to create account" 
+      res.status(500).json({
+        success: false,
+        message: "Failed to create account",
       });
     }
   });
-  
+
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
-      
+
       console.log("🔐 Login attempt:", { email });
-      
+
       // Validate required fields
       if (!email || !password) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Email and password are required" 
+        return res.status(400).json({
+          success: false,
+          message: "Email and password are required",
         });
       }
-      
+
       // Check if user exists
       const user = await storage.getUserByEmail(email);
       if (!user) {
-        return res.status(401).json({ 
-          success: false, 
-          message: "Invalid email or password" 
+        return res.status(401).json({
+          success: false,
+          message: "Invalid email or password",
         });
       }
 
       // Check if user has a password (might be Replit Auth only user)
       if (!user.password) {
-        return res.status(401).json({ 
-          success: false, 
-          message: "Please use 'Continue with Replit' to login" 
+        return res.status(401).json({
+          success: false,
+          message: "Please use 'Continue with Replit' to login",
         });
       }
-      
+
       // Verify password with bcrypt
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        return res.status(401).json({ 
-          success: false, 
-          message: "Invalid email or password" 
+        return res.status(401).json({
+          success: false,
+          message: "Invalid email or password",
         });
       }
-      
+
       // Create session for traditional auth
       (req as any).session.user = {
         id: user.id,
@@ -134,13 +134,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: `${user.firstName} ${user.lastName}`,
         profileImage: user.profileImageUrl,
       };
-      
+
       console.log("✅ Login successful:", user.id);
       console.log("🔐 Password verified and session created");
-      
-      res.json({ 
-        success: true, 
-        message: "Login successful", 
+
+      res.json({
+        success: true,
+        message: "Login successful",
         user: {
           id: user.id,
           email: user.email,
@@ -148,13 +148,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastName: user.lastName,
           name: `${user.firstName} ${user.lastName}`,
           profileImage: user.profileImageUrl,
-        }
+        },
       });
     } catch (error: any) {
       console.error("❌ Login error:", error);
-      res.status(401).json({ 
-        success: false, 
-        message: "Invalid email or password" 
+      res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
       });
     }
   });
@@ -166,9 +166,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.session.destroy((err: any) => {
           if (err) {
             console.error("❌ Session destroy error:", err);
-            return res.status(500).json({ 
-              success: false, 
-              message: "Failed to logout" 
+            return res.status(500).json({
+              success: false,
+              message: "Failed to logout",
             });
           }
           res.json({ success: true, message: "Logged out successfully" });
@@ -178,9 +178,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error: any) {
       console.error("❌ Logout error:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to logout" 
+      res.status(500).json({
+        success: false,
+        message: "Failed to logout",
       });
     }
   });
@@ -197,11 +197,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check for Replit Auth
       if (req.user && req.user.claims) {
         console.log("🔐 Replit Auth session found");
-        
+
         // Try to get full user data from database
         const userId = req.user.claims.sub;
         const user = await storage.getUser(userId);
-        
+
         if (user) {
           // Return full user data from database
           const userData = {
@@ -229,7 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // No authentication found
       return res.status(401).json({ message: "Unauthorized" });
-      
+
     } catch (error) {
       console.error("❌ Error fetching user:", error);
       return res.status(401).json({ message: "Unauthorized" });
@@ -240,7 +240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Check authentication for both traditional and Replit Auth sessions
       let userId: string;
-      
+
       if (req.session && req.session.user) {
         // Traditional session
         userId = req.session.user.id;
@@ -250,7 +250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
+
       const properties = await storage.getProperties(userId);
       res.json(properties);
     } catch (error: any) {
@@ -262,7 +262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Check authentication for both traditional and Replit Auth sessions
       let userId: string;
-      
+
       if (req.session && req.session.user) {
         // Traditional session
         userId = req.session.user.id;
@@ -274,13 +274,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       console.log("🏠 Creating property for user:", userId);
       console.log("🏠 Request body:", req.body);
-      
+
+      // Check for existing property to prevent duplicates
+      const existingProperties = await storage.searchProperties(userId, {
+        city: req.body.city,
+        state: req.body.state,
+      });
+
+      const duplicateProperty = existingProperties.find(p =>
+        p.address === req.body.address &&
+        p.city === req.body.city &&
+        p.state === req.body.state
+      );
+
+      if (duplicateProperty) {
+        console.log("🏠 Duplicate property found, returning existing:", duplicateProperty.id);
+        return res.status(200).json({
+          ...duplicateProperty,
+          message: "Property already exists in your CRM",
+        });
+      }
+
       // Clean the data before validation and ADD userId
-      const cleanedData = { 
+      const cleanedData = {
         ...req.body,
         userId // Add userId from authenticated user
       };
-      
+
       // Convert string numbers to actual numbers
       if (cleanedData.bedrooms && typeof cleanedData.bedrooms === 'string') {
         cleanedData.bedrooms = parseInt(cleanedData.bedrooms);
@@ -300,22 +320,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (cleanedData.confidenceScore && typeof cleanedData.confidenceScore === 'string') {
         cleanedData.confidenceScore = parseInt(cleanedData.confidenceScore);
       }
-      
+
       console.log("🏠 Cleaned data with userId:", cleanedData);
-      
+
       const validatedData = insertPropertySchema.parse(cleanedData);
       console.log("🏠 Validated data:", validatedData);
-      
+
       const property = await storage.createProperty(validatedData);
-      
+
       console.log("🏠 Property created successfully:", property.id);
       res.json(property);
     } catch (error: any) {
       console.error("❌ Property creation error:", error);
       if (error.name === 'ZodError') {
         console.error("❌ Validation errors:", error.errors);
-        res.status(400).json({ 
-          message: "Validation failed", 
+        res.status(400).json({
+          message: "Validation failed",
           errors: error.errors,
           details: error.errors.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ')
         });
@@ -329,7 +349,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Check authentication for both traditional and Replit Auth sessions
       let userId: string;
-      
+
       if (req.session && req.session.user) {
         // Traditional session
         userId = req.session.user.id;
@@ -339,7 +359,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
+
       const { city, state, status, leadType } = req.query;
       const properties = await storage.searchProperties(userId, {
         city: city as string,
@@ -357,7 +377,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Check authentication for both traditional and Replit Auth sessions
       let userId: string;
-      
+
       if (req.session && req.session.user) {
         // Traditional session
         userId = req.session.user.id;
@@ -383,7 +403,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Check authentication for both traditional and Replit Auth sessions
       let userId: string;
-      
+
       if (req.session && req.session.user) {
         // Traditional session
         userId = req.session.user.id;
@@ -393,7 +413,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
+
       const contacts = await storage.getContacts(userId);
       res.json(contacts);
     } catch (error: any) {
@@ -408,7 +428,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!req.session?.user && !req.user?.claims) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
+
       const validatedData = insertContactSchema.parse(req.body);
       const contact = await storage.createContact(validatedData);
       res.json(contact);
@@ -543,7 +563,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Check authentication for both traditional and Replit Auth sessions
       let userId: string;
-      
+
       if (req.session && req.session.user) {
         // Traditional session
         userId = req.session.user.id;
@@ -564,7 +584,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Check authentication for both traditional and Replit Auth sessions
       let userId: string;
-      
+
       if (req.session && req.session.user) {
         // Traditional session
         userId = req.session.user.id;
@@ -574,7 +594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
+
       const validatedData = insertConversationSchema.parse(req.body);
       const conversation = await storage.createConversation(validatedData);
       res.json(conversation);
@@ -592,7 +612,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!req.session?.user && !req.user?.claims) {
           return res.status(401).json({ message: "Unauthorized" });
         }
-        
+
         const messages = await storage.getMessagesByConversation(req.params.id);
         res.json(messages);
       } catch (error: any) {
@@ -607,7 +627,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Check authentication for both traditional and Replit Auth sessions
         let userId: string;
-        
+
         if (req.session && req.session.user) {
           // Traditional session
           userId = req.session.user.id;
@@ -1191,7 +1211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Check authentication for both traditional and Replit Auth sessions
       let userId: string;
-      
+
       if (req.session && req.session.user) {
         // Traditional session
         userId = req.session.user.id;
@@ -1564,15 +1584,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dedicated Cash Buyer API endpoint - Using mock data for UI testing
   app.post("/api/cash-buyers/search", async (req, res) => {
     try {
-      const {
-        location,
-        buyerType = "all_cash_buyers",
-        minProperties = 3,
-      } = req.body;
+      const { location, buyerType = "all_cash_buyers", quickLists, minProperties } = req.body;
 
       console.log("🔍 Cash buyer search:", {
         location,
         buyerType,
+        quickLists,
         minProperties,
       });
 

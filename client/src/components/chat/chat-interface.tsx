@@ -57,6 +57,7 @@ interface BuyerWizardData {
   city: string;
   state: string;
   buyerType: string;
+  quickLists?: string[];
 }
 
 // Helper to format numbers with commas
@@ -94,6 +95,23 @@ const CondensedPropertyCard = ({
   const handleAddToCRM = async () => {
     try {
       console.log("🏠 Attempting to add property to CRM:", property.address);
+      
+      // Check if property already exists to prevent duplicates
+      const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
+      const propertyExists = existingProperties?.some(p => 
+        p.address === property.address && 
+        p.city === property.city && 
+        p.state === property.state
+      );
+      
+      if (propertyExists) {
+        toast({
+          title: "Already in CRM",
+          description: `Property at ${property.address} is already in your CRM.`,
+          variant: "default",
+        });
+        return;
+      }
       
       // Prepare property data for API
       const propertyData = {
@@ -1114,6 +1132,24 @@ const PropertyCard = ({ content }: { content: string }) => {
 
     try {
       console.log("🏠 Attempting to add property to CRM:", propertyData.address);
+      
+      // Check if property already exists to prevent duplicates
+      const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
+      const propertyExists = existingProperties?.some(p => 
+        p.address === propertyData.address && 
+        p.city === propertyData.city && 
+        p.state === propertyData.state
+      );
+      
+      if (propertyExists) {
+        toast({
+          title: "Already in CRM",
+          description: `Property at ${propertyData.address} is already in your CRM.`,
+          variant: "default",
+        });
+        return;
+      }
+      
       console.log("🏠 Property data being sent:", propertyData);
       
       const result = await apiRequest("POST", "/api/properties", propertyData);
@@ -1162,6 +1198,25 @@ const PropertyCard = ({ content }: { content: string }) => {
 
     try {
       console.log("🏠 Confirming add property to CRM:", propertyData.address);
+      
+      // Check if property already exists to prevent duplicates
+      const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
+      const propertyExists = existingProperties?.some(p => 
+        p.address === propertyData.address && 
+        p.city === propertyData.city && 
+        p.state === propertyData.state
+      );
+      
+      if (propertyExists) {
+        toast({
+          title: "Already in CRM",
+          description: `Property at ${propertyData.address} is already in your CRM.`,
+          variant: "default",
+        });
+        setShowDetailsDialog(false);
+        return;
+      }
+      
       console.log("🏠 Property data being sent:", propertyData);
       
       const result = await apiRequest("POST", "/api/properties", propertyData);
@@ -2290,6 +2345,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
       const response = await apiRequest("POST", "/api/cash-buyers/search", {
         location: location,
         buyerType: buyerWizardData.buyerType,
+        quickLists: buyerWizardData.quickLists || ["cash-buyer"],
         minProperties: 3, // Looking for investors with 3+ properties
       });
 
@@ -2555,24 +2611,28 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                     name: "🏠 Active Landlord Buyers",
                     description:
                       "Investors focused on rental properties and portfolio growth",
+                    quickLists: ["active-landlord"],
                   },
                   {
                     id: "fix_and_flip",
                     name: "🔨 Fix and Flip Buyers",
                     description:
                       "Investors who buy, renovate, and resell properties",
+                    quickLists: ["fix-flip"],
                   },
                   {
                     id: "cash_buyers",
                     name: "💰 Cash Buyers",
                     description:
                       "General cash buyers looking for investment opportunities",
+                    quickLists: ["cash-buyer"],
                   },
                   {
                     id: "builders",
                     name: "🏗️ Builders",
                     description:
                       "Construction companies and developers looking for projects",
+                    quickLists: ["builder"],
                   },
                 ].map((type) => (
                   <div
@@ -2586,6 +2646,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                       setBuyerWizardData({
                         ...buyerWizardData,
                         buyerType: type.id,
+                        quickLists: type.quickLists,
                       })
                     }
                   >

@@ -1170,7 +1170,7 @@ class BatchLeadsService {
     // Process phone numbers properly from enriched contact data or original owner data
     const allPhoneNumbers = enrichedContactData?.phoneNumbers || ownerPhoneNumbers || [];
     const dncPhones = enrichedContactData?.dncPhones || [];
-    
+
     console.log(`📞 DEBUG: convertToProperty - processing phones for ${propertyAddress}:`, {
       enrichedContactData: !!enrichedContactData,
       allPhoneNumbers: allPhoneNumbers,
@@ -1179,14 +1179,14 @@ class BatchLeadsService {
       ownerPhoneNumbers: ownerPhoneNumbers,
       dncPhones: dncPhones
     });
-    
+
     // Find best phones by type
     const landLinePhone = allPhoneNumbers.find((phone: any) => {
       const phoneStr = typeof phone === 'string' ? phone : phone?.number;
       const phoneType = typeof phone === 'string' ? 'unknown' : phone?.type;
       return phoneType?.toLowerCase().includes('land') || phoneType?.toLowerCase().includes('landline');
     });
-    
+
     const mobilePhone = allPhoneNumbers.find((phone: any) => {
       const phoneStr = typeof phone === 'string' ? phone : phone?.number;
       const phoneType = typeof phone === 'string' ? 'unknown' : phone?.type;
@@ -1417,7 +1417,12 @@ class BatchLeadsService {
 
   // Search for cash buyers using BatchLeads quicklists.cashbuyer API
   async searchCashBuyers(
-    criteria: { location: string },
+    criteria: {
+      location: string;
+      buyerType?: string;
+      quickLists?: string[];
+      minProperties?: number;
+    },
     limit = 5,
   ): Promise<{
     data: any[];
@@ -1428,7 +1433,7 @@ class BatchLeadsService {
     const requestBody: any = {
       searchCriteria: {
         query: criteria.location,
-        quickLists: ["cash-buyer"],
+        quickLists: criteria.quickLists || ["cash-buyer"], // Use provided quickLists or default to "cash-buyer"
       },
       options: {
         skip: 0,
@@ -1439,6 +1444,21 @@ class BatchLeadsService {
         includeAssessment: true,
       },
     };
+
+    // Add specific buyerType filtering if provided
+    if (criteria.buyerType) {
+      // This is a placeholder. Actual filtering by buyerType would require deeper integration
+      // or a specific API endpoint that supports it. For now, we'll log it.
+      console.log(`ℹ️ NOTE: buyerType filter "${criteria.buyerType}" is not directly supported by this API endpoint, but quickLists are being used.`);
+    }
+
+    // Add minProperties filtering if provided
+    if (criteria.minProperties !== undefined) {
+      // This filtering is typically done client-side after receiving results,
+      // as the BatchData API doesn't directly expose a `minProperties` filter for buyers.
+      console.log(`ℹ️ NOTE: minProperties filter (${criteria.minProperties}) will be applied client-side.`);
+    }
+
 
     try {
       const response = await this.makeRequest(
@@ -1456,11 +1476,20 @@ class BatchLeadsService {
         const firstBuyer = response.results.properties[0];
       }
 
-      const buyers = (response.results?.properties || [])
+      let buyers = (response.results?.properties || [])
         .slice(0, limit)
         .map((buyer: any, index: number) => {
+          // Apply client-side filtering for minProperties if specified
+          if (criteria.minProperties !== undefined && (buyer.propertyOwnerProfile?.propertiesCount || 1) < criteria.minProperties) {
+            return null; // Skip this buyer if it doesn't meet minProperties
+          }
           return this.convertToCashBuyer(buyer, index + 1);
-        });
+        })
+        .filter(Boolean); // Remove any null entries from the filtered list
+
+      // Ensure we return exactly 'limit' buyers if possible, or fewer if not enough qualified ones were found.
+      buyers = buyers.slice(0, limit);
+
 
       return {
         data: buyers,
@@ -1627,7 +1656,7 @@ class BatchLeadsService {
       const phoneNumber = typeof phone === 'string' ? phone : phone?.number;
       if (phoneNumber) {
         processedPhones.push(phoneNumber);
-        
+
         // Check if it's a DNC phone
         const isDnc = typeof phone === 'object' && (phone?.dnc === true || phone?.type === 'dnc');
         if (isDnc) {

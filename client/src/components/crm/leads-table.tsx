@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Download, Eye, MessageSquare, MoreHorizontal } from "lucide-react";
+import { Plus, Download } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import type { Property, Contact } from "@shared/schema";
 import PropertyCard from "./property-card";
@@ -202,22 +202,14 @@ export default function LeadsTable() {
                       )}
                     </TableCell>
                     <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          onClick={() => handleViewProperty(property)}
-                          data-testid={`button-view-property-${property.id}`}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" data-testid={`button-message-${property.id}`}>
-                          <MessageSquare className="w-4 h-4" />
-                        </Button>
-                        <Button variant="ghost" size="sm" data-testid={`button-more-${property.id}`}>
-                          <MoreHorizontal className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      <Button 
+                        variant="default" 
+                        size="sm"
+                        onClick={() => handleViewProperty(property)}
+                        data-testid={`button-work-lead-${property.id}`}
+                      >
+                        Work This Lead
+                      </Button>
                     </TableCell>
                   </TableRow>
                 );
