@@ -750,6 +750,14 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
           <Button 
             variant="outline" 
             size="sm" 
+            data-testid="button-run-comps"
+          >
+            <Home className="w-4 h-4 mr-2" />
+            Run Comps
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm" 
             data-testid="button-analyze-deal"
             onClick={handleAnalyzeDeal}
             disabled={isStreaming || analyzeDealMutation.isPending}
