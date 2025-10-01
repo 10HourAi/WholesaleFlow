@@ -49,6 +49,52 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
   const [isLoadingComps, setIsLoadingComps] = useState(false);
   const [compsProgress, setCompsProgress] = useState(0);
 
+  // Street View Component
+  const StreetView = ({ address, className = "" }: { address: string, className?: string }) => {
+    const [imageUrl, setImageUrl] = useState<string>('');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+      const fetchStreetView = async () => {
+        try {
+          const response = await fetch(`/api/streetview/${encodeURIComponent(address)}`);
+          const data = await response.json();
+          if (data.url) {
+            setImageUrl(data.url);
+          } else {
+            setError(true);
+          }
+        } catch (err) {
+          setError(true);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchStreetView();
+    }, [address]);
+
+    if (loading) {
+      return (
+        <div className={`bg-slate-200 dark:bg-slate-800 animate-pulse rounded-lg ${className}`} style={{ height: '200px' }} />
+      );
+    }
+
+    if (error || !imageUrl) {
+      return null;
+    }
+
+    return (
+      <img 
+        src={imageUrl} 
+        alt={`Street view of ${address}`}
+        className={`rounded-lg object-cover ${className}`}
+        style={{ height: '200px', width: '100%' }}
+        data-testid="img-streetview"
+      />
+    );
+  };
+
   // Helper function to transform database fields to DealAnalysisResult format
   const transformPropertyToAnalysisResult = (prop: Property): DealAnalysisResult | null => {
     if (!prop.strategy || prop.isDeal === null || !prop.analysisArv || !prop.rehabCost || 
@@ -322,6 +368,12 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
             {property.address}, {property.city}, {property.state} {property.zipCode}
           </DialogTitle>
         </DialogHeader>
+
+        {/* Property Street View */}
+        <StreetView 
+          address={`${property.address}, ${property.city}, ${property.state} ${property.zipCode}`}
+          className="mb-4"
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Property Details */}
@@ -817,6 +869,11 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-2">
+                      {/* Comp Street View */}
+                      <StreetView 
+                        address={comp.address}
+                        className="mb-3"
+                      />
                       <div className="text-xs font-medium text-slate-900 dark:text-slate-100 mb-2">
                         {comp.address}
                       </div>
