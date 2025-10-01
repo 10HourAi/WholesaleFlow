@@ -372,6 +372,18 @@ export class LeadDeliveryService {
         "properties",
       );
 
+      // Update skip mapping BEFORE deduplication to ensure proper pagination
+      if (userId && response.data.length > 0) {
+        try {
+          const currentSkip = await this.batchLeads.getOrCreateSkipMapping(userId, criteria);
+          const newSkip = currentSkip + response.data.length;
+          await this.batchLeads.updateSkipMapping(userId, criteria, newSkip);
+          console.log(`📊 Skip mapping updated from ${currentSkip} to ${newSkip} (increment: ${response.data.length})`);
+        } catch (error) {
+          console.error("❌ Error updating skip mapping:", error);
+        }
+      }
+
       // Get already delivered properties by address (since BatchLeads properties don't have DB IDs yet)
       const deliveredProperties =
         await this.getDeliveredPropertiesByAddress(userId);

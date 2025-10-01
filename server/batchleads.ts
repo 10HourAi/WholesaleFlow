@@ -431,15 +431,7 @@ class BatchLeadsService {
       `📊 Single API integration complete: ${validProperties.length} valid properties, ${totalChecked} checked, ${filtered} filtered`,
     );
 
-    // Update skip mapping for next search if userId provided and we found properties
-    if (userId && validProperties.length > 0) {
-      try {
-        const currentSkip = await this.getOrCreateSkipMapping(userId, criteria);
-        await this.updateSkipMapping(userId, criteria, currentSkip + validProperties.length);
-      } catch (error) {
-        console.error("❌ Error updating skip mapping:", error);
-      }
-    }
+    // Note: Skip mapping will be updated by the calling service based on actual delivered count
 
     return {
       data: validProperties,
