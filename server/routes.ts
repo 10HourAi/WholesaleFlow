@@ -399,7 +399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/properties/:id/comps", isAuthenticated, async (req: any, res) => {
+  app.get("/api/properties/:id/comps", async (req: any, res) => {
     try {
       // Check authentication for both traditional and Replit Auth sessions
       let userId: string;
@@ -431,7 +431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/properties/:id/comps", isAuthenticated, async (req: any, res) => {
+  app.post("/api/properties/:id/comps", async (req: any, res) => {
     try {
       // Check authentication for both traditional and Replit Auth sessions
       let userId: string;
