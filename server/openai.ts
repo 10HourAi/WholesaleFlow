@@ -352,54 +352,7 @@ Return exactly 3 comps with complete data.`;
 
   } catch (error) {
     console.error("❌ Error finding comps with OpenAI:", error);
-    
-    const avgPrice = property.arv ? Number(property.arv) * 0.95 : 350000;
-    const avgSqft = property.squareFeet || 2000;
-    
-    const fallbackComps: InsertComp[] = [
-      {
-        propertyId: property.id,
-        address: `${Math.floor(Math.random() * 999)} Oak Street, ${property.city}, ${property.state}`,
-        soldPrice: (avgPrice * 0.98).toFixed(2),
-        soldDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        bedrooms: property.bedrooms,
-        bathrooms: property.bathrooms,
-        squareFeet: Math.round(avgSqft * 1.05),
-        pricePerSqft: ((avgPrice * 0.98) / (avgSqft * 1.05)).toFixed(2),
-        distance: "0.4",
-        similarityScore: 92,
-        daysOnMarket: 18
-      },
-      {
-        propertyId: property.id,
-        address: `${Math.floor(Math.random() * 999)} Maple Avenue, ${property.city}, ${property.state}`,
-        soldPrice: (avgPrice * 1.03).toFixed(2),
-        soldDate: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        bedrooms: property.bedrooms,
-        bathrooms: property.bathrooms,
-        squareFeet: Math.round(avgSqft * 0.97),
-        pricePerSqft: ((avgPrice * 1.03) / (avgSqft * 0.97)).toFixed(2),
-        distance: "0.6",
-        similarityScore: 88,
-        daysOnMarket: 12
-      },
-      {
-        propertyId: property.id,
-        address: `${Math.floor(Math.random() * 999)} Pine Drive, ${property.city}, ${property.state}`,
-        soldPrice: avgPrice.toFixed(2),
-        soldDate: new Date(Date.now() - 120 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-        bedrooms: property.bedrooms,
-        bathrooms: property.bathrooms,
-        squareFeet: avgSqft,
-        pricePerSqft: (avgPrice / avgSqft).toFixed(2),
-        distance: "0.8",
-        similarityScore: 85,
-        daysOnMarket: 24
-      }
-    ];
-
-    console.log('⚠️ Using fallback comps data');
-    return fallbackComps;
+    throw new Error("Unable to find comparable properties. Please try again.");
   }
 }
 
