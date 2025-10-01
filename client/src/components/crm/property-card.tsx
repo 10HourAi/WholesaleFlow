@@ -5,8 +5,8 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect, useRef } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { 
   MapPin, 
@@ -22,7 +22,7 @@ import {
   Calculator,
   Loader2
 } from "lucide-react";
-import type { Property, Contact, DealAnalysisRequest, DealAnalysisResult } from "@shared/schema";
+import type { Property, Contact, DealAnalysisRequest, DealAnalysisResult, Comp } from "@shared/schema";
 
 interface PropertyCardProps {
   property: Property | null;
@@ -43,6 +43,11 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
   const [streamMessage, setStreamMessage] = useState('');
   const eventSourceRef = useRef<EventSource | null>(null);
   const { toast } = useToast();
+
+  const [comps, setComps] = useState<Comp[]>([]);
+  const [showComps, setShowComps] = useState(false);
+  const [isLoadingComps, setIsLoadingComps] = useState(false);
+  const [compsProgress, setCompsProgress] = useState(0);
 
   // Helper function to transform database fields to DealAnalysisResult format
   const transformPropertyToAnalysisResult = (prop: Property): DealAnalysisResult | null => {
@@ -115,6 +120,84 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
       });
     },
   });
+
+  // Query to fetch existing comps
+  const { data: existingComps } = useQuery<Comp[]>({
+    queryKey: ['/api/properties', property.id, 'comps'],
+    enabled: !!property.id,
+  });
+
+  // Update comps state when existing comps are fetched
+  useEffect(() => {
+    if (existingComps && existingComps.length > 0) {
+      setComps(existingComps);
+      setShowComps(true);
+    }
+  }, [existingComps]);
+
+  // Mutation for running comps
+  const runCompsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/properties/${property.id}/comps`);
+      return await response.json();
+    },
+    onMutate: () => {
+      setIsLoadingComps(true);
+      setCompsProgress(0);
+      
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setCompsProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 500);
+      
+      return { progressInterval };
+    },
+    onSuccess: (data: Comp[], _variables, context: any) => {
+      setComps(data);
+      setShowComps(true);
+      setCompsProgress(100);
+      setIsLoadingComps(false);
+      
+      // Clear the progress interval
+      if (context?.progressInterval) {
+        clearInterval(context.progressInterval);
+      }
+      
+      // Invalidate cache to refetch
+      queryClient.invalidateQueries({ queryKey: ['/api/properties', property.id, 'comps'] });
+      
+      toast({
+        title: "Comps Analysis Complete",
+        description: `Found ${data.length} comparable properties.`,
+      });
+    },
+    onError: (error: any, _variables, context: any) => {
+      console.error("Comps error:", error);
+      setIsLoadingComps(false);
+      setCompsProgress(0);
+      
+      // Clear the progress interval
+      if (context?.progressInterval) {
+        clearInterval(context.progressInterval);
+      }
+      
+      toast({
+        title: "Comps Analysis Failed",
+        description: "Unable to find comparable properties. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleRunComps = () => {
+    runCompsMutation.mutate();
+  };
 
   // Stream-based deal analysis function
   const startStreamAnalysis = async () => {
@@ -709,6 +792,116 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
           </>
         )}
 
+        {/* Comps Results */}
+        {showComps && comps.length > 0 && (
+          <>
+            <Separator className="my-4" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Home className="w-5 h-5 text-blue-600" />
+                  Comparable Properties
+                </h3>
+                <Badge variant="outline" className="text-xs">
+                  {comps.length} Comps Found
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {comps.slice(0, 3).map((comp, index) => (
+                  <Card key={comp.id || index}>
+                    <CardHeader>
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        Comp #{index + 1}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      <div className="text-xs font-medium text-slate-900 dark:text-slate-100 mb-2">
+                        {comp.address}
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Sold Price:</span>
+                        <span className="font-mono font-semibold text-green-600">
+                          ${Number(comp.soldPrice).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Sold Date:</span>
+                        <span>{comp.soldDate}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Beds/Baths:</span>
+                        <span>{comp.bedrooms || 'N/A'} / {comp.bathrooms || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Square Feet:</span>
+                        <span>{comp.squareFeet ? comp.squareFeet.toLocaleString() : 'N/A'} sq ft</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Price/Sqft:</span>
+                        <span className="font-mono">
+                          ${comp.pricePerSqft ? Number(comp.pricePerSqft).toLocaleString() : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs border-t pt-2">
+                        <span>Distance:</span>
+                        <span>{comp.distance ? Number(comp.distance).toFixed(2) : 'N/A'} mi</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Similarity:</span>
+                        <Badge variant="secondary" className="text-xs">
+                          {comp.similarityScore || 'N/A'}%
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Days on Market:</span>
+                        <span>{comp.daysOnMarket || 'N/A'} days</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="flex justify-end">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setShowComps(false)}
+                  data-testid="button-hide-comps"
+                >
+                  Hide Comps
+                </Button>
+              </div>
+            </div>
+            <Separator className="my-4" />
+          </>
+        )}
+
+        {/* Comps Loading Progress Indicator */}
+        {isLoadingComps && (
+          <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex items-center gap-3 mb-3">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+              <div className="flex-1">
+                <div className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  Finding Comparable Properties
+                </div>
+                <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  Analyzing similar properties in the area...
+                </div>
+              </div>
+            </div>
+            <Progress 
+              value={compsProgress} 
+              className="w-full h-2"
+            />
+            <div className="text-xs text-blue-600 dark:text-blue-400 mt-1 text-right">
+              {compsProgress}%
+            </div>
+          </div>
+        )}
+
         {/* Streaming Progress Indicator */}
         {isStreaming && (
           <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
@@ -747,13 +940,31 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
               Show Analysis
             </Button>
           )}
+          {/* Show Comps Button - appears when comps exist but are hidden */}
+          {comps.length > 0 && !showComps && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              data-testid="button-show-comps"
+              onClick={() => setShowComps(true)}
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Show Comps
+            </Button>
+          )}
           <Button 
             variant="outline" 
             size="sm" 
             data-testid="button-run-comps"
+            onClick={handleRunComps}
+            disabled={isLoadingComps || runCompsMutation.isPending}
           >
-            <Home className="w-4 h-4 mr-2" />
-            Run Comps
+            {(isLoadingComps || runCompsMutation.isPending) ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Home className="w-4 h-4 mr-2" />
+            )}
+            {(isLoadingComps || runCompsMutation.isPending) ? "Finding Comps..." : comps.length > 0 ? "Re-Run Comps" : "Run Comps"}
           </Button>
           <Button 
             variant="outline" 
