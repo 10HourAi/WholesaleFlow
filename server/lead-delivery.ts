@@ -358,10 +358,12 @@ export class LeadDeliveryService {
       console.log("🔍 LEAD DELIVERY: Criteria:", criteria);
       console.log("🔍 LEAD DELIVERY: Requested count:", count);
 
-      // Get properties from BatchLeads
+      // Get properties from BatchLeads with userId for skip tracking
       const response = await this.batchLeads.searchValidProperties(
         criteria,
         count * 2, // Get more to account for filtering
+        [],
+        userId,
       );
 
       console.log(

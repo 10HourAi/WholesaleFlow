@@ -105,11 +105,21 @@ class BatchLeadsService {
     criteria: SearchCriteria,
     page = 1,
     perPage = 50,
+    userId?: string,
   ): Promise<BatchLeadsResponse> {
     console.log(
       `🔍 STARTING BatchLeads API search for: "${criteria.location}"`,
     );
     console.log(`🔍 SEARCH CRITERIA:`, JSON.stringify(criteria, null, 2));
+
+    let skipValue = (page - 1) * perPage;
+
+    // If userId is provided, check for existing skip mapping
+    if (userId) {
+      const skipFromDb = await this.getOrCreateSkipMapping(userId, criteria);
+      skipValue = skipFromDb;
+      console.log(`📊 Using skip value from database: ${skipValue}`);
+    }
 
     const requestBody: any = {
       searchCriteria: {
@@ -117,7 +127,7 @@ class BatchLeadsService {
         quickLists: ["preforeclosure"], // Default to preforeclosure properties
       },
       options: {
-        skip: (page - 1) * perPage,
+        skip: skipValue,
         take: Math.min(perPage, 500),
         skipTrace: true, // ✅ Gets owner contact information
         includeBuilding: true, // ✅ Gets building details (bedrooms, bathrooms, etc.)
@@ -307,6 +317,7 @@ class BatchLeadsService {
     criteria: any,
     count: number = 5,
     excludePropertyIds: string[] = [],
+    userId?: string,
   ): Promise<{
     data: any[];
     totalChecked: number;
@@ -331,7 +342,7 @@ class BatchLeadsService {
         console.log(
           `📊 Getting comprehensive property data from BatchData Search API...`,
         );
-        const searchResponse = await this.searchProperties(criteria, page, 50);
+        const searchResponse = await this.searchProperties(criteria, page, 50, userId);
 
         if (!searchResponse.data || searchResponse.data.length === 0) {
           console.log(`📄 Page ${page}: No more properties available`);
@@ -419,6 +430,16 @@ class BatchLeadsService {
     console.log(
       `📊 Single API integration complete: ${validProperties.length} valid properties, ${totalChecked} checked, ${filtered} filtered`,
     );
+
+    // Update skip mapping for next search if userId provided and we found properties
+    if (userId && validProperties.length > 0) {
+      try {
+        const currentSkip = await this.getOrCreateSkipMapping(userId, criteria);
+        await this.updateSkipMapping(userId, criteria, currentSkip + validProperties.length);
+      } catch (error) {
+        console.error("❌ Error updating skip mapping:", error);
+      }
+    }
 
     return {
       data: validProperties,
@@ -1629,6 +1650,87 @@ class BatchLeadsService {
   }
 
   // Add enrichContactData method here
+  // Skip mapping methods for pagination tracking
+  private async getOrCreateSkipMapping(userId: string, criteria: any): Promise<number> {
+    try {
+      const { db } = await import("./db");
+      const { skipMapping } = await import("@shared/schema");
+      const { eq, and } = await import("drizzle-orm");
+
+      // Create a normalized search key for comparison
+      const searchKey = JSON.stringify({
+        location: criteria.location,
+        sellerType: criteria.sellerType || null,
+        propertyType: criteria.propertyType || null,
+        minBedrooms: criteria.minBedrooms || null,
+        maxPrice: criteria.maxPrice || null,
+      });
+
+      // Try to find existing mapping
+      const [existing] = await db
+        .select()
+        .from(skipMapping)
+        .where(
+          and(
+            eq(skipMapping.userId, userId),
+            eq(skipMapping.userSearch, searchKey as any)
+          )
+        )
+        .limit(1);
+
+      if (existing) {
+        console.log(`📊 Found existing skip mapping: ${existing.skip}`);
+        return existing.skip;
+      } else {
+        // Create new mapping
+        const [newMapping] = await db
+          .insert(skipMapping)
+          .values({
+            userId,
+            userSearch: searchKey as any,
+            skip: 0,
+          })
+          .returning();
+
+        console.log(`📊 Created new skip mapping: ${newMapping.skip}`);
+        return newMapping.skip;
+      }
+    } catch (error) {
+      console.error("❌ Error with skip mapping:", error);
+      return 0; // Fallback to 0 if there's an error
+    }
+  }
+
+  private async updateSkipMapping(userId: string, criteria: any, newSkip: number): Promise<void> {
+    try {
+      const { db } = await import("./db");
+      const { skipMapping } = await import("@shared/schema");
+      const { eq, and } = await import("drizzle-orm");
+
+      const searchKey = JSON.stringify({
+        location: criteria.location,
+        sellerType: criteria.sellerType || null,
+        propertyType: criteria.propertyType || null,
+        minBedrooms: criteria.minBedrooms || null,
+        maxPrice: criteria.maxPrice || null,
+      });
+
+      await db
+        .update(skipMapping)
+        .set({ skip: newSkip })
+        .where(
+          and(
+            eq(skipMapping.userId, userId),
+            eq(skipMapping.userSearch, searchKey as any)
+          )
+        );
+
+      console.log(`📊 Updated skip mapping to: ${newSkip}`);
+    } catch (error) {
+      console.error("❌ Error updating skip mapping:", error);
+    }
+  }
+
   private async enrichContactData(property: any): Promise<{
     phoneNumbers: string[];
     emailAddresses: string[];
