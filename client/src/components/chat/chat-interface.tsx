@@ -57,6 +57,7 @@ interface BuyerWizardData {
   city: string;
   state: string;
   buyerType: string;
+  quickLists?: string[];
 }
 
 // Helper to format numbers with commas
@@ -2344,6 +2345,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
       const response = await apiRequest("POST", "/api/cash-buyers/search", {
         location: location,
         buyerType: buyerWizardData.buyerType,
+        quickLists: buyerWizardData.quickLists || ["cash-buyer"],
         minProperties: 3, // Looking for investors with 3+ properties
       });
 
@@ -2609,24 +2611,28 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                     name: "🏠 Active Landlord Buyers",
                     description:
                       "Investors focused on rental properties and portfolio growth",
+                    quickLists: ["cash-buyer", "active-landlord"],
                   },
                   {
                     id: "fix_and_flip",
                     name: "🔨 Fix and Flip Buyers",
                     description:
                       "Investors who buy, renovate, and resell properties",
+                    quickLists: ["cash-buyer", "fix-flip"],
                   },
                   {
                     id: "cash_buyers",
                     name: "💰 Cash Buyers",
                     description:
                       "General cash buyers looking for investment opportunities",
+                    quickLists: ["cash-buyer"],
                   },
                   {
                     id: "builders",
                     name: "🏗️ Builders",
                     description:
                       "Construction companies and developers looking for projects",
+                    quickLists: ["cash-buyer", "builder"],
                   },
                 ].map((type) => (
                   <div
@@ -2640,6 +2646,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                       setBuyerWizardData({
                         ...buyerWizardData,
                         buyerType: type.id,
+                        quickLists: type.quickLists,
                       })
                     }
                   >
