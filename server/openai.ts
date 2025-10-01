@@ -330,8 +330,11 @@ Return exactly 3 comps with complete data.`;
 
     progressCallback?.('processing', 'Processing comparable properties data...', 80);
 
+    console.log('📊 OpenAI response received:', JSON.stringify(response, null, 2).substring(0, 500));
+    
     const compsContent = response.choices[0]?.message?.content;
     if (!compsContent) {
+      console.error('❌ Empty response from OpenAI. Full response:', JSON.stringify(response, null, 2));
       throw new Error("No comps data received from OpenAI");
     }
 
