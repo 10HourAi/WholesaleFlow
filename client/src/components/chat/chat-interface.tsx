@@ -2611,14 +2611,14 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                     name: "🏠 Active Landlord Buyers",
                     description:
                       "Investors focused on rental properties and portfolio growth",
-                    quickLists: ["cash-buyer", "active-landlord"],
+                    quickLists: ["active-landlord"],
                   },
                   {
                     id: "fix_and_flip",
                     name: "🔨 Fix and Flip Buyers",
                     description:
                       "Investors who buy, renovate, and resell properties",
-                    quickLists: ["cash-buyer", "fix-flip"],
+                    quickLists: ["fix-flip"],
                   },
                   {
                     id: "cash_buyers",
@@ -2632,7 +2632,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                     name: "🏗️ Builders",
                     description:
                       "Construction companies and developers looking for projects",
-                    quickLists: ["cash-buyer", "builder"],
+                    quickLists: ["builder"],
                   },
                 ].map((type) => (
                   <div
