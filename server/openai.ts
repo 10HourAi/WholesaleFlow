@@ -6,12 +6,14 @@ let openai: OpenAI | null = null;
 
 function getOpenAI(): OpenAI {
   if (!openai) {
-    if (!process.env.OPENAI_API_KEY) {
+    const apiKey = process.env.OPENAI5 || process.env.OPENAI_API_KEY;
+    if (!apiKey) {
       throw new Error("OpenAI API key is required but not configured");
     }
     openai = new OpenAI({ 
-      apiKey: process.env.OPENAI_API_KEY
+      apiKey: apiKey
     });
+    console.log('🔑 Using OpenAI key:', process.env.OPENAI5 ? 'OPENAI5' : 'OPENAI_API_KEY');
   }
   return openai;
 }
