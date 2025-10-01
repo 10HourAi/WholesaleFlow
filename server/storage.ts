@@ -25,6 +25,8 @@ import {
   type InsertUserLead,
   type SavedSearch,
   type InsertSavedSearch,
+  type Comp,
+  type InsertComp,
 } from "@shared/schema";
 import { db } from "./db";
 import {
@@ -42,6 +44,7 @@ import {
   userLeads,
   savedSearches,
   leadContacts,
+  comps,
 } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 
@@ -142,6 +145,11 @@ export interface IStorage {
   createSavedSearch(search: InsertSavedSearch): Promise<SavedSearch>;
   updateSavedSearch(id: string, updates: Partial<SavedSearch>): Promise<SavedSearch>;
   deleteSavedSearch(id: string): Promise<void>;
+
+  // Comps
+  getComps(propertyId: string): Promise<Comp[]>;
+  createComp(comp: InsertComp): Promise<Comp>;
+  deleteCompsByProperty(propertyId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -640,6 +648,27 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSavedSearch(id: string): Promise<void> {
     await db.delete(savedSearches).where(eq(savedSearches.id, id));
+  }
+
+  // Comps
+  async getComps(propertyId: string): Promise<Comp[]> {
+    return await db
+      .select()
+      .from(comps)
+      .where(eq(comps.propertyId, propertyId))
+      .orderBy(desc(comps.createdAt));
+  }
+
+  async createComp(compData: InsertComp): Promise<Comp> {
+    const [comp] = await db
+      .insert(comps)
+      .values(compData)
+      .returning();
+    return comp;
+  }
+
+  async deleteCompsByProperty(propertyId: string): Promise<void> {
+    await db.delete(comps).where(eq(comps.propertyId, propertyId));
   }
 }
 
