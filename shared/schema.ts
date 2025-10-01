@@ -198,6 +198,26 @@ export const deals = pgTable("deals", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Comparable properties (comps) table
+export const comps = pgTable("comps", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  propertyId: varchar("property_id").references(() => properties.id).notNull(),
+  address: text("address").notNull(),
+  soldPrice: decimal("sold_price", { precision: 10, scale: 2 }).notNull(),
+  soldDate: text("sold_date").notNull(),
+  bedrooms: integer("bedrooms"),
+  bathrooms: integer("bathrooms"),
+  squareFeet: integer("square_feet"),
+  pricePerSqft: decimal("price_per_sqft", { precision: 10, scale: 2 }),
+  distance: decimal("distance", { precision: 5, scale: 2 }), // Distance in miles from subject property
+  similarityScore: integer("similarity_score"), // 0-100 score of how similar to subject property
+  daysOnMarket: integer("days_on_market"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertPropertySchema = createInsertSchema(properties).omit({
   id: true,
   createdAt: true,
@@ -232,6 +252,12 @@ export const insertDealSchema = createInsertSchema(deals).omit({
   updatedAt: true,
 });
 
+export const insertCompSchema = createInsertSchema(comps).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertProperty = z.infer<typeof insertPropertySchema>;
 export type Property = typeof properties.$inferSelect;
 export type InsertContact = z.infer<typeof insertContactSchema>;
@@ -253,6 +279,8 @@ export type InsertDocument = z.infer<typeof insertDocumentSchema>;
 export type Document = typeof documents.$inferSelect;
 export type InsertDeal = z.infer<typeof insertDealSchema>;
 export type Deal = typeof deals.$inferSelect;
+export type InsertComp = z.infer<typeof insertCompSchema>;
+export type Comp = typeof comps.$inferSelect;
 
 // Lead deliveries - tracks which leads have been shown to which users (prevents duplicates)
 export const leadDeliveries = pgTable(
