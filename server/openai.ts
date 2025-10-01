@@ -171,7 +171,7 @@ Task:
         { role: "system", content: system },
         { role: "user", content: user }
       ],
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
       response_format: { type: "json_schema", json_schema: schema }
     });
 
@@ -324,7 +324,7 @@ Return exactly 3 comps with complete data.`;
         { role: "system", content: system },
         { role: "user", content: user }
       ],
-      max_tokens: 2500,
+      max_completion_tokens: 2500,
       response_format: { type: "json_schema", json_schema: schema }
     });
 
@@ -367,7 +367,7 @@ export const openaiService = {
       const response = await openaiClient.chat.completions.create({
         model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
         messages: messages as any,
-        max_tokens: 500
+        max_completion_tokens: 500
       });
 
       return response.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
