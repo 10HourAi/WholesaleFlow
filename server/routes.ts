@@ -16,6 +16,7 @@ import {
   generateNegotiationResponse,
   generateClosingResponse,
   generatePropertyLeads,
+  findCompsWithOpenAI,
 } from "./openai";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import bcrypt from "bcrypt";
@@ -395,6 +396,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(property);
     } catch (error: any) {
       res.status(400).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/properties/:id/comps", isAuthenticated, async (req: any, res) => {
+    try {
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
+
+      if (req.session && req.session.user) {
+        userId = req.session.user.id;
+      } else if (req.user && req.user.claims) {
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const propertyId = req.params.id;
+      console.log('🏘️ Running comps analysis for property:', propertyId);
+
+      const property = await storage.getProperty(propertyId, userId);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      console.log('🧹 Deleting existing comps for property:', propertyId);
+      await storage.deleteCompsByProperty(propertyId);
+
+      console.log('🤖 Calling findCompsWithOpenAI...');
+      const comps = await findCompsWithOpenAI(property);
+
+      console.log('💾 Saving', comps.length, 'comps to database...');
+      const savedComps = [];
+      for (const comp of comps) {
+        const savedComp = await storage.createComp(comp);
+        savedComps.push(savedComp);
+      }
+
+      console.log('✅ Successfully saved', savedComps.length, 'comparable properties');
+      res.json(savedComps);
+    } catch (error: any) {
+      console.error("❌ Error running comps analysis:", error);
+      res.status(500).json({ 
+        message: "Failed to run comps analysis", 
+        error: error.message 
+      });
     }
   });
 
