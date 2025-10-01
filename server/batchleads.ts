@@ -315,7 +315,7 @@ class BatchLeadsService {
   // Single API Approach: Use only Property Search API with comprehensive options
   async searchValidProperties(
     criteria: any,
-    count: number = 5,
+    count = 5,
     excludePropertyIds: string[] = [],
     userId?: string,
   ): Promise<{
@@ -1655,7 +1655,7 @@ class BatchLeadsService {
     try {
       const { db } = await import("./db");
       const { skipMapping } = await import("@shared/schema");
-      const { eq, and } = await import("drizzle-orm");
+      const { eq, and, sql } = await import("drizzle-orm");
 
       // Create a normalized search key for comparison
       const searchKey = JSON.stringify({
@@ -1686,6 +1686,7 @@ class BatchLeadsService {
         const [newMapping] = await db
           .insert(skipMapping)
           .values({
+            id: sql`gen_random_uuid()`, // Generate UUID for id
             userId,
             userSearch: searchKey as any,
             skip: 0,
@@ -1705,7 +1706,7 @@ class BatchLeadsService {
     try {
       const { db } = await import("./db");
       const { skipMapping } = await import("@shared/schema");
-      const { eq, and } = await import("drizzle-orm");
+      const { eq, and, sql } = await import("drizzle-orm");
 
       const searchKey = JSON.stringify({
         location: criteria.location,
