@@ -258,6 +258,18 @@ export const insertCompSchema = createInsertSchema(comps).omit({
   updatedAt: true,
 });
 
+// Skip mapping table for pagination tracking
+export const skipMapping = pgTable("skip_mapping", {
+  id: varchar("id")
+    .primaryKey()
+    .default(sql`gen_random_uuid()`),
+  userId: varchar("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  userSearch: jsonb("user_search").notNull(),
+  skip: integer("skip").notNull().default(0),
+});
+
 export type InsertProperty = z.infer<typeof insertPropertySchema>;
 export type Property = typeof properties.$inferSelect;
 export type InsertContact = z.infer<typeof insertContactSchema>;
@@ -281,6 +293,8 @@ export type InsertDeal = z.infer<typeof insertDealSchema>;
 export type Deal = typeof deals.$inferSelect;
 export type InsertComp = z.infer<typeof insertCompSchema>;
 export type Comp = typeof comps.$inferSelect;
+export type SkipMapping = typeof skipMapping.$inferSelect;
+export type InsertSkipMapping = typeof skipMapping.$inferInsert;
 
 // Lead deliveries - tracks which leads have been shown to which users (prevents duplicates)
 export const leadDeliveries = pgTable(
