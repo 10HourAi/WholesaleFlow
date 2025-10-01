@@ -324,7 +324,7 @@ Return exactly 3 comps with complete data.`;
         { role: "system", content: system },
         { role: "user", content: user }
       ],
-      max_completion_tokens: 2500,
+      max_completion_tokens: 6000,
       response_format: { type: "json_schema", json_schema: schema }
     });
 
