@@ -476,6 +476,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Google Street View URL generator
+  app.get("/api/streetview/:address", async (req: any, res) => {
+    try {
+      const { address } = req.params;
+      const apiKey = process.env.GOOGLE_STREET_VIEW_API_KEY;
+
+      if (!apiKey) {
+        return res.status(500).json({ 
+          message: "Google Street View API key not configured" 
+        });
+      }
+
+      // Generate Street View Static API URL
+      const streetViewUrl = `https://maps.googleapis.com/maps/api/streetview?size=600x300&location=${encodeURIComponent(address)}&key=${apiKey}`;
+      
+      res.json({ url: streetViewUrl });
+    } catch (error: any) {
+      console.error("Error generating street view URL:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Contacts
   app.get("/api/contacts", async (req: any, res) => {
     try {
