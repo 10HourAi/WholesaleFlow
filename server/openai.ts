@@ -317,7 +317,7 @@ For each comp, calculate:
 Return exactly 3 comps with complete data.`;
 
     const response = await openaiClient.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025
       messages: [
         { role: "system", content: system },
         { role: "user", content: user }
