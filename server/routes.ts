@@ -399,6 +399,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/properties/:id/comps", isAuthenticated, async (req: any, res) => {
+    try {
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
+
+      if (req.session && req.session.user) {
+        userId = req.session.user.id;
+      } else if (req.user && req.user.claims) {
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const propertyId = req.params.id;
+      
+      // Verify the property belongs to the user
+      const property = await storage.getProperty(propertyId, userId);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      const comps = await storage.getComps(propertyId);
+      res.json(comps);
+    } catch (error: any) {
+      console.error("❌ Error fetching comps:", error);
+      res.status(500).json({ 
+        message: "Failed to fetch comps", 
+        error: error.message 
+      });
+    }
+  });
+
   app.post("/api/properties/:id/comps", isAuthenticated, async (req: any, res) => {
     try {
       // Check authentication for both traditional and Replit Auth sessions
