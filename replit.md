@@ -58,6 +58,13 @@ Preferred communication style: Simple, everyday language.
 - Contact management linked to properties
 - Lead tracking with status progression (new, contacted, qualified, under_contract, closed)
 - Property details including ARV, bedrooms, bathrooms, square footage
+- **Run Comps Feature**: GPT-5 powered comparable property search
+  - Finds 3 recently sold comparable properties using AI and web search
+  - Search criteria: same property type, bedrooms, sqft within 20%, year built within 10 years, same school district, sold within 9 months
+  - Displays comps with: address, sold price, sold date, beds/baths, square feet, price per sqft, distance, similarity score, days on market
+  - Comps persist to database for future reference
+  - Button updates to "Re-Run Comps" after initial analysis
+  - Show/hide comps section for better UX
 
 #### Deal Pipeline
 - Kanban-style deal management across stages (lead_generation, analysis, negotiation, closing)
