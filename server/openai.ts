@@ -318,15 +318,24 @@ For each comp, calculate:
 
 Return exactly 3 comps with complete data.`;
 
-    const response = await openaiClient.chat.completions.create({
-      model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025
+    const requestPayload = {
+      model: "gpt-5",
       messages: [
         { role: "system", content: system },
         { role: "user", content: user }
       ],
       max_completion_tokens: 6000,
       response_format: { type: "json_schema", json_schema: schema }
-    });
+    };
+
+    console.log('📤 GPT-5 REQUEST:', JSON.stringify({
+      model: requestPayload.model,
+      max_completion_tokens: requestPayload.max_completion_tokens,
+      system_prompt: system.substring(0, 150) + '...',
+      user_prompt: user.substring(0, 200) + '...'
+    }, null, 2));
+
+    const response = await openaiClient.chat.completions.create(requestPayload);
 
     progressCallback?.('processing', 'Processing comparable properties data...', 80);
 
