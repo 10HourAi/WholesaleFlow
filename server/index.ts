@@ -1,4 +1,3 @@
-
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
@@ -45,9 +44,47 @@ app.use((req, res, next) => {
   // Register API routes FIRST, before Vite middleware
   registerRoutes(app);
 
-  // Setup Vite or static serving AFTER API routes
+  // Setup Vite in development - IMPORTANT: Must come AFTER API routes
   if (app.get("env") === "development") {
-    await setupVite(app, server);
+    const vite = await setupVite(app, server);
+
+    // Only use Vite for non-API requests
+    app.use((req, res, next) => {
+      // Skip Vite for all API routes
+      if (req.path.startsWith('/api/')) {
+        return next();
+      }
+      vite.middlewares(req, res, next);
+    });
+
+    // Add HTML fallback for SPA routes (but not API routes)
+    app.use('*', async (req, res, next) => {
+      if (req.originalUrl.startsWith('/api/')) {
+        return next();
+      }
+
+      const url = req.originalUrl;
+      try {
+        const template = await vite.transformIndexHtml(url, 
+          `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>10HourAI</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>`
+        );
+        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
+      } catch (e) {
+        vite.ssrFixStacktrace(e as Error);
+        next(e);
+      }
+    });
   } else {
     serveStatic(app);
   }

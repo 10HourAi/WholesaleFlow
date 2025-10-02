@@ -9,7 +9,7 @@ import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
 if (!process.env.REPLIT_DOMAINS) {
-  throw new Error("Environment variable REPLIT_DOMAINS not provided");
+  console.warn("⚠️ REPLIT_DOMAINS not configured - Replit Auth will not be available");
 }
 
 const getOidcConfig = memoize(
@@ -71,6 +71,12 @@ export async function setupAuth(app: Express) {
   app.use(getSession());
   app.use(passport.initialize());
   app.use(passport.session());
+
+  // Skip Replit Auth setup if not configured
+  if (!process.env.REPLIT_DOMAINS) {
+    console.log("⚠️ Replit Auth not configured - only email/password login available");
+    return;
+  }
 
   const config = await getOidcConfig();
 
