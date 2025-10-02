@@ -69,6 +69,11 @@ export function Auth() {
     }
   };
 
+  const handleReplitAuth = () => {
+    // For development, redirect to login endpoint
+    window.location.href = "/api/login";
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -96,6 +101,28 @@ export function Auth() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Replit Auth - Primary Option */}
+            <Button
+              onClick={handleReplitAuth}
+              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              size="lg"
+              disabled={loading}
+            >
+              <ArrowRight className="w-4 h-4 mr-2" />
+              {loading ? "Loading..." : "Continue with Replit"}
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <Separator className="w-full" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-background px-2 text-muted-foreground">
+                  Or continue with email
+                </span>
+              </div>
+            </div>
+
             {/* Traditional Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               {!isLogin && (
