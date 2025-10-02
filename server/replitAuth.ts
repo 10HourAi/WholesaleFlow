@@ -129,9 +129,15 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    // Always use the primary domain from REPLIT_DOMAINS env variable
     const primaryDomain = process.env.REPLIT_DOMAINS!.split(",")[0];
-    console.log(`🔐 Login attempt from domain: ${req.hostname}, using strategy for: ${primaryDomain}`);
+    
+    // If user is accessing from .repl.co variant, redirect to .replit.dev first
+    if (req.hostname !== primaryDomain) {
+      console.log(`🔐 Redirecting from ${req.hostname} to primary domain ${primaryDomain}`);
+      return res.redirect(`https://${primaryDomain}/api/login`);
+    }
+    
+    console.log(`🔐 Login attempt from primary domain: ${primaryDomain}`);
     
     // Authenticate with the primary domain strategy
     passport.authenticate(`replitauth:${primaryDomain}`, {
