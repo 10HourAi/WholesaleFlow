@@ -109,17 +109,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if user has a password (might be Replit Auth only user)
+      // Check if user has a password set
       if (!user.password) {
         return res.status(401).json({
           success: false,
-          message: "Please use 'Continue with Replit' to login",
+          message: "This account does not have a password set. Please use 'Continue with Replit' to login or reset your password.",
         });
       }
 
       // Verify password with bcrypt
-      const isPasswordValid = await bcrypt.compare(password, user.password);
+      let isPasswordValid = false;
+      try {
+        isPasswordValid = await bcrypt.compare(password, user.password);
+      } catch (error) {
+        console.log("❌ Password comparison error:", error);
+        return res.status(401).json({
+          success: false,
+          message: "Invalid email or password",
+        });
+      }
+
       if (!isPasswordValid) {
+        console.log("❌ Password verification failed for user:", user.id);
         return res.status(401).json({
           success: false,
           message: "Invalid email or password",
