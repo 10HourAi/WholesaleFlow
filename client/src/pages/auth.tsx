@@ -63,16 +63,9 @@ export function Auth() {
   };
 
   const handleReplitAuth = () => {
-    // Force OAuth to use .replit.dev domain for consistency
-    const currentUrl = new URL(window.location.href);
-    if (currentUrl.hostname.endsWith('.repl.co')) {
-      // Redirect to .replit.dev version
-      const replitDevUrl = currentUrl.hostname.replace('.repl.co', '.replit.dev');
-      window.location.href = `https://${replitDevUrl}/api/login`;
-    } else {
-      // Already on .replit.dev or localhost
-      window.location.href = "/api/login";
-    }
+    // Simply redirect to the Replit login endpoint
+    // The server will handle the OAuth flow for the current domain
+    window.location.href = "/api/login";
   };
 
   return (
