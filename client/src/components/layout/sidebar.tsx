@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
+import { queryClient } from "@/lib/queryClient";
 
 type Section = "chat" | "crm" | "pipeline" | "messages" | "documents" | "dashboard";
 
@@ -27,6 +28,15 @@ interface SidebarProps {
 export default function Sidebar({ activeSection, onSectionChange, onClose }: SidebarProps) {
   const isMobile = useIsMobile();
   const { user } = useAuth();
+
+  const handleLogout = async () => {
+    // Clear the user query cache
+    queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
+    queryClient.removeQueries({ queryKey: ["/api/auth/user"] });
+    
+    // Redirect to logout endpoint
+    window.location.href = "/api/logout";
+  };
 
   const navItems = [
     { id: "chat" as Section, label: "AI Agents", icon: MessageSquare },
@@ -122,8 +132,9 @@ export default function Sidebar({ activeSection, onSectionChange, onClose }: Sid
           <Button 
             variant="ghost" 
             size="sm"
-            onClick={() => window.location.href = "/api/logout"}
+            onClick={handleLogout}
             className="h-8 w-8 p-0 text-slate-500 hover:text-slate-700"
+            data-testid="button-logout"
           >
             <LogOut className="h-4 w-4" />
           </Button>

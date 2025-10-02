@@ -94,9 +94,26 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  for (const domain of process.env
-    .REPLIT_DOMAINS!.split(",")) {
-    // Register strategy for the original domain
+  // Build list of all domain variants
+  const allDomains = new Set<string>();
+  for (const domain of process.env.REPLIT_DOMAINS!.split(",")) {
+    allDomains.add(domain.trim());
+    
+    // Add .repl.co variant if domain ends with .replit.dev
+    if (domain.endsWith('.replit.dev')) {
+      allDomains.add(domain.replace('.replit.dev', '.repl.co'));
+    }
+    // Add .replit.dev variant if domain ends with .repl.co
+    if (domain.endsWith('.repl.co')) {
+      allDomains.add(domain.replace('.repl.co', '.replit.dev'));
+    }
+  }
+
+  const domainArray = Array.from(allDomains);
+  console.log("🔧 Registering Replit Auth for all domain variants:", domainArray);
+
+  // Register a strategy for each domain variant
+  for (const domain of domainArray) {
     const strategy = new Strategy(
       {
         name: `replitauth:${domain}`,
@@ -107,22 +124,7 @@ export async function setupAuth(app: Express) {
       verify,
     );
     passport.use(strategy);
-
-    // Also register for .repl.co variant if domain ends with .replit.dev
-    if (domain.endsWith('.replit.dev')) {
-      const replCoVariant = domain.replace('.replit.dev', '.repl.co');
-      const replCoStrategy = new Strategy(
-        {
-          name: `replitauth:${replCoVariant}`,
-          config,
-          scope: "openid email profile offline_access",
-          callbackURL: `https://${replCoVariant}/api/callback`,
-        },
-        verify,
-      );
-      passport.use(replCoStrategy);
-      console.log(`🔧 Also registered Replit Auth for domain variant: ${replCoVariant}`);
-    }
+    console.log(`✅ Registered strategy for: ${domain}`);
   }
 
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
@@ -201,13 +203,25 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/logout", (req, res) => {
+    const user = req.user as any;
+    
     req.logout(() => {
-      res.redirect(
-        client.buildEndSessionUrl(config, {
-          client_id: process.env.REPL_ID!,
-          post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-        }).href
-      );
+      // Check if this was an OAuth user (has claims and expires_at)
+      // vs traditional email/password user (no claims)
+      if (user?.claims && user?.expires_at) {
+        // OAuth user - redirect to Replit's logout
+        console.log("🔐 OAuth user logout - redirecting to Replit logout");
+        res.redirect(
+          client.buildEndSessionUrl(config, {
+            client_id: process.env.REPL_ID!,
+            post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+          }).href
+        );
+      } else {
+        // Traditional email/password user - just redirect to home
+        console.log("🔐 Traditional user logout - redirecting to home");
+        res.redirect("/");
+      }
     });
   });
 }
