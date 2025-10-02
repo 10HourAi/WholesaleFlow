@@ -8,8 +8,11 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
-if (!process.env.REPLIT_DOMAINS) {
-  console.warn("⚠️ REPLIT_DOMAINS not configured - Replit Auth will not be available");
+// REPLIT_DOMAINS is automatically set by Replit environment
+if (!process.env.REPLIT_DOMAINS || !process.env.REPL_ID) {
+  console.warn("⚠️ REPLIT_DOMAINS or REPL_ID not found - Replit Auth will not be available");
+} else {
+  console.log("✅ Replit Auth is configured with domain:", process.env.REPLIT_DOMAINS);
 }
 
 const getOidcConfig = memoize(
@@ -73,11 +76,12 @@ export async function setupAuth(app: Express) {
   app.use(passport.session());
 
   // Skip Replit Auth setup if not configured
-  if (!process.env.REPLIT_DOMAINS) {
+  if (!process.env.REPLIT_DOMAINS || !process.env.REPL_ID) {
     console.log("⚠️ Replit Auth not configured - only email/password login available");
     return;
   }
 
+  console.log("🔧 Setting up Replit Auth for domains:", process.env.REPLIT_DOMAINS);
   const config = await getOidcConfig();
 
   const verify: VerifyFunction = async (

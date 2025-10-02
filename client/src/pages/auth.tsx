@@ -62,30 +62,10 @@ export function Auth() {
     }
   };
 
-  const handleReplitAuth = async () => {
-    try {
-      // Try to access the Replit login endpoint
-      const response = await fetch("/api/login", {
-        method: "GET",
-        redirect: "manual",
-        headers: {
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
-        }
-      });
-      
-      // If we get a redirect or success, Replit Auth is working
-      if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400)) {
-        window.location.href = "/api/login";
-      } else if (response.status === 500) {
-        // Server error means Replit Auth is not configured
-        alert("Replit Auth is not configured for this application. Please use email/password login instead.");
-      } else {
-        window.location.href = "/api/login";
-      }
-    } catch (error) {
-      console.error("Replit Auth error:", error);
-      alert("Replit Auth is not available. Please use email/password login.");
-    }
+  const handleReplitAuth = () => {
+    // Simply redirect to the Replit login endpoint
+    // The server will handle the OAuth flow
+    window.location.href = "/api/login";
   };
 
   return (
