@@ -129,16 +129,41 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    const domain = req.hostname;
+    console.log(`🔐 Login attempt from domain: ${domain}`);
+    
+    // Try to authenticate with the current domain
+    passport.authenticate(`replitauth:${domain}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
+      failureRedirect: "/auth",
     })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
+    const domain = req.hostname;
+    console.log(`🔐 Callback from domain: ${domain}`);
+    console.log(`🔐 Callback query params:`, req.query);
+    console.log(`🔐 Session ID:`, req.sessionID);
+    
+    passport.authenticate(`replitauth:${domain}`, (err: any, user: any, info: any) => {
+      if (err) {
+        console.error(`❌ Auth error:`, err);
+        return res.redirect("/auth?error=auth_error");
+      }
+      if (!user) {
+        console.error(`❌ No user returned from auth. Info:`, info);
+        return res.redirect("/auth?error=no_user");
+      }
+      
+      req.logIn(user, (loginErr) => {
+        if (loginErr) {
+          console.error(`❌ Login error:`, loginErr);
+          return res.redirect("/auth?error=login_error");
+        }
+        console.log(`✅ User logged in successfully:`, user.claims?.sub);
+        return res.redirect("/");
+      });
     })(req, res, next);
   });
 
