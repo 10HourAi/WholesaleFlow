@@ -164,14 +164,48 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    // Try the exact hostname first, then try domain variants
+    let strategyName = `replitauth:${req.hostname}`;
+    
+    // Check if the strategy exists, if not try variants
+    const registeredStrategies = Object.keys((passport as any)._strategies);
+    
+    if (!registeredStrategies.includes(strategyName)) {
+      // Try swapping .replit.dev <-> .repl.co
+      if (req.hostname.includes('.replit.dev')) {
+        strategyName = `replitauth:${req.hostname.replace('.replit.dev', '.repl.co')}`;
+      } else if (req.hostname.includes('.repl.co')) {
+        strategyName = `replitauth:${req.hostname.replace('.repl.co', '.replit.dev')}`;
+      }
+    }
+    
+    console.log(`🔐 Login attempt - hostname: ${req.hostname}, using strategy: ${strategyName}`);
+    
+    passport.authenticate(strategyName, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    // Try the exact hostname first, then try domain variants
+    let strategyName = `replitauth:${req.hostname}`;
+    
+    // Check if the strategy exists, if not try variants
+    const registeredStrategies = Object.keys((passport as any)._strategies);
+    
+    if (!registeredStrategies.includes(strategyName)) {
+      // Try swapping .replit.dev <-> .repl.co
+      if (req.hostname.includes('.replit.dev')) {
+        strategyName = `replitauth:${req.hostname.replace('.replit.dev', '.repl.co')}`;
+      } else if (req.hostname.includes('.repl.co')) {
+        strategyName = `replitauth:${req.hostname.replace('.repl.co', '.replit.dev')}`;
+      }
+    }
+    
+    console.log(`🔐 Callback - hostname: ${req.hostname}, using strategy: ${strategyName}`);
+    
+    passport.authenticate(strategyName, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
     })(req, res, next);
