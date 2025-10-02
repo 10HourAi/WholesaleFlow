@@ -96,6 +96,7 @@ export async function setupAuth(app: Express) {
 
   for (const domain of process.env
     .REPLIT_DOMAINS!.split(",")) {
+    // Register strategy for the original domain
     const strategy = new Strategy(
       {
         name: `replitauth:${domain}`,
@@ -106,6 +107,22 @@ export async function setupAuth(app: Express) {
       verify,
     );
     passport.use(strategy);
+
+    // Also register for .repl.co variant if domain ends with .replit.dev
+    if (domain.endsWith('.replit.dev')) {
+      const replCoVariant = domain.replace('.replit.dev', '.repl.co');
+      const replCoStrategy = new Strategy(
+        {
+          name: `replitauth:${replCoVariant}`,
+          config,
+          scope: "openid email profile offline_access",
+          callbackURL: `https://${replCoVariant}/api/callback`,
+        },
+        verify,
+      );
+      passport.use(replCoStrategy);
+      console.log(`🔧 Also registered Replit Auth for domain variant: ${replCoVariant}`);
+    }
   }
 
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
