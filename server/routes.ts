@@ -26,6 +26,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Auth middleware
   await setupAuth(app);
+  
+  // Setup OIDC if credentials are available
+  if (process.env.REPLIT_OIDC_CLIENT_ID && process.env.REPLIT_OIDC_CLIENT_SECRET) {
+    const { setupOIDC } = await import('./oidcAuth');
+    await setupOIDC(app);
+  }
 
   // Traditional auth endpoints (for email/password)
   app.post("/api/signup", async (req, res) => {

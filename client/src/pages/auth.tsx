@@ -62,8 +62,13 @@ export function Auth() {
     }
   };
 
+  const handleReplitOIDC = () => {
+    // Redirect to OIDC login endpoint
+    window.location.href = '/api/auth/oidc/login';
+  };
+
   const handleReplitAuth = () => {
-    // Use Replit's simple auth with popup
+    // Use Replit's simple auth with popup (legacy)
     window.addEventListener("message", authComplete);
     const h = 500;
     const w = 350;
@@ -124,9 +129,9 @@ export function Auth() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Replit Auth - Primary Option */}
+            {/* Replit OIDC - Primary Option */}
             <Button 
-              onClick={handleReplitAuth}
+              onClick={handleReplitOIDC}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               size="lg"
               disabled={loading}
