@@ -143,63 +143,19 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/callback", (req, res, next) => {
-    let domain = req.hostname;
+    const domain = req.hostname;
     console.log(`🔐 Callback from domain: ${domain}`);
     console.log(`🔐 Callback query params:`, req.query);
     console.log(`🔐 Session ID:`, req.sessionID);
     
-    // Try the current domain first, then try the alternate variant
-    const tryAuth = (strategyName: string) => {
-      return new Promise((resolve, reject) => {
-        passport.authenticate(strategyName, (err: any, user: any, info: any) => {
-          if (err || !user) {
-            reject(err || new Error('No user'));
-          } else {
-            resolve(user);
-          }
-        })(req, res, next);
-      });
-    };
+    // Determine which strategy to use based on the domain
+    const strategyName = `replitauth:${domain}`;
+    console.log(`🔐 Using strategy: ${strategyName}`);
     
-    const authenticate = async () => {
-      try {
-        // Try current domain
-        let user = await tryAuth(`replitauth:${domain}`).catch(() => null);
-        
-        // If failed and domain is .repl.co, try .replit.dev
-        if (!user && domain.endsWith('.repl.co')) {
-          const altDomain = domain.replace('.repl.co', '.replit.dev');
-          console.log(`🔄 Trying alternate domain: ${altDomain}`);
-          user = await tryAuth(`replitauth:${altDomain}`).catch(() => null);
-        }
-        
-        // If failed and domain is .replit.dev, try .repl.co
-        if (!user && domain.endsWith('.replit.dev')) {
-          const altDomain = domain.replace('.replit.dev', '.repl.co');
-          console.log(`🔄 Trying alternate domain: ${altDomain}`);
-          user = await tryAuth(`replitauth:${altDomain}`).catch(() => null);
-        }
-        
-        if (!user) {
-          console.error(`❌ No user returned from auth for any domain variant`);
-          return res.redirect("/auth?error=no_user");
-        }
-        
-        req.logIn(user, (loginErr) => {
-          if (loginErr) {
-            console.error(`❌ Login error:`, loginErr);
-            return res.redirect("/auth?error=login_error");
-          }
-          console.log(`✅ User logged in successfully:`, (user as any).claims?.sub);
-          return res.redirect("/");
-        });
-      } catch (error) {
-        console.error(`❌ Auth error:`, error);
-        return res.redirect("/auth?error=auth_error");
-      }
-    };
-    
-    authenticate();
+    passport.authenticate(strategyName, {
+      failureRedirect: "/auth?error=auth_failed",
+      successRedirect: "/",
+    })(req, res, next);
   });
 
   app.get("/api/logout", (req, res) => {
