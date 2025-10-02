@@ -18,8 +18,7 @@ import {
   generatePropertyLeads,
   findCompsWithOpenAI,
 } from "./openai";
-import { setupAuth, isAuthenticated, getOidcConfig } from "./replitAuth";
-import * as client from "openid-client";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 import bcrypt from "bcrypt";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -175,36 +174,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Logout endpoint
   app.post("/api/auth/logout", async (req: any, res) => {
     try {
-      // Check if this is a Replit Auth session (has user.claims)
-      const isReplitAuth = req.user && req.user.claims;
-      
-      if (isReplitAuth) {
-        // Use Replit's logout flow
-        req.logout(() => {
-          const config = getOidcConfig();
-          res.redirect(
-            client.buildEndSessionUrl(config, {
-              client_id: process.env.REPL_ID!,
-              post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
-            }).href
-          );
+      // For Repl Auth, just clear the session (Replit handles auth state)
+      // For traditional session, destroy it
+      if (req.session) {
+        req.session.destroy((err: any) => {
+          if (err) {
+            console.error("❌ Session destroy error:", err);
+            return res.status(500).json({
+              success: false,
+              message: "Failed to logout",
+            });
+          }
+          res.json({ success: true, message: "Logged out successfully" });
         });
       } else {
-        // Traditional session logout
-        if (req.session) {
-          req.session.destroy((err: any) => {
-            if (err) {
-              console.error("❌ Session destroy error:", err);
-              return res.status(500).json({
-                success: false,
-                message: "Failed to logout",
-              });
-            }
-            res.json({ success: true, message: "Logged out successfully" });
-          });
-        } else {
-          res.json({ success: true, message: "Already logged out" });
-        }
+        res.json({ success: true, message: "Already logged out" });
       }
     } catch (error: any) {
       console.error("❌ Logout error:", error);
@@ -224,16 +208,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json(req.session.user);
       }
 
-      // Check for Replit Auth
-      if (req.user && req.user.claims) {
-        console.log("🔐 Replit Auth session found");
+      // Check for Repl Auth headers
+      const replitUserId = req.headers['x-replit-user-id'] as string;
+      const replitUserName = req.headers['x-replit-user-name'] as string;
+      const replitUserEmail = req.headers['x-replit-user-email'] as string;
+      const replitUserProfileImage = req.headers['x-replit-user-profile-image'] as string;
 
-        // Try to get full user data from database
-        const userId = req.user.claims.sub;
-        const user = await storage.getUser(userId);
+      if (replitUserId) {
+        console.log("🔐 Repl Auth headers found for user:", replitUserName);
+
+        // Try to get or create user in database
+        let user = await storage.getUser(replitUserId);
+        
+        if (!user && replitUserEmail) {
+          // Create user if doesn't exist
+          await storage.upsertUser({
+            id: replitUserId,
+            email: replitUserEmail,
+            firstName: replitUserName?.split(' ')[0] || '',
+            lastName: replitUserName?.split(' ').slice(1).join(' ') || '',
+            profileImageUrl: replitUserProfileImage,
+          });
+          user = await storage.getUser(replitUserId);
+        }
 
         if (user) {
-          // Return full user data from database
           const userData = {
             id: user.id,
             email: user.email,
@@ -243,18 +242,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             profileImage: user.profileImageUrl,
           };
           return res.json(userData);
-        } else {
-          // Fallback to session data
-          const userData = {
-            id: req.user.claims.sub,
-            email: req.user.claims.email,
-            firstName: req.user.claims.first_name,
-            lastName: req.user.claims.last_name,
-            name: req.user.claims.name,
-            profileImage: req.user.claims.profile_image_url,
-          };
-          return res.json(userData);
         }
+
+        // Fallback to header data
+        return res.json({
+          id: replitUserId,
+          email: replitUserEmail,
+          name: replitUserName,
+          profileImage: replitUserProfileImage,
+        });
       }
 
       // No authentication found
@@ -269,15 +265,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Properties
   app.get("/api/properties", async (req: any, res) => {
     try {
-      // Check authentication for both traditional and Replit Auth sessions
+      // Check authentication for both traditional and Repl Auth
       let userId: string;
 
       if (req.session && req.session.user) {
         // Traditional session
         userId = req.session.user.id;
-      } else if (req.user && req.user.claims) {
-        // Replit Auth session
-        userId = req.user.claims.sub;
+      } else if (req.headers['x-replit-user-id']) {
+        // Repl Auth headers
+        userId = req.headers['x-replit-user-id'] as string;
       } else {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -531,15 +527,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Contacts
   app.get("/api/contacts", async (req: any, res) => {
     try {
-      // Check authentication for both traditional and Replit Auth sessions
+      // Check authentication for both traditional and Repl Auth
       let userId: string;
 
       if (req.session && req.session.user) {
         // Traditional session
         userId = req.session.user.id;
-      } else if (req.user && req.user.claims) {
-        // Replit Auth session
-        userId = req.user.claims.sub;
+      } else if (req.headers['x-replit-user-id']) {
+        // Repl Auth headers
+        userId = req.headers['x-replit-user-id'] as string;
       } else {
         return res.status(401).json({ message: "Unauthorized" });
       }
@@ -554,8 +550,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/contacts", async (req: any, res) => {
     try {
-      // Check authentication for both traditional and Replit Auth sessions
-      if (!req.session?.user && !req.user?.claims) {
+      // Check authentication for both traditional and Repl Auth
+      if (!req.session?.user && !req.headers['x-replit-user-id']) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
