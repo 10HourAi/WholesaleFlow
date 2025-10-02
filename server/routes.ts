@@ -191,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Check for traditional session first
       if (req.session && req.session.user) {
-        console.log("🔐 Traditional session found");
+        console.log("🔐 Traditional session found:", req.session.user.email);
         return res.json(req.session.user);
       }
 
@@ -229,6 +229,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // No authentication found
+      console.log("❌ No authentication found in request");
       return res.status(401).json({ message: "Unauthorized" });
 
     } catch (error) {
