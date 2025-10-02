@@ -7,19 +7,9 @@ import type { Express, RequestHandler } from "express";
 import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
-import MemoryStore from "memorystore";
 
-// Check if running in local development mode (not on Replit)
-// Use REPL_ID as the primary indicator since it's always set on Replit
-const isLocalDevelopment = !process.env.REPL_ID;
-
-if (isLocalDevelopment) {
-  console.log("🏠 Running in LOCAL DEVELOPMENT mode - Replit Auth disabled");
-  console.log("✅ Using memory-based sessions for local development");
-} else {
-  console.log("🚀 Running on REPLIT - Replit Auth enabled");
-  console.log("📋 REPL_ID:", process.env.REPL_ID);
-  console.log("📋 REPLIT_DOMAINS:", process.env.REPLIT_DOMAINS);
+if (!process.env.REPLIT_DOMAINS) {
+  throw new Error("Environment variable REPLIT_DOMAINS not provided");
 }
 
 const getOidcConfig = memoize(
@@ -34,34 +24,21 @@ const getOidcConfig = memoize(
 
 export function getSession() {
   const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
-
-  // Use memory store for local development, PostgreSQL for production
-  let sessionStore;
-  if (isLocalDevelopment) {
-    const MemoryStoreSession = MemoryStore(session);
-    sessionStore = new MemoryStoreSession({
-      checkPeriod: sessionTtl,
-    });
-    console.log("💾 Using in-memory session store for local development");
-  } else {
-    const pgStore = connectPg(session);
-    sessionStore = new pgStore({
-      conString: process.env.DATABASE_URL,
-      createTableIfMissing: false,
-      ttl: sessionTtl,
-      tableName: "sessions",
-    });
-  }
-
+  const pgStore = connectPg(session);
+  const sessionStore = new pgStore({
+    conString: process.env.DATABASE_URL,
+    createTableIfMissing: false,
+    ttl: sessionTtl,
+    tableName: "sessions",
+  });
   return session({
-    secret:
-      process.env.SESSION_SECRET || "local-dev-secret-change-in-production",
+    secret: process.env.SESSION_SECRET!,
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: !isLocalDevelopment, // Only require HTTPS in production
+      secure: true,
       maxAge: sessionTtl,
     },
   });
@@ -93,16 +70,6 @@ export async function setupAuth(app: Express) {
   app.use(passport.initialize());
   app.use(passport.session());
 
-  // Skip Replit OAuth setup in local development
-  if (isLocalDevelopment) {
-    console.log(
-      "⚠️  Replit OAuth disabled - using email/password authentication only",
-    );
-    passport.serializeUser((user: Express.User, cb) => cb(null, user));
-    passport.deserializeUser((user: Express.User, cb) => cb(null, user));
-    return;
-  }
-
   const config = await getOidcConfig();
 
   const verify: VerifyFunction = async (
@@ -116,96 +83,30 @@ export async function setupAuth(app: Express) {
   };
 
   for (const domain of process.env.REPLIT_DOMAINS!.split(",")) {
-    const trimmedDomain = domain.trim();
-    
-    // Register strategy for the original domain
     const strategy = new Strategy(
       {
-        name: `replitauth:${trimmedDomain}`,
+        name: `replitauth:${domain}`,
         config,
         scope: "openid email profile offline_access",
-        callbackURL: `https://${trimmedDomain}/api/callback`,
+        callbackURL: `https://${domain}/api/callback`,
       },
       verify,
     );
     passport.use(strategy);
-    
-    // Also register variants (.replit.dev <-> .repl.co) since Replit uses both
-    if (trimmedDomain.includes('.replit.dev')) {
-      const replCoVariant = trimmedDomain.replace('.replit.dev', '.repl.co');
-      const variantStrategy = new Strategy(
-        {
-          name: `replitauth:${replCoVariant}`,
-          config,
-          scope: "openid email profile offline_access",
-          callbackURL: `https://${trimmedDomain}/api/callback`,
-        },
-        verify,
-      );
-      passport.use(variantStrategy);
-    } else if (trimmedDomain.includes('.repl.co')) {
-      const replitDevVariant = trimmedDomain.replace('.repl.co', '.replit.dev');
-      const variantStrategy = new Strategy(
-        {
-          name: `replitauth:${replitDevVariant}`,
-          config,
-          scope: "openid email profile offline_access",
-          callbackURL: `https://${trimmedDomain}/api/callback`,
-        },
-        verify,
-      );
-      passport.use(variantStrategy);
-    }
-    
-    console.log(`✅ Registered Replit Auth strategy for: ${trimmedDomain}`);
   }
 
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    // Try the exact hostname first, then try domain variants
-    let strategyName = `replitauth:${req.hostname}`;
-    
-    // Check if the strategy exists, if not try variants
-    const registeredStrategies = Object.keys((passport as any)._strategies);
-    
-    if (!registeredStrategies.includes(strategyName)) {
-      // Try swapping .replit.dev <-> .repl.co
-      if (req.hostname.includes('.replit.dev')) {
-        strategyName = `replitauth:${req.hostname.replace('.replit.dev', '.repl.co')}`;
-      } else if (req.hostname.includes('.repl.co')) {
-        strategyName = `replitauth:${req.hostname.replace('.repl.co', '.replit.dev')}`;
-      }
-    }
-    
-    console.log(`🔐 Login attempt - hostname: ${req.hostname}, using strategy: ${strategyName}`);
-    
-    passport.authenticate(strategyName, {
+    passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
-    // Try the exact hostname first, then try domain variants
-    let strategyName = `replitauth:${req.hostname}`;
-    
-    // Check if the strategy exists, if not try variants
-    const registeredStrategies = Object.keys((passport as any)._strategies);
-    
-    if (!registeredStrategies.includes(strategyName)) {
-      // Try swapping .replit.dev <-> .repl.co
-      if (req.hostname.includes('.replit.dev')) {
-        strategyName = `replitauth:${req.hostname.replace('.replit.dev', '.repl.co')}`;
-      } else if (req.hostname.includes('.repl.co')) {
-        strategyName = `replitauth:${req.hostname.replace('.repl.co', '.replit.dev')}`;
-      }
-    }
-    
-    console.log(`🔐 Callback - hostname: ${req.hostname}, using strategy: ${strategyName}`);
-    
-    passport.authenticate(strategyName, {
+    passport.authenticate(`replitauth:${req.hostname}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
     })(req, res, next);
@@ -224,16 +125,6 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
-  // In local development, check for traditional session
-  if (isLocalDevelopment) {
-    const session = (req as any).session;
-    if (session && session.user) {
-      return next();
-    }
-    return res.status(401).json({ message: "Unauthorized" });
-  }
-
-  // Replit OAuth authentication
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {

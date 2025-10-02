@@ -16,7 +16,6 @@ import {
   generateNegotiationResponse,
   generateClosingResponse,
   generatePropertyLeads,
-  findCompsWithOpenAI,
 } from "./openai";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import bcrypt from "bcrypt";
@@ -109,36 +108,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Check if user has a password set
+      // Check if user has a password (might be Replit Auth only user)
       if (!user.password) {
         return res.status(401).json({
           success: false,
-          message: "This account does not have a password set. Please use 'Continue with Replit' to login or reset your password.",
+          message: "Please use 'Continue with Replit' to login",
         });
       }
 
       // Verify password with bcrypt
-      let isPasswordValid = false;
-      try {
-        isPasswordValid = await bcrypt.compare(password, user.password);
-      } catch (error) {
-        console.log("❌ Password comparison error:", error);
-        return res.status(401).json({
-          success: false,
-          message: "Invalid email or password",
-        });
-      }
-
+      const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        console.log("❌ Password verification failed for user:", user.id);
         return res.status(401).json({
           success: false,
           message: "Invalid email or password",
         });
       }
 
-      // Clear any logout flag and create fresh session for traditional auth
-      (req as any).session.loggedOut = false;
+      // Create session for traditional auth
       (req as any).session.user = {
         id: user.id,
         email: user.email,
@@ -175,23 +162,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Logout endpoint
   app.post("/api/auth/logout", async (req: any, res) => {
     try {
-      // Set a logout flag in the session to prevent Replit Auth auto-login
       if (req.session) {
-        req.session.loggedOut = true;
-        req.session.user = null;
-        
-        req.session.save((saveErr: any) => {
-          if (saveErr) {
-            console.error("❌ Session save error:", saveErr);
+        req.session.destroy((err: any) => {
+          if (err) {
+            console.error("❌ Session destroy error:", err);
+            return res.status(500).json({
+              success: false,
+              message: "Failed to logout",
+            });
           }
-          
-          // Clear the session cookie
-          res.clearCookie('connect.sid', { path: '/' });
-          console.log("✅ User logged out, session cleared");
           res.json({ success: true, message: "Logged out successfully" });
         });
       } else {
-        res.clearCookie('connect.sid', { path: '/' });
         res.json({ success: true, message: "Already logged out" });
       }
     } catch (error: any) {
@@ -206,93 +188,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes - Updated to handle both Replit Auth and traditional sessions
   app.get("/api/auth/user", async (req: any, res) => {
     try {
-      // Check if user explicitly logged out
-      if (req.session && req.session.loggedOut) {
-        console.log("❌ User explicitly logged out, rejecting auth");
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
       // Check for traditional session first
       if (req.session && req.session.user) {
-        console.log("🔐 Traditional session found:", req.session.user.email);
+        console.log("🔐 Traditional session found");
         return res.json(req.session.user);
       }
 
-      // Check for Repl Auth headers
-      const replitUserId = req.headers['x-replit-user-id'] as string;
-      const replitUserName = req.headers['x-replit-user-name'] as string;
-      const replitUserEmail = req.headers['x-replit-user-email'] as string;
-      const replitUserProfileImage = req.headers['x-replit-user-profile-image'] as string;
+      // Check for Replit Auth
+      if (req.user && req.user.claims) {
+        console.log("🔐 Replit Auth session found");
 
-      if (replitUserId) {
-        console.log("🔐 Repl Auth headers found for user:", replitUserName);
-
-        // Clear logout flag when Replit Auth is active
-        if (req.session) {
-          req.session.loggedOut = false;
-        }
-
-        // Try to get or create user in database
-        let user = await storage.getUser(replitUserId);
-        
-        if (!user && replitUserEmail) {
-          // Create user if doesn't exist
-          await storage.upsertUser({
-            id: replitUserId,
-            email: replitUserEmail,
-            firstName: replitUserName?.split(' ')[0] || '',
-            lastName: replitUserName?.split(' ').slice(1).join(' ') || '',
-            profileImageUrl: replitUserProfileImage,
-          });
-          user = await storage.getUser(replitUserId);
-        }
+        // Try to get full user data from database
+        const userId = req.user.claims.sub;
+        const user = await storage.getUser(userId);
 
         if (user) {
+          // Return full user data from database
           const userData = {
             id: user.id,
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email,
+            name:
+              user.firstName && user.lastName
+                ? `${user.firstName} ${user.lastName}`
+                : user.email,
             profileImage: user.profileImageUrl,
           };
           return res.json(userData);
+        } else {
+          // Fallback to session data
+          const userData = {
+            id: req.user.claims.sub,
+            email: req.user.claims.email,
+            firstName: req.user.claims.first_name,
+            lastName: req.user.claims.last_name,
+            name: req.user.claims.name,
+            profileImage: req.user.claims.profile_image_url,
+          };
+          return res.json(userData);
         }
-
-        // Fallback to header data
-        return res.json({
-          id: replitUserId,
-          email: replitUserEmail,
-          name: replitUserName,
-          profileImage: replitUserProfileImage,
-        });
       }
 
       // No authentication found
-      console.log("❌ No authentication found in request");
       return res.status(401).json({ message: "Unauthorized" });
-
     } catch (error) {
       console.error("❌ Error fetching user:", error);
       return res.status(401).json({ message: "Unauthorized" });
     }
   });
   // Properties
-  app.get("/api/properties", async (req: any, res) => {
+  app.get("/api/properties", isAuthenticated, async (req: any, res) => {
     try {
-      // Check authentication for both traditional and Repl Auth
-      let userId: string;
-
-      if (req.session && req.session.user) {
-        // Traditional session
-        userId = req.session.user.id;
-      } else if (req.headers['x-replit-user-id']) {
-        // Repl Auth headers
-        userId = req.headers['x-replit-user-id'] as string;
-      } else {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
+      const userId = req.user.claims.sub;
       const properties = await storage.getProperties(userId);
       res.json(properties);
     } catch (error: any) {
@@ -300,66 +248,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/properties", async (req: any, res) => {
+  app.post("/api/properties", isAuthenticated, async (req: any, res) => {
     try {
-      // Check authentication for both traditional and Replit Auth sessions
-      let userId: string;
-
-      if (req.session && req.session.user) {
-        // Traditional session
-        userId = req.session.user.id;
-      } else if (req.user && req.user.claims) {
-        // Replit Auth session
-        userId = req.user.claims.sub;
-      } else {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      const userId = req.user.claims.sub;
       console.log("🏠 Creating property for user:", userId);
       console.log("🏠 Request body:", req.body);
-
-      // Check for existing property to prevent duplicates
-      const existingProperties = await storage.searchProperties(userId, {
-        city: req.body.city,
-        state: req.body.state,
-      });
-
-      const duplicateProperty = existingProperties.find(p =>
-        p.address === req.body.address &&
-        p.city === req.body.city &&
-        p.state === req.body.state
-      );
-
-      if (duplicateProperty) {
-        console.log("🏠 Duplicate property found, returning existing:", duplicateProperty.id);
-        return res.status(200).json({
-          ...duplicateProperty,
-          message: "Property already exists in your CRM",
-        });
-      }
 
       // Clean the data before validation and ADD userId
       const cleanedData = {
         ...req.body,
-        userId // Add userId from authenticated user
+        userId, // Add userId from authenticated user
       };
 
       // Convert string numbers to actual numbers
-      if (cleanedData.bedrooms && typeof cleanedData.bedrooms === 'string') {
+      if (cleanedData.bedrooms && typeof cleanedData.bedrooms === "string") {
         cleanedData.bedrooms = parseInt(cleanedData.bedrooms);
       }
-      if (cleanedData.bathrooms && typeof cleanedData.bathrooms === 'string') {
+      if (cleanedData.bathrooms && typeof cleanedData.bathrooms === "string") {
         cleanedData.bathrooms = parseFloat(cleanedData.bathrooms);
       }
-      if (cleanedData.squareFeet && typeof cleanedData.squareFeet === 'string') {
+      if (
+        cleanedData.squareFeet &&
+        typeof cleanedData.squareFeet === "string"
+      ) {
         cleanedData.squareFeet = parseInt(cleanedData.squareFeet);
       }
-      if (cleanedData.yearBuilt && typeof cleanedData.yearBuilt === 'string') {
+      if (cleanedData.yearBuilt && typeof cleanedData.yearBuilt === "string") {
         cleanedData.yearBuilt = parseInt(cleanedData.yearBuilt);
       }
-      if (cleanedData.equityPercentage && typeof cleanedData.equityPercentage === 'string') {
+      if (
+        cleanedData.equityPercentage &&
+        typeof cleanedData.equityPercentage === "string"
+      ) {
         cleanedData.equityPercentage = parseInt(cleanedData.equityPercentage);
       }
-      if (cleanedData.confidenceScore && typeof cleanedData.confidenceScore === 'string') {
+      if (
+        cleanedData.confidenceScore &&
+        typeof cleanedData.confidenceScore === "string"
+      ) {
         cleanedData.confidenceScore = parseInt(cleanedData.confidenceScore);
       }
 
@@ -374,12 +300,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(property);
     } catch (error: any) {
       console.error("❌ Property creation error:", error);
-      if (error.name === 'ZodError') {
+      if (error.name === "ZodError") {
         console.error("❌ Validation errors:", error.errors);
         res.status(400).json({
           message: "Validation failed",
           errors: error.errors,
-          details: error.errors.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ')
+          details: error.errors
+            .map((err: any) => `${err.path.join(".")}: ${err.message}`)
+            .join(", "),
         });
       } else {
         res.status(400).json({ message: error.message });
@@ -387,21 +315,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/properties/search", async (req: any, res) => {
+  app.get("/api/properties/search", isAuthenticated, async (req: any, res) => {
     try {
-      // Check authentication for both traditional and Replit Auth sessions
-      let userId: string;
-
-      if (req.session && req.session.user) {
-        // Traditional session
-        userId = req.session.user.id;
-      } else if (req.user && req.user.claims) {
-        // Replit Auth session
-        userId = req.user.claims.sub;
-      } else {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
+      const userId = req.user.claims.sub;
       const { city, state, status, leadType } = req.query;
       const properties = await storage.searchProperties(userId, {
         city: city as string,
@@ -415,20 +331,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/properties/:id", async (req: any, res) => {
+  app.patch("/api/properties/:id", isAuthenticated, async (req: any, res) => {
     try {
-      // Check authentication for both traditional and Replit Auth sessions
-      let userId: string;
-
-      if (req.session && req.session.user) {
-        // Traditional session
-        userId = req.session.user.id;
-      } else if (req.user && req.user.claims) {
-        // Replit Auth session
-        userId = req.user.claims.sub;
-      } else {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
+      const userId = req.user.claims.sub;
       const property = await storage.updateProperty(
         req.params.id,
         userId,
@@ -440,121 +345,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/properties/:id/comps", async (req: any, res) => {
-    try {
-      // Check authentication for both traditional and Replit Auth sessions
-      let userId: string;
-
-      if (req.session && req.session.user) {
-        userId = req.session.user.id;
-      } else if (req.user && req.user.claims) {
-        userId = req.user.claims.sub;
-      } else {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const propertyId = req.params.id;
-      
-      // Verify the property belongs to the user
-      const property = await storage.getProperty(propertyId, userId);
-      if (!property) {
-        return res.status(404).json({ message: "Property not found" });
-      }
-
-      const comps = await storage.getComps(propertyId);
-      res.json(comps);
-    } catch (error: any) {
-      console.error("❌ Error fetching comps:", error);
-      res.status(500).json({ 
-        message: "Failed to fetch comps", 
-        error: error.message 
-      });
-    }
-  });
-
-  app.post("/api/properties/:id/comps", async (req: any, res) => {
-    try {
-      // Check authentication for both traditional and Replit Auth sessions
-      let userId: string;
-
-      if (req.session && req.session.user) {
-        userId = req.session.user.id;
-      } else if (req.user && req.user.claims) {
-        userId = req.user.claims.sub;
-      } else {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const propertyId = req.params.id;
-      console.log('🏘️ Running comps analysis for property:', propertyId);
-
-      const property = await storage.getProperty(propertyId, userId);
-      if (!property) {
-        return res.status(404).json({ message: "Property not found" });
-      }
-
-      console.log('🧹 Deleting existing comps for property:', propertyId);
-      await storage.deleteCompsByProperty(propertyId);
-
-      console.log('🤖 Calling findCompsWithOpenAI...');
-      const comps = await findCompsWithOpenAI(property);
-
-      console.log('💾 Saving', comps.length, 'comps to database...');
-      const savedComps = [];
-      for (const comp of comps) {
-        const savedComp = await storage.createComp(comp);
-        savedComps.push(savedComp);
-      }
-
-      console.log('✅ Successfully saved', savedComps.length, 'comparable properties');
-      res.json(savedComps);
-    } catch (error: any) {
-      console.error("❌ Error running comps analysis:", error);
-      res.status(500).json({ 
-        message: "Failed to run comps analysis", 
-        error: error.message 
-      });
-    }
-  });
-
-  // Google Street View URL generator
-  app.get("/api/streetview/:address", async (req: any, res) => {
-    try {
-      const { address } = req.params;
-      const apiKey = process.env.GOOGLE_STREET_VIEW_API_KEY;
-
-      if (!apiKey) {
-        return res.status(500).json({ 
-          message: "Google Street View API key not configured" 
-        });
-      }
-
-      // Generate Street View Static API URL
-      const streetViewUrl = `https://maps.googleapis.com/maps/api/streetview?size=600x300&location=${encodeURIComponent(address)}&key=${apiKey}`;
-      
-      res.json({ url: streetViewUrl });
-    } catch (error: any) {
-      console.error("Error generating street view URL:", error);
-      res.status(500).json({ message: error.message });
-    }
-  });
-
   // Contacts
-  app.get("/api/contacts", async (req: any, res) => {
+  app.get("/api/contacts", isAuthenticated, async (req: any, res) => {
     try {
-      // Check authentication for both traditional and Repl Auth
-      let userId: string;
-
-      if (req.session && req.session.user) {
-        // Traditional session
-        userId = req.session.user.id;
-      } else if (req.headers['x-replit-user-id']) {
-        // Repl Auth headers
-        userId = req.headers['x-replit-user-id'] as string;
-      } else {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
+      const userId = req.user.claims.sub;
       const contacts = await storage.getContacts(userId);
       res.json(contacts);
     } catch (error: any) {
@@ -563,13 +357,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/contacts", async (req: any, res) => {
+  app.post("/api/contacts", isAuthenticated, async (req: any, res) => {
     try {
-      // Check authentication for both traditional and Repl Auth
-      if (!req.session?.user && !req.headers['x-replit-user-id']) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
       const validatedData = insertContactSchema.parse(req.body);
       const contact = await storage.createContact(validatedData);
       res.json(contact);
@@ -745,167 +534,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Messages
-  app.get(
-    "/api/conversations/:id/messages",
-    async (req: any, res) => {
-      try {
-        // Check authentication for both traditional and Replit Auth sessions
-        if (!req.session?.user && !req.user?.claims) {
-          return res.status(401).json({ message: "Unauthorized" });
-        }
-
-        const messages = await storage.getMessagesByConversation(req.params.id);
-        res.json(messages);
-      } catch (error: any) {
-        res.status(500).json({ message: error.message });
+  app.get("/api/conversations/:id/messages", async (req: any, res) => {
+    try {
+      // Check authentication for both traditional and Replit Auth sessions
+      if (!req.session?.user && !req.user?.claims) {
+        return res.status(401).json({ message: "Unauthorized" });
       }
-    },
-  );
 
-  app.post(
-    "/api/conversations/:id/messages",
-    async (req: any, res) => {
-      try {
-        // Check authentication for both traditional and Replit Auth sessions
-        let userId: string;
+      const messages = await storage.getMessagesByConversation(req.params.id);
+      res.json(messages);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
 
-        if (req.session && req.session.user) {
-          // Traditional session
-          userId = req.session.user.id;
-        } else if (req.user && req.user.claims) {
-          // Replit Auth session
-          userId = req.user.claims.sub;
-        } else {
-          return res.status(401).json({ message: "Unauthorized" });
-        }
-        const validatedData = insertMessageSchema.parse({
-          ...req.body,
-          conversationId: req.params.id,
-        });
-        const userMessage = await storage.createMessage(validatedData);
+  app.post("/api/conversations/:id/messages", async (req: any, res) => {
+    try {
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
 
-        // Skip AI responses for wizard-generated messages OR any property search messages
-        const isWizardMessage =
-          validatedData.content.toLowerCase().includes("find") &&
-          validatedData.content.toLowerCase().includes("properties") &&
-          (validatedData.content.toLowerCase().includes("distressed") ||
-            validatedData.content.toLowerCase().includes("motivated") ||
-            validatedData.content.toLowerCase().includes("leads"));
+      if (req.session && req.session.user) {
+        // Traditional session
+        userId = req.session.user.id;
+      } else if (req.user && req.user.claims) {
+        // Replit Auth session
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const validatedData = insertMessageSchema.parse({
+        ...req.body,
+        conversationId: req.params.id,
+      });
+      const userMessage = await storage.createMessage(validatedData);
 
-        // Also skip if it looks like any property search to let frontend wizard handle it
-        const isAnyPropertySearch =
-          validatedData.content
-            .toLowerCase()
-            .match(/(find|search|show|get)\s+(properties|distressed|leads)/i) ||
-          validatedData.content.toLowerCase().includes("properties in") ||
-          validatedData.content.match(/\d+\s+properties/i);
+      // Skip AI responses for wizard-generated messages OR any property search messages
+      const isWizardMessage =
+        validatedData.content.toLowerCase().includes("find") &&
+        validatedData.content.toLowerCase().includes("properties") &&
+        (validatedData.content.toLowerCase().includes("distressed") ||
+          validatedData.content.toLowerCase().includes("motivated") ||
+          validatedData.content.toLowerCase().includes("leads"));
 
-        // Generate AI response based on agent type (skip for wizard messages)
-        const conversation = await storage.getConversation(req.params.id);
-        let aiResponse = "";
+      // Also skip if it looks like any property search to let frontend wizard handle it
+      const isAnyPropertySearch =
+        validatedData.content
+          .toLowerCase()
+          .match(/(find|search|show|get)\s+(properties|distressed|leads)/i) ||
+        validatedData.content.toLowerCase().includes("properties in") ||
+        validatedData.content.match(/\d+\s+properties/i);
 
-        if (conversation && !isWizardMessage && !isAnyPropertySearch) {
-          switch (conversation.agentType) {
-            case "lead-finder":
-              // Check if this is a property search request from Seller Lead Wizard
-              const isPropertySearch =
-                validatedData.content
-                  .toLowerCase()
-                  .match(
-                    /(find|search|show|get)\s+(properties|distressed|leads)/i,
-                  ) ||
-                validatedData.content.toLowerCase().includes("properties in") ||
-                validatedData.content.match(/\d+\s+properties/i);
+      // Generate AI response based on agent type (skip for wizard messages)
+      const conversation = await storage.getConversation(req.params.id);
+      let aiResponse = "";
 
-              // Check if this is a cash buyer search request from Cash Buyer Wizard
-              const isCashBuyerSearch =
-                validatedData.content
-                  .toLowerCase()
-                  .match(
-                    /(find|search|show|get)\s+(cash\s+buyers?|buyers?)/i,
-                  ) ||
-                validatedData.content.toLowerCase().includes("cash buyers in");
+      if (conversation && !isWizardMessage && !isAnyPropertySearch) {
+        switch (conversation.agentType) {
+          case "lead-finder":
+            // Check if this is a property search request from Seller Lead Wizard
+            const isPropertySearch =
+              validatedData.content
+                .toLowerCase()
+                .match(
+                  /(find|search|show|get)\s+(properties|distressed|leads)/i,
+                ) ||
+              validatedData.content.toLowerCase().includes("properties in") ||
+              validatedData.content.match(/\d+\s+properties/i);
 
-              if (isCashBuyerSearch) {
-                // Route directly to BatchLeads Cash Buyer API, bypass OpenAI
-                const { batchLeadsService } = await import("./batchleads");
+            // Check if this is a cash buyer search request from Cash Buyer Wizard
+            const isCashBuyerSearch =
+              validatedData.content
+                .toLowerCase()
+                .match(/(find|search|show|get)\s+(cash\s+buyers?|buyers?)/i) ||
+              validatedData.content.toLowerCase().includes("cash buyers in");
 
-                // Extract location from message
-                let location = "Orlando, FL"; // Default
-                const locationMatch = validatedData.content.match(
-                  /in\s+([^,\n]+(?:,\s*[A-Z]{2})?)/i,
-                );
-                if (locationMatch) {
-                  location = locationMatch[1].trim();
-                }
+            if (isCashBuyerSearch) {
+              // Route directly to BatchLeads Cash Buyer API, bypass OpenAI
+              const { batchLeadsService } = await import("./batchleads");
 
-                console.log(
-                  `💰 ROUTES: About to call BatchLeads Cash Buyer API with location:`,
-                  location,
-                );
-                const results = await batchLeadsService.searchCashBuyersRaw({
-                  location,
-                  limit: 5,
-                });
-                console.log(
-                  `💰 ROUTES: Cash Buyer API returned:`,
-                  JSON.stringify(results, null, 2),
-                );
-
-                if (results.buyers.length === 0) {
-                  aiResponse = `I couldn't find any qualified cash buyers with 3+ properties in ${location}. Try a different location or check back later as new buyers enter the market regularly.`;
-                } else {
-                  // Simple response - the frontend wizard will handle the detailed card formatting
-                  aiResponse = `Found ${results.buyers.length} qualified cash buyers with 3+ properties in ${location}. Processing individual cards now...`;
-                }
-              } else if (isPropertySearch) {
-                // Seller Lead Wizard will handle the formatted card display
-                aiResponse =
-                  "I'm ready to help you find motivated sellers! Please use the Seller Lead Wizard above to search for properties with beautiful formatted cards.";
-              } else {
-                // Non-property search - using dummy response while API is paused
-                aiResponse =
-                  "I'm here to help you find motivated sellers and distressed properties! Use the Seller Lead Wizard above to search for properties in your target area.";
+              // Extract location from message
+              let location = "Orlando, FL"; // Default
+              const locationMatch = validatedData.content.match(
+                /in\s+([^,\n]+(?:,\s*[A-Z]{2})?)/i,
+              );
+              if (locationMatch) {
+                location = locationMatch[1].trim();
               }
-              break;
-            case "deal-analyzer":
-              // Using dummy response while API is paused
-              aiResponse =
-                "I'm the Deal Analyzer Agent! I help analyze property deals and calculate profit potential. All API calls are currently paused - using dummy data for testing.";
-              break;
-            case "negotiation":
-              // Using dummy response while API is paused
-              aiResponse =
-                "I'm the Negotiation Agent! I help craft compelling offers and negotiate with sellers. All API calls are currently paused - using dummy data for testing.";
-              break;
-            case "closing":
-              // Using dummy response while API is paused
-              aiResponse =
-                "I'm the Closing Agent! I help manage transactions and prepare closing documents. All API calls are currently paused - using dummy data for testing.";
-              break;
-            default:
-              aiResponse =
-                "I'm here to help with your real estate wholesaling needs!";
-          }
 
-          // Create AI response message
-          const aiMessage = await storage.createMessage({
-            conversationId: req.params.id,
-            content: aiResponse,
-            role: "assistant",
-            isAiGenerated: true,
-          });
+              console.log(
+                `💰 ROUTES: About to call BatchLeads Cash Buyer API with location:`,
+                location,
+              );
+              const results = await batchLeadsService.searchCashBuyersRaw({
+                location,
+                limit: 5,
+              });
+              console.log(
+                `💰 ROUTES: Cash Buyer API returned:`,
+                JSON.stringify(results, null, 2),
+              );
 
-          res.json([userMessage, aiMessage]);
-        } else {
-          res.json([userMessage]);
+              if (results.buyers.length === 0) {
+                aiResponse = `I couldn't find any qualified cash buyers with 3+ properties in ${location}. Try a different location or check back later as new buyers enter the market regularly.`;
+              } else {
+                // Simple response - the frontend wizard will handle the detailed card formatting
+                aiResponse = `Found ${results.buyers.length} qualified cash buyers with 3+ properties in ${location}. Processing individual cards now...`;
+              }
+            } else if (isPropertySearch) {
+              // Seller Lead Wizard will handle the formatted card display
+              aiResponse =
+                "I'm ready to help you find motivated sellers! Please use the Seller Lead Wizard above to search for properties with beautiful formatted cards.";
+            } else {
+              // Non-property search - using dummy response while API is paused
+              aiResponse =
+                "I'm here to help you find motivated sellers and distressed properties! Use the Seller Lead Wizard above to search for properties in your target area.";
+            }
+            break;
+          case "deal-analyzer":
+            // Using dummy response while API is paused
+            aiResponse =
+              "I'm the Deal Analyzer Agent! I help analyze property deals and calculate profit potential. All API calls are currently paused - using dummy data for testing.";
+            break;
+          case "negotiation":
+            // Using dummy response while API is paused
+            aiResponse =
+              "I'm the Negotiation Agent! I help craft compelling offers and negotiate with sellers. All API calls are currently paused - using dummy data for testing.";
+            break;
+          case "closing":
+            // Using dummy response while API is paused
+            aiResponse =
+              "I'm the Closing Agent! I help manage transactions and prepare closing documents. All API calls are currently paused - using dummy data for testing.";
+            break;
+          default:
+            aiResponse =
+              "I'm here to help with your real estate wholesaling needs!";
         }
-      } catch (error: any) {
-        console.error("Error in message handler:", error);
-        res.status(400).json({ message: error.message });
+
+        // Create AI response message
+        const aiMessage = await storage.createMessage({
+          conversationId: req.params.id,
+          content: aiResponse,
+          role: "assistant",
+          isAiGenerated: true,
+        });
+
+        res.json([userMessage, aiMessage]);
+      } else {
+        res.json([userMessage]);
       }
-    },
-  );
+    } catch (error: any) {
+      console.error("Error in message handler:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
 
   // Documents
   app.get("/api/documents", isAuthenticated, async (req: any, res) => {
@@ -1725,12 +1506,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Dedicated Cash Buyer API endpoint - Using mock data for UI testing
   app.post("/api/cash-buyers/search", async (req, res) => {
     try {
-      const { location, buyerType = "all_cash_buyers", quickLists, minProperties } = req.body;
+      const {
+        location,
+        buyerType = "all_cash_buyers",
+        minProperties = 3,
+      } = req.body;
 
       console.log("🔍 Cash buyer search:", {
         location,
         buyerType,
-        quickLists,
         minProperties,
       });
 
@@ -1924,23 +1708,6 @@ When users ask about market research, provide specific, data-driven insights. If
           "Sorry, I'm having trouble processing your request right now. Please try again.",
       });
     }
-  });
-
-  // Debug endpoint for Replit Auth configuration
-  app.get("/api/debug/replit-config", async (req, res) => {
-    const config = {
-      currentHostname: req.hostname,
-      replitDomains: process.env.REPLIT_DOMAINS,
-      replitDomainsArray: process.env.REPLIT_DOMAINS?.split(",").map(d => d.trim()) || [],
-      replId: process.env.REPL_ID,
-      isReplit: !!process.env.REPL_ID,
-      registeredStrategies: [
-        `replitauth:${req.hostname}`,
-        ...((process.env.REPLIT_DOMAINS?.split(",").map(d => d.trim()) || []).map(domain => `replitauth:${domain}`))
-      ]
-    };
-    
-    res.json(config);
   });
 
   // Public demo endpoints (no auth required for testing)
