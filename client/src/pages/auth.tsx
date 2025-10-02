@@ -1,7 +1,12 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
@@ -18,10 +23,10 @@ export function Auth() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    
+
     try {
       const endpoint = isLogin ? "/api/auth/login" : "/api/signup";
-      const body = isLogin 
+      const body = isLogin
         ? { email, password }
         : { email, password, firstName, lastName };
 
@@ -31,7 +36,7 @@ export function Auth() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        credentials: 'include', // Important for session cookies
+        credentials: "include", // Important for session cookies
       });
 
       const result = await response.json();
@@ -44,7 +49,9 @@ export function Auth() {
           window.location.href = "/";
         } else {
           // For signup, show success message and switch to login
-          alert("Account created successfully! Please log in with your email and password.");
+          alert(
+            "Account created successfully! Please log in with your email and password.",
+          );
           setIsLogin(true);
           // Clear form but keep email for convenience
           setPassword("");
@@ -63,37 +70,8 @@ export function Auth() {
   };
 
   const handleReplitAuth = () => {
-    // Use Replit's simple auth with popup (legacy)
-    window.addEventListener("message", authComplete);
-    const h = 500;
-    const w = 350;
-    const left = screen.width / 2 - w / 2;
-    const top = screen.height / 2 - h / 2;
-
-    const authWindow = window.open(
-      "https://replit.com/auth_with_repl_site?domain=" + location.host,
-      "_blank",
-      "modal=yes, toolbar=no, location=no, directories=no, status=no, menubar=no, scrollbars=no, resizable=no, copyhistory=no, width=" +
-        w +
-        ", height=" +
-        h +
-        ", top=" +
-        top +
-        ", left=" +
-        left
-    );
-
-    function authComplete(e: MessageEvent) {
-      if (e.data !== "auth_complete") {
-        return;
-      }
-
-      window.removeEventListener("message", authComplete);
-      authWindow?.close();
-      
-      // Redirect to home after successful auth
-      window.location.href = "/";
-    }
+    // For development, redirect to login endpoint
+    window.location.href = "/api/login";
   };
 
   return (
@@ -117,15 +95,14 @@ export function Auth() {
               {isLogin ? "Welcome back" : "Create account"}
             </CardTitle>
             <CardDescription className="text-center">
-              {isLogin 
-                ? "Sign in to your account to continue" 
-                : "Sign up to start your real estate journey"
-              }
+              {isLogin
+                ? "Sign in to your account to continue"
+                : "Sign up to start your real estate journey"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Replit Auth - Primary Option */}
-            <Button 
+            <Button
               onClick={handleReplitAuth}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
               size="lg"
@@ -212,8 +189,17 @@ export function Auth() {
                 </div>
               </div>
 
-              <Button type="submit" className="w-full" variant="outline" disabled={loading}>
-                {loading ? "Processing..." : (isLogin ? "Sign in" : "Create account")}
+              <Button
+                type="submit"
+                className="w-full"
+                variant="outline"
+                disabled={loading}
+              >
+                {loading
+                  ? "Processing..."
+                  : isLogin
+                    ? "Sign in"
+                    : "Create account"}
               </Button>
             </form>
 
@@ -223,10 +209,9 @@ export function Auth() {
                 onClick={() => setIsLogin(!isLogin)}
                 className="text-sm text-blue-600 hover:text-blue-500 hover:underline"
               >
-                {isLogin 
-                  ? "Don't have an account? Sign up" 
-                  : "Already have an account? Sign in"
-                }
+                {isLogin
+                  ? "Don't have an account? Sign up"
+                  : "Already have an account? Sign in"}
               </button>
             </div>
 
@@ -245,9 +230,13 @@ export function Auth() {
 
         <div className="text-center mt-6 text-xs text-slate-500">
           By continuing, you agree to our{" "}
-          <a href="#" className="hover:underline">Terms of Service</a>
-          {" "}and{" "}
-          <a href="#" className="hover:underline">Privacy Policy</a>
+          <a href="#" className="hover:underline">
+            Terms of Service
+          </a>{" "}
+          and{" "}
+          <a href="#" className="hover:underline">
+            Privacy Policy
+          </a>
         </div>
       </div>
     </div>
