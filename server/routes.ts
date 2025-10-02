@@ -18,7 +18,8 @@ import {
   generatePropertyLeads,
   findCompsWithOpenAI,
 } from "./openai";
-import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupAuth, isAuthenticated, getOidcConfig } from "./replitAuth";
+import * as client from "openid-client";
 import bcrypt from "bcrypt";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -174,19 +175,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Logout endpoint
   app.post("/api/auth/logout", async (req: any, res) => {
     try {
-      if (req.session) {
-        req.session.destroy((err: any) => {
-          if (err) {
-            console.error("❌ Session destroy error:", err);
-            return res.status(500).json({
-              success: false,
-              message: "Failed to logout",
-            });
-          }
-          res.json({ success: true, message: "Logged out successfully" });
+      // Check if this is a Replit Auth session (has user.claims)
+      const isReplitAuth = req.user && req.user.claims;
+      
+      if (isReplitAuth) {
+        // Use Replit's logout flow
+        req.logout(() => {
+          const config = getOidcConfig();
+          res.redirect(
+            client.buildEndSessionUrl(config, {
+              client_id: process.env.REPL_ID!,
+              post_logout_redirect_uri: `${req.protocol}://${req.hostname}`,
+            }).href
+          );
         });
       } else {
-        res.json({ success: true, message: "Already logged out" });
+        // Traditional session logout
+        if (req.session) {
+          req.session.destroy((err: any) => {
+            if (err) {
+              console.error("❌ Session destroy error:", err);
+              return res.status(500).json({
+                success: false,
+                message: "Failed to logout",
+              });
+            }
+            res.json({ success: true, message: "Logged out successfully" });
+          });
+        } else {
+          res.json({ success: true, message: "Already logged out" });
+        }
       }
     } catch (error: any) {
       console.error("❌ Logout error:", error);

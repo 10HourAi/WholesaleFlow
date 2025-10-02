@@ -15,7 +15,7 @@ if (!process.env.REPLIT_DOMAINS || !process.env.REPL_ID) {
   console.log("✅ Replit Auth is configured with domain:", process.env.REPLIT_DOMAINS);
 }
 
-const getOidcConfig = memoize(
+export const getOidcConfig = memoize(
   async () => {
     return await client.discovery(
       new URL(process.env.ISSUER_URL ?? "https://replit.com/oidc"),
