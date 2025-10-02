@@ -129,11 +129,12 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    const domain = req.hostname;
-    console.log(`🔐 Login attempt from domain: ${domain}`);
+    // Always use the primary domain from REPLIT_DOMAINS env variable
+    const primaryDomain = process.env.REPLIT_DOMAINS!.split(",")[0];
+    console.log(`🔐 Login attempt from domain: ${req.hostname}, using strategy for: ${primaryDomain}`);
     
-    // Try to authenticate with the current domain
-    passport.authenticate(`replitauth:${domain}`, {
+    // Authenticate with the primary domain strategy
+    passport.authenticate(`replitauth:${primaryDomain}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
       failureRedirect: "/auth",
@@ -141,12 +142,13 @@ export async function setupAuth(app: Express) {
   });
 
   app.get("/api/callback", (req, res, next) => {
-    const domain = req.hostname;
-    console.log(`🔐 Callback from domain: ${domain}`);
+    // Always use the primary domain from REPLIT_DOMAINS env variable
+    const primaryDomain = process.env.REPLIT_DOMAINS!.split(",")[0];
+    console.log(`🔐 Callback from domain: ${req.hostname}, using strategy for: ${primaryDomain}`);
     console.log(`🔐 Callback query params:`, req.query);
     console.log(`🔐 Session ID:`, req.sessionID);
     
-    passport.authenticate(`replitauth:${domain}`, (err: any, user: any, info: any) => {
+    passport.authenticate(`replitauth:${primaryDomain}`, (err: any, user: any, info: any) => {
       if (err) {
         console.error(`❌ Auth error:`, err);
         return res.redirect("/auth?error=auth_error");
