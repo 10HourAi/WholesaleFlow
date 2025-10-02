@@ -134,22 +134,36 @@ export async function setupAuth(app: Express) {
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    const domain = req.hostname;
+    // Use req.headers.host which includes port and is more reliable
+    const domain = req.headers.host?.split(':')[0] || req.hostname;
     console.log(`🔐 Login attempt from domain: ${domain}`);
+    console.log(`🔐 Available strategies:`, domainArray);
     
-    // Use the strategy matching the current domain
-    passport.authenticate(`replitauth:${domain}`, {
-      prompt: "login consent",
-      scope: ["openid", "email", "profile", "offline_access"],
-      failureRedirect: "/auth",
-    })(req, res, next);
+    // Check if this domain is registered
+    if (!domainArray.includes(domain)) {
+      console.log(`⚠️ Domain ${domain} not registered, using first available: ${domainArray[0]}`);
+      passport.authenticate(`replitauth:${domainArray[0]}`, {
+        prompt: "login consent",
+        scope: ["openid", "email", "profile", "offline_access"],
+        failureRedirect: "/auth?error=domain_mismatch",
+      })(req, res, next);
+    } else {
+      // Use the strategy matching the current domain
+      passport.authenticate(`replitauth:${domain}`, {
+        prompt: "login consent",
+        scope: ["openid", "email", "profile", "offline_access"],
+        failureRedirect: "/auth",
+      })(req, res, next);
+    }
   });
 
   app.get("/api/callback", (req, res, next) => {
-    const domain = req.hostname;
+    // Use req.headers.host which includes port and is more reliable
+    const domain = req.headers.host?.split(':')[0] || req.hostname;
     console.log(`🔐 Callback received`);
-    console.log(`🔐 Request hostname: ${domain}`);
+    console.log(`🔐 Request hostname: ${req.hostname}`);
     console.log(`🔐 Request headers host: ${req.headers.host}`);
+    console.log(`🔐 Resolved domain: ${domain}`);
     console.log(`🔐 Query params:`, req.query);
     console.log(`🔐 Session ID:`, req.sessionID);
     console.log(`🔐 All registered domains:`, domainArray);
@@ -161,12 +175,10 @@ export async function setupAuth(app: Express) {
     if (!domainArray.includes(domain)) {
       console.log(`⚠️ Domain ${domain} not in registered domains, trying variants...`);
       
-      // Try each registered domain variant
-      for (const registeredDomain of domainArray) {
-        console.log(`🔄 Trying strategy: replitauth:${registeredDomain}`);
-        strategyName = `replitauth:${registeredDomain}`;
-        break; // Use the first one for now
-      }
+      // Use the first registered domain as fallback
+      const fallbackDomain = domainArray[0];
+      console.log(`🔄 Using fallback strategy: replitauth:${fallbackDomain}`);
+      strategyName = `replitauth:${fallbackDomain}`;
     }
     
     console.log(`🔐 Using strategy: ${strategyName}`);
