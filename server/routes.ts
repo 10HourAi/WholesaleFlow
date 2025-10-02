@@ -1926,6 +1926,23 @@ When users ask about market research, provide specific, data-driven insights. If
     }
   });
 
+  // Debug endpoint for Replit Auth configuration
+  app.get("/api/debug/replit-config", async (req, res) => {
+    const config = {
+      currentHostname: req.hostname,
+      replitDomains: process.env.REPLIT_DOMAINS,
+      replitDomainsArray: process.env.REPLIT_DOMAINS?.split(",").map(d => d.trim()) || [],
+      replId: process.env.REPL_ID,
+      isReplit: !!process.env.REPL_ID,
+      registeredStrategies: [
+        `replitauth:${req.hostname}`,
+        ...((process.env.REPLIT_DOMAINS?.split(",").map(d => d.trim()) || []).map(domain => `replitauth:${domain}`))
+      ]
+    };
+    
+    res.json(config);
+  });
+
   // Public demo endpoints (no auth required for testing)
   app.get("/api/demo/batchleads/:location?", async (req, res) => {
     try {
