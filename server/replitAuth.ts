@@ -116,16 +116,48 @@ export async function setupAuth(app: Express) {
   };
 
   for (const domain of process.env.REPLIT_DOMAINS!.split(",")) {
+    const trimmedDomain = domain.trim();
+    
+    // Register strategy for the original domain
     const strategy = new Strategy(
       {
-        name: `replitauth:${domain}`,
+        name: `replitauth:${trimmedDomain}`,
         config,
         scope: "openid email profile offline_access",
-        callbackURL: `https://${domain}/api/callback`,
+        callbackURL: `https://${trimmedDomain}/api/callback`,
       },
       verify,
     );
     passport.use(strategy);
+    
+    // Also register variants (.replit.dev <-> .repl.co) since Replit uses both
+    if (trimmedDomain.includes('.replit.dev')) {
+      const replCoVariant = trimmedDomain.replace('.replit.dev', '.repl.co');
+      const variantStrategy = new Strategy(
+        {
+          name: `replitauth:${replCoVariant}`,
+          config,
+          scope: "openid email profile offline_access",
+          callbackURL: `https://${trimmedDomain}/api/callback`,
+        },
+        verify,
+      );
+      passport.use(variantStrategy);
+    } else if (trimmedDomain.includes('.repl.co')) {
+      const replitDevVariant = trimmedDomain.replace('.repl.co', '.replit.dev');
+      const variantStrategy = new Strategy(
+        {
+          name: `replitauth:${replitDevVariant}`,
+          config,
+          scope: "openid email profile offline_access",
+          callbackURL: `https://${trimmedDomain}/api/callback`,
+        },
+        verify,
+      );
+      passport.use(variantStrategy);
+    }
+    
+    console.log(`✅ Registered Replit Auth strategy for: ${trimmedDomain}`);
   }
 
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
