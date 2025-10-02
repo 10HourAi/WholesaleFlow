@@ -132,7 +132,7 @@ export async function setupAuth(app: Express) {
     const domain = req.hostname;
     console.log(`🔐 Login attempt from domain: ${domain}`);
     
-    // Try to authenticate with the current domain
+    // Use the strategy matching the current domain
     passport.authenticate(`replitauth:${domain}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
