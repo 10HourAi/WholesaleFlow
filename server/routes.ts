@@ -174,20 +174,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Logout endpoint
   app.post("/api/auth/logout", async (req: any, res) => {
     try {
-      // For Repl Auth, just clear the session (Replit handles auth state)
-      // For traditional session, destroy it
+      // Set a logout flag in the session to prevent Replit Auth auto-login
       if (req.session) {
-        req.session.destroy((err: any) => {
-          if (err) {
-            console.error("❌ Session destroy error:", err);
-            return res.status(500).json({
-              success: false,
-              message: "Failed to logout",
-            });
+        req.session.loggedOut = true;
+        req.session.user = null;
+        
+        req.session.save((saveErr: any) => {
+          if (saveErr) {
+            console.error("❌ Session save error:", saveErr);
           }
+          
+          // Clear the session cookie
+          res.clearCookie('connect.sid', { path: '/' });
+          console.log("✅ User logged out, session cleared");
           res.json({ success: true, message: "Logged out successfully" });
         });
       } else {
+        res.clearCookie('connect.sid', { path: '/' });
         res.json({ success: true, message: "Already logged out" });
       }
     } catch (error: any) {
@@ -202,6 +205,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes - Updated to handle both Replit Auth and traditional sessions
   app.get("/api/auth/user", async (req: any, res) => {
     try {
+      // Check if user explicitly logged out
+      if (req.session && req.session.loggedOut) {
+        console.log("❌ User explicitly logged out, rejecting auth");
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
       // Check for traditional session first
       if (req.session && req.session.user) {
         console.log("🔐 Traditional session found:", req.session.user.email);

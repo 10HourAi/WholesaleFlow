@@ -37,25 +37,15 @@ export default function Sidebar({ activeSection, onSectionChange, onClose }: Sid
         credentials: "include",
       });
       
-      if (response.ok) {
-        // Clear the user query cache immediately
-        queryClient.setQueryData(["/api/auth/user"], null);
-        queryClient.removeQueries({ queryKey: ["/api/auth/user"] });
-        
-        // Redirect to auth page
-        window.location.href = "/auth";
-      } else {
-        console.error("Logout failed");
-        // Force clear cache and redirect anyway
-        queryClient.setQueryData(["/api/auth/user"], null);
-        queryClient.removeQueries({ queryKey: ["/api/auth/user"] });
-        window.location.href = "/auth";
-      }
+      // Clear ALL React Query cache
+      queryClient.clear();
+      
+      // Force a full page reload to clear all state
+      window.location.href = "/auth";
     } catch (error) {
       console.error("Logout error:", error);
       // Force clear cache and redirect anyway
-      queryClient.setQueryData(["/api/auth/user"], null);
-      queryClient.removeQueries({ queryKey: ["/api/auth/user"] });
+      queryClient.clear();
       window.location.href = "/auth";
     }
   };
