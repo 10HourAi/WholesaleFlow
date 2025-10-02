@@ -69,6 +69,9 @@ async function upsertUser(
   });
 }
 
+// Store registered domains globally for callback access
+let domainArray: string[] = [];
+
 export async function setupAuth(app: Express) {
   app.set("trust proxy", 1);
   app.use(getSession());
@@ -109,7 +112,7 @@ export async function setupAuth(app: Express) {
     }
   }
 
-  const domainArray = Array.from(allDomains);
+  domainArray = Array.from(allDomains);
   console.log("🔧 Registering Replit Auth for all domain variants:", domainArray);
 
   // Register a strategy for each domain variant
@@ -144,17 +147,51 @@ export async function setupAuth(app: Express) {
 
   app.get("/api/callback", (req, res, next) => {
     const domain = req.hostname;
-    console.log(`🔐 Callback from domain: ${domain}`);
-    console.log(`🔐 Callback query params:`, req.query);
+    console.log(`🔐 Callback received`);
+    console.log(`🔐 Request hostname: ${domain}`);
+    console.log(`🔐 Request headers host: ${req.headers.host}`);
+    console.log(`🔐 Query params:`, req.query);
     console.log(`🔐 Session ID:`, req.sessionID);
+    console.log(`🔐 All registered domains:`, domainArray);
     
-    // Determine which strategy to use based on the domain
-    const strategyName = `replitauth:${domain}`;
+    // Try to find a matching strategy from our registered domains
+    let strategyName = `replitauth:${domain}`;
+    
+    // If the exact domain doesn't match, try to find a close match
+    if (!domainArray.includes(domain)) {
+      console.log(`⚠️ Domain ${domain} not in registered domains, trying variants...`);
+      
+      // Try each registered domain variant
+      for (const registeredDomain of domainArray) {
+        console.log(`🔄 Trying strategy: replitauth:${registeredDomain}`);
+        strategyName = `replitauth:${registeredDomain}`;
+        break; // Use the first one for now
+      }
+    }
+    
     console.log(`🔐 Using strategy: ${strategyName}`);
     
-    passport.authenticate(strategyName, {
-      failureRedirect: "/auth?error=auth_failed",
-      successRedirect: "/",
+    passport.authenticate(strategyName, (err, user, info) => {
+      if (err) {
+        console.error(`❌ Authentication error:`, err);
+        return res.redirect("/auth?error=auth_error");
+      }
+      
+      if (!user) {
+        console.error(`❌ No user returned from authentication`);
+        console.error(`Info:`, info);
+        return res.redirect("/auth?error=no_user");
+      }
+      
+      req.logIn(user, (loginErr) => {
+        if (loginErr) {
+          console.error(`❌ Login error:`, loginErr);
+          return res.redirect("/auth?error=login_error");
+        }
+        
+        console.log(`✅ User logged in successfully`);
+        return res.redirect("/");
+      });
     })(req, res, next);
   });
 
