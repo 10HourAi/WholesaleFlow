@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -19,6 +19,15 @@ export function Auth() {
   const [password, setPassword] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [showReplitAuth, setShowReplitAuth] = useState(true);
+
+  // Check if Replit Auth is available on mount
+  useEffect(() => {
+    // Simple check: if we're on a Replit domain
+    const isReplitDomain = window.location.hostname.includes('repl.co') || 
+                           window.location.hostname.includes('replit.dev');
+    setShowReplitAuth(isReplitDomain);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -101,27 +110,31 @@ export function Auth() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Replit Auth - Primary Option */}
-            <Button
-              onClick={handleReplitAuth}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
-              size="lg"
-              disabled={loading}
-            >
-              <ArrowRight className="w-4 h-4 mr-2" />
-              {loading ? "Loading..." : "Continue with Replit"}
-            </Button>
+            {/* Replit Auth - Primary Option (only shown on Replit) */}
+            {showReplitAuth && (
+              <>
+                <Button
+                  onClick={handleReplitAuth}
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                  size="lg"
+                  disabled={loading}
+                >
+                  <ArrowRight className="w-4 h-4 mr-2" />
+                  {loading ? "Loading..." : "Continue with Replit"}
+                </Button>
 
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <Separator className="w-full" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-background px-2 text-muted-foreground">
-                  Or continue with email
-                </span>
-              </div>
-            </div>
+                <div className="relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <Separator className="w-full" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-background px-2 text-muted-foreground">
+                      Or continue with email
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Traditional Form */}
             <form onSubmit={handleSubmit} className="space-y-4">

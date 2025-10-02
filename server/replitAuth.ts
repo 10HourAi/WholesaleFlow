@@ -10,11 +10,16 @@ import { storage } from "./storage";
 import MemoryStore from "memorystore";
 
 // Check if running in local development mode (not on Replit)
-const isLocalDevelopment = !process.env.REPLIT_DOMAINS;
+// Use REPL_ID as the primary indicator since it's always set on Replit
+const isLocalDevelopment = !process.env.REPL_ID;
 
 if (isLocalDevelopment) {
   console.log("🏠 Running in LOCAL DEVELOPMENT mode - Replit Auth disabled");
   console.log("✅ Using memory-based sessions for local development");
+} else {
+  console.log("🚀 Running on REPLIT - Replit Auth enabled");
+  console.log("📋 REPL_ID:", process.env.REPL_ID);
+  console.log("📋 REPLIT_DOMAINS:", process.env.REPLIT_DOMAINS);
 }
 
 const getOidcConfig = memoize(
