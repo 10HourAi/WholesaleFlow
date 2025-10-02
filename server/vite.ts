@@ -52,6 +52,8 @@ export async function setupVite(app: Express, server: Server) {
         "index.html",
       );
 
+      log(`Serving index.html for ${url}`, "vite");
+
       // always reload the index.html file from disk incase it changes
       let template = await fs.promises.readFile(clientTemplate, "utf-8");
       template = template.replace(
@@ -61,6 +63,7 @@ export async function setupVite(app: Express, server: Server) {
       const page = await vite.transformIndexHtml(url, template);
       res.status(200).set({ "Content-Type": "text/html" }).end(page);
     } catch (e) {
+      log(`Error serving page: ${(e as Error).message}`, "vite");
       vite.ssrFixStacktrace(e as Error);
       next(e);
     }
