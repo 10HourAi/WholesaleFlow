@@ -30,27 +30,32 @@ export default function Sidebar({ activeSection, onSectionChange, onClose }: Sid
   const { user } = useAuth();
 
   const handleLogout = async () => {
-    // Clear the user query cache
-    queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
-    queryClient.removeQueries({ queryKey: ["/api/auth/user"] });
-    
-    // Call the logout endpoint
     try {
+      // Call the logout endpoint first
       const response = await fetch("/api/auth/logout", {
         method: "POST",
         credentials: "include",
       });
       
       if (response.ok) {
+        // Clear the user query cache immediately
+        queryClient.setQueryData(["/api/auth/user"], null);
+        queryClient.removeQueries({ queryKey: ["/api/auth/user"] });
+        
+        // Redirect to auth page
         window.location.href = "/auth";
       } else {
         console.error("Logout failed");
-        // Force redirect anyway
+        // Force clear cache and redirect anyway
+        queryClient.setQueryData(["/api/auth/user"], null);
+        queryClient.removeQueries({ queryKey: ["/api/auth/user"] });
         window.location.href = "/auth";
       }
     } catch (error) {
       console.error("Logout error:", error);
-      // Force redirect anyway
+      // Force clear cache and redirect anyway
+      queryClient.setQueryData(["/api/auth/user"], null);
+      queryClient.removeQueries({ queryKey: ["/api/auth/user"] });
       window.location.href = "/auth";
     }
   };
