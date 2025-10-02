@@ -34,8 +34,25 @@ export default function Sidebar({ activeSection, onSectionChange, onClose }: Sid
     queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
     queryClient.removeQueries({ queryKey: ["/api/auth/user"] });
     
-    // Redirect to logout endpoint
-    window.location.href = "/api/logout";
+    // Call the logout endpoint
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      
+      if (response.ok) {
+        window.location.href = "/auth";
+      } else {
+        console.error("Logout failed");
+        // Force redirect anyway
+        window.location.href = "/auth";
+      }
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Force redirect anyway
+      window.location.href = "/auth";
+    }
   };
 
   const navItems = [
