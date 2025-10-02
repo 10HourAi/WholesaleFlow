@@ -132,8 +132,25 @@ export async function setupAuth(app: Express) {
     const domain = req.hostname;
     console.log(`🔐 Login attempt from domain: ${domain}`);
     
+    // Register a strategy for this specific domain if it doesn't exist
+    const strategyName = `replitauth:${domain}`;
+    
+    if (!passport._strategy(strategyName)) {
+      console.log(`🔧 Registering new strategy for domain: ${domain}`);
+      const strategy = new Strategy(
+        {
+          name: strategyName,
+          config,
+          scope: "openid email profile offline_access",
+          callbackURL: `https://${domain}/api/callback`,
+        },
+        verify,
+      );
+      passport.use(strategy);
+    }
+    
     // Try to authenticate with the current domain
-    passport.authenticate(`replitauth:${domain}`, {
+    passport.authenticate(strategyName, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
       failureRedirect: "/auth",
@@ -146,7 +163,24 @@ export async function setupAuth(app: Express) {
     console.log(`🔐 Callback query params:`, req.query);
     console.log(`🔐 Session ID:`, req.sessionID);
     
-    passport.authenticate(`replitauth:${domain}`, (err: any, user: any, info: any) => {
+    // Register a strategy for this specific domain if it doesn't exist
+    const strategyName = `replitauth:${domain}`;
+    
+    if (!passport._strategy(strategyName)) {
+      console.log(`🔧 Registering new strategy for callback domain: ${domain}`);
+      const strategy = new Strategy(
+        {
+          name: strategyName,
+          config,
+          scope: "openid email profile offline_access",
+          callbackURL: `https://${domain}/api/callback`,
+        },
+        verify,
+      );
+      passport.use(strategy);
+    }
+    
+    passport.authenticate(strategyName, (err: any, user: any, info: any) => {
       if (err) {
         console.error(`❌ Auth error:`, err);
         return res.redirect("/auth?error=auth_error");
