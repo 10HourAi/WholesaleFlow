@@ -137,7 +137,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Create session for traditional auth
+      // Clear any logout flag and create fresh session for traditional auth
+      (req as any).session.loggedOut = false;
       (req as any).session.user = {
         id: user.id,
         email: user.email,
@@ -225,6 +226,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (replitUserId) {
         console.log("🔐 Repl Auth headers found for user:", replitUserName);
+
+        // Clear logout flag when Replit Auth is active
+        if (req.session) {
+          req.session.loggedOut = false;
+        }
 
         // Try to get or create user in database
         let user = await storage.getUser(replitUserId);
