@@ -240,7 +240,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Properties
   app.get("/api/properties", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Get userId from either traditional auth (session.user.id) or OAuth (user.claims.sub)
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
       const properties = await storage.getProperties(userId);
       res.json(properties);
     } catch (error: any) {
@@ -318,7 +319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/properties/search", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
       const { city, state, status, leadType } = req.query;
       const properties = await storage.searchProperties(userId, {
         city: city as string,
@@ -334,7 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/properties/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
       const property = await storage.updateProperty(
         req.params.id,
         userId,
@@ -349,7 +350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Contacts
   app.get("/api/contacts", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
       const contacts = await storage.getContacts(userId);
       res.json(contacts);
     } catch (error: any) {
@@ -692,7 +693,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Documents
   app.get("/api/documents", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
       const documents = await storage.getDocuments(userId);
       res.json(documents);
     } catch (error: any) {
@@ -713,7 +714,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Deals
   app.get("/api/deals", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
       const deals = await storage.getDeals(userId);
       res.json(deals);
     } catch (error: any) {
@@ -877,7 +878,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // BatchLeads Property Search
   app.post("/api/properties/search", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
       const {
         location,
         maxPrice,
