@@ -149,24 +149,23 @@ export async function setupAuth(app: Express) {
 }
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
+  const session = (req as any).session;
   const user = req.user as any;
 
-  // Check if user is authenticated (works for both OAuth and traditional auth)
+  // Check for traditional session first (email/password users)
+  if (session && session.user) {
+    console.log("🔐 Traditional session found:", session.user.email);
+    return next();
+  }
+
+  // Check if user is authenticated via Passport (OAuth)
   if (!req.isAuthenticated()) {
     console.log("❌ No authentication found in request");
     return res.status(401).json({ message: "Unauthorized" });
   }
 
-  // Traditional auth users (email/password) have user.id but no expires_at
   // OAuth users have user.claims and user.expires_at
-  const isTraditionalUser = user.id && !user.expires_at;
-  const isOAuthUser = user.claims && user.expires_at;
-
-  if (isTraditionalUser) {
-    // Traditional user - session is valid, allow access
-    console.log("🔐 Traditional session found:", user.email);
-    return next();
-  }
+  const isOAuthUser = user && user.claims && user.expires_at;
 
   if (!isOAuthUser) {
     // Invalid user session
