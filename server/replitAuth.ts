@@ -110,7 +110,6 @@ export async function setupAuth(app: Express) {
   // Register strategy with the correct callback URL
   const strategy = new Strategy(
     {
-      name: "replitauth",
       config,
       scope: "openid email profile offline_access",
       callbackURL: CALLBACK_URL,
@@ -119,18 +118,22 @@ export async function setupAuth(app: Express) {
   );
   passport.use(strategy);
 
+  // Get the actual strategy name (it includes the domain)
+  const strategyName = strategy.name;
+  console.log("🔐 Registered Replit Auth strategy with name:", strategyName);
+
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    passport.authenticate("replitauth", {
+    passport.authenticate(strategyName, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
-    passport.authenticate("replitauth", {
+    passport.authenticate(strategyName, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
     })(req, res, next);
