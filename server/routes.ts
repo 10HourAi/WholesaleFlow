@@ -347,6 +347,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Comps endpoints
+  app.get("/api/properties/:id/comps", isAuthenticated, async (req: any, res) => {
+    try {
+      const comps = await storage.getCompsByProperty(req.params.id);
+      res.json(comps);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/properties/:id/comps", isAuthenticated, async (req: any, res) => {
+    try {
+      const property = await storage.getProperty(req.params.id);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      // Delete existing comps before generating new ones
+      await storage.deleteCompsByProperty(req.params.id);
+
+      // Generate new comps using OpenAI
+      const { generateCompsAnalysis } = await import("./openai");
+      const comps = await generateCompsAnalysis(property);
+
+      // Save comps to database
+      const savedComps = [];
+      for (const comp of comps) {
+        const savedComp = await storage.createComp(comp);
+        savedComps.push(savedComp);
+      }
+
+      res.json(savedComps);
+    } catch (error: any) {
+      console.error("Error generating comps:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Google Street View endpoint
+  app.get("/api/streetview/:address", async (req: any, res) => {
+    try {
+      const address = decodeURIComponent(req.params.address);
+      const apiKey = process.env.GOOGLE_STREET_VIEW_API_KEY;
+      
+      if (!apiKey) {
+        return res.status(500).json({ message: "Google Street View API key not configured" });
+      }
+
+      // Generate Google Street View Static API URL
+      const streetViewUrl = `https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${encodeURIComponent(address)}&key=${apiKey}`;
+      
+      res.json({ url: streetViewUrl });
+    } catch (error: any) {
+      console.error("Error generating street view URL:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Contacts
   app.get("/api/contacts", isAuthenticated, async (req: any, res) => {
     try {
