@@ -8,14 +8,34 @@ import memoize from "memoizee";
 import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
 
-// Use REPLIT_DEV_DOMAIN if available (auto-provided by Replit), otherwise fall back to REPLIT_DOMAINS
-const domains = process.env.REPLIT_DEV_DOMAIN 
-  ? [process.env.REPLIT_DEV_DOMAIN]
-  : process.env.REPLIT_DOMAINS?.split(",") || [];
-
-if (domains.length === 0) {
-  throw new Error("No domains configured. Set REPLIT_DOMAINS or ensure REPLIT_DEV_DOMAIN is available");
+// Verify required environment variables
+if (!process.env.REPL_ID) {
+  throw new Error("REPL_ID environment variable is required for Replit Auth");
 }
+
+if (!process.env.SESSION_SECRET) {
+  throw new Error("SESSION_SECRET environment variable is required");
+}
+
+// Build the callback URL using Replit environment variables
+const getCallbackURL = () => {
+  // Try REPLIT_DEV_DOMAIN first (provided in dev mode)
+  if (process.env.REPLIT_DEV_DOMAIN) {
+    return `https://${process.env.REPLIT_DEV_DOMAIN}/api/callback`;
+  }
+
+  // Fall back to constructing from REPL_SLUG and REPL_OWNER
+  if (process.env.REPL_SLUG && process.env.REPL_OWNER) {
+    return `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co/api/callback`;
+  }
+
+  throw new Error(
+    "Cannot determine callback URL. Missing REPLIT_DEV_DOMAIN or REPL_SLUG/REPL_OWNER",
+  );
+};
+
+const CALLBACK_URL = getCallbackURL();
+console.log("🔐 Replit Auth callback URL:", CALLBACK_URL);
 
 const getOidcConfig = memoize(
   async () => {
@@ -87,31 +107,30 @@ export async function setupAuth(app: Express) {
     verified(null, user);
   };
 
-  for (const domain of domains) {
-    const strategy = new Strategy(
-      {
-        name: `replitauth:${domain}`,
-        config,
-        scope: "openid email profile offline_access",
-        callbackURL: `https://${domain}/api/callback`,
-      },
-      verify,
-    );
-    passport.use(strategy);
-  }
+  // Register strategy with the correct callback URL
+  const strategy = new Strategy(
+    {
+      name: "replitauth",
+      config,
+      scope: "openid email profile offline_access",
+      callbackURL: CALLBACK_URL,
+    },
+    verify,
+  );
+  passport.use(strategy);
 
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
   app.get("/api/login", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    passport.authenticate("replitauth", {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
   app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
+    passport.authenticate("replitauth", {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
     })(req, res, next);
@@ -132,17 +151,39 @@ export async function setupAuth(app: Express) {
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   const user = req.user as any;
 
-  if (!req.isAuthenticated() || !user.expires_at) {
+  // Check if user is authenticated (works for both OAuth and traditional auth)
+  if (!req.isAuthenticated()) {
+    console.log("❌ No authentication found in request");
     return res.status(401).json({ message: "Unauthorized" });
   }
 
+  // Traditional auth users (email/password) have user.id but no expires_at
+  // OAuth users have user.claims and user.expires_at
+  const isTraditionalUser = user.id && !user.expires_at;
+  const isOAuthUser = user.claims && user.expires_at;
+
+  if (isTraditionalUser) {
+    // Traditional user - session is valid, allow access
+    console.log("🔐 Traditional session found:", user.email);
+    return next();
+  }
+
+  if (!isOAuthUser) {
+    // Invalid user session
+    console.log("❌ Invalid user session - no valid auth data");
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+
+  // OAuth user - check token expiration and refresh if needed
   const now = Math.floor(Date.now() / 1000);
   if (now <= user.expires_at) {
+    console.log("🔐 OAuth session valid:", user.claims.sub);
     return next();
   }
 
   const refreshToken = user.refresh_token;
   if (!refreshToken) {
+    console.log("❌ OAuth token expired, no refresh token");
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
@@ -151,8 +192,10 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
     const config = await getOidcConfig();
     const tokenResponse = await client.refreshTokenGrant(config, refreshToken);
     updateUserSession(user, tokenResponse);
+    console.log("✅ OAuth token refreshed");
     return next();
   } catch (error) {
+    console.log("❌ OAuth token refresh failed:", error);
     res.status(401).json({ message: "Unauthorized" });
     return;
   }
