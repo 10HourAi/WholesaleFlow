@@ -1037,14 +1037,6 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
             )}
             {(isStreaming || analyzeDealMutation.isPending) ? "Analyzing..." : hasExistingAnalysis ? "Re-analyze Deal" : "Analyze Deal"}
           </Button>
-          <Button variant="outline" size="sm" data-testid="button-generate-contract">
-            <FileText className="w-4 h-4 mr-2" />
-            Generate Contract
-          </Button>
-          <Button variant="outline" size="sm" data-testid="button-start-conversation">
-            <MessageSquare className="w-4 h-4 mr-2" />
-            Start Conversation
-          </Button>
           <Button onClick={onClose} data-testid="button-close-property-card">
             Close
           </Button>
