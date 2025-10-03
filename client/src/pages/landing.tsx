@@ -8,7 +8,7 @@ export function Landing() {
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-16">
           <h1 className="text-5xl font-bold text-slate-900 dark:text-slate-100 mb-6">
-            10HourAi
+            AiClosings
           </h1>
           <p className="text-xl text-slate-600 dark:text-slate-300 mb-8 max-w-2xl mx-auto">
             The complete AI-powered real estate wholesaling platform. Find deals, analyze properties, 

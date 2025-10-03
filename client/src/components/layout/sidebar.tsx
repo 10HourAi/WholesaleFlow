@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAuth } from "@/hooks/useAuth";
+import { queryClient } from "@/lib/queryClient";
 
 type Section = "chat" | "crm" | "pipeline" | "messages" | "documents" | "dashboard";
 
@@ -27,6 +28,27 @@ interface SidebarProps {
 export default function Sidebar({ activeSection, onSectionChange, onClose }: SidebarProps) {
   const isMobile = useIsMobile();
   const { user } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      // Call the logout endpoint first
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include",
+      });
+      
+      // Clear ALL React Query cache
+      queryClient.clear();
+      
+      // Force a full page reload to clear all state
+      window.location.href = "/auth";
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Force clear cache and redirect anyway
+      queryClient.clear();
+      window.location.href = "/auth";
+    }
+  };
 
   const navItems = [
     { id: "chat" as Section, label: "AI Agents", icon: MessageSquare },
@@ -45,7 +67,7 @@ export default function Sidebar({ activeSection, onSectionChange, onClose }: Sid
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <Briefcase className="w-5 h-5 text-white" />
           </div>
-          <span className="ml-2 text-xl font-bold text-slate-900">10HourAi</span>
+          <span className="ml-2 text-xl font-bold text-slate-900">AiClosings</span>
         </div>
         {isMobile && onClose && (
           <Button variant="ghost" size="sm" onClick={onClose}>
@@ -122,8 +144,9 @@ export default function Sidebar({ activeSection, onSectionChange, onClose }: Sid
           <Button 
             variant="ghost" 
             size="sm"
-            onClick={() => window.location.href = "/api/logout"}
+            onClick={handleLogout}
             className="h-8 w-8 p-0 text-slate-500 hover:text-slate-700"
+            data-testid="button-logout"
           >
             <LogOut className="h-4 w-4" />
           </Button>

@@ -6,11 +6,19 @@ export async function logout() {
       credentials: 'include',
     });
     
-    if (response.ok) {
+    const result = await response.json();
+    
+    if (response.ok && result.success) {
+      window.location.href = '/auth';
+    } else {
+      console.error('Logout failed:', result.message);
+      // Force redirect anyway to clear local state
       window.location.href = '/auth';
     }
   } catch (error) {
     console.error('Logout failed:', error);
+    // Force redirect anyway to clear local state
+    window.location.href = '/auth';
   }
 }
 

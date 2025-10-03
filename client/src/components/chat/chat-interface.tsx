@@ -30,8 +30,6 @@ import {
   ArrowRight,
   ArrowLeft,
   Plus,
-  BarChart3,
-  PhoneCall,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -59,6 +57,7 @@ interface BuyerWizardData {
   city: string;
   state: string;
   buyerType: string;
+  quickLists?: string[];
 }
 
 // Helper to format numbers with commas
@@ -95,36 +94,101 @@ const CondensedPropertyCard = ({
 
   const handleAddToCRM = async () => {
     try {
-      const result = await apiRequest("POST", "/api/properties", property);
+      console.log("🏠 Attempting to add property to CRM:", property.address);
+
+      // Check if property already exists to prevent duplicates
+      const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
+      
+      // Create a unique identifier for comparison (more strict)
+      const createPropertyKey = (addr: string, city: string, state: string, zip?: string) => {
+        const normalizedAddr = (addr || '').toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, '');
+        const normalizedCity = (city || '').toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, '');
+        const normalizedState = (state || '').toLowerCase().trim();
+        const normalizedZip = (zip || '').toLowerCase().trim();
+        return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip}`;
+      };
+      
+      const newPropertyKey = createPropertyKey(property.address, property.city, property.state, property.zipCode);
+      
+      console.log('🔍 Checking for duplicate property:', newPropertyKey);
+      
+      const propertyExists = existingProperties?.some(p => {
+        const existingKey = createPropertyKey(p.address, p.city, p.state, p.zipCode);
+        const isMatch = existingKey === newPropertyKey;
+        if (isMatch) {
+          console.log('❌ Duplicate found:', existingKey);
+        }
+        return isMatch;
+      });
+
+      if (propertyExists) {
+        toast({
+          title: "Already in CRM",
+          description: `Property at ${property.address} is already in your CRM.`,
+          variant: "default",
+        });
+        return;
+      }
+
+      // Prepare property data for API
+      const propertyData = {
+        address: property.address,
+        city: property.city,
+        state: property.state,
+        zipCode: property.zipCode,
+        bedrooms: property.bedrooms,
+        bathrooms: property.bathrooms,
+        squareFeet: property.squareFeet,
+        yearBuilt: property.yearBuilt,
+        propertyType: property.propertyType || "single_family",
+        arv: property.arv,
+        maxOffer: property.maxOffer,
+        equityPercentage: property.equityPercentage,
+        equityBalance: property.equityBalance,
+        confidenceScore: property.confidenceScore,
+        lastSalePrice: property.lastSalePrice,
+        lastSaleDate: property.lastSaleDate,
+        ownerName: property.ownerName,
+        ownerPhone: property.ownerPhone,
+        ownerEmail: property.ownerEmail,
+        ownerEmails: property.ownerEmails,
+        ownerPhoneNumbers: property.ownerPhoneNumbers,
+        ownerMailingAddress: property.ownerMailingAddress,
+        ownerDncPhone: property.ownerDncPhone,
+        status: "new"
+      };
+
+      console.log("🏠 Property data being sent:", propertyData);
+
+      const result = await apiRequest("POST", "/api/properties", propertyData);
       console.log("🏠 Property successfully added to CRM:", result);
+
       toast({
         title: "Added to CRM",
-        description: `Property at ${property.address} has been added.`,
+        description: `Property at ${property.address} has been added to your CRM.`,
       });
+
       await queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
     } catch (error: any) {
       console.error("Error adding property to CRM:", error);
+      console.error("Error details:", error.response || error);
+
+      let errorMessage = "Failed to add property to CRM.";
+      if (error.response?.status === 401) {
+        errorMessage = "Authentication required. Please log in again.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      }
+
       toast({
         title: "Error",
-        description: "Failed to add property to CRM.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
   };
 
-  const handleAnalyzeDeal = () => {
-    toast({
-      title: "Deal Analysis Started",
-      description: `Analyzing deal for ${property.address}...`,
-    });
-  };
 
-  const handleContactOwner = () => {
-    toast({
-      title: "Contact Owner",
-      description: `Preparing to contact property owner...`,
-    });
-  };
 
   return (
     <Card className="w-full max-w-2xl mx-auto overflow-hidden bg-white border border-gray-200 shadow-sm">
@@ -216,39 +280,27 @@ const CondensedPropertyCard = ({
         </div>
       </CardContent>
 
-      {/* Action Buttons */}
-      <div className="bg-gray-50 p-4 flex flex-wrap gap-2 justify-start border-t">
+      {/* Action buttons */}
+      <div className="bg-gray-50 p-4 flex gap-2 justify-between border-t">
         <Button
           size="sm"
           variant="outline"
-          className="bg-white hover:bg-green-50"
+          className="flex-1 bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
           onClick={handleAddToCRM}
         >
           <Plus className="h-4 w-4 mr-2" /> Add to CRM
         </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="bg-white hover:bg-blue-50"
-          onClick={handleAnalyzeDeal}
+        <Button 
+          size="sm" 
+          variant="outline" 
+          className="flex-1 bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
         >
-          <BarChart3 className="h-4 w-4 mr-2" /> Analyze Deal
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="bg-white hover:bg-orange-50"
-          onClick={handleContactOwner}
-        >
-          <PhoneCall className="h-4 w-4 mr-2" /> Contact Owner
-        </Button>
-        <Button size="sm" variant="outline" className="bg-white text-gray-600">
           I'll Pass
         </Button>
         <Button
           size="sm"
           variant="outline"
-          className="bg-white text-blue-600 hover:bg-blue-50"
+          className="flex-1 bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100"
           onClick={() => onViewDetails(property)}
         >
           View Details
@@ -270,29 +322,297 @@ const PropertyDetailsModal = ({
 }) => {
   if (!property) return null;
 
-  const formatPhone = (phone: string | null) => {
-    return phone || "Contact for details";
-  };
+  console.log("🔍 DEBUG PropertyDetailsModal: Received property data:", {
+    address: property.address,
+    ownerPhone: property.ownerPhone,
+    ownerPhoneNumbers: property.ownerPhoneNumbers,
+    ownerPhoneNumbersType: typeof property.ownerPhoneNumbers,
+    ownerPhoneNumbersIsArray: Array.isArray(property.ownerPhoneNumbers),
+    ownerPhoneNumbersLength: property.ownerPhoneNumbers?.length,
+    rawProperty: property,
+  });
 
-  const formatEmail = (email: string | null) => {
-    return email || "Contact for details";
-  };
+  const formatEmail = (property: any) => {
+    const emails = [];
 
-  // Helper function to format phone numbers with country code and area code grouping
-  const formatPhoneNumbers = (property: Property) => {
-    const phones: string[] = [];
-    if (property.ownerPhone) phones.push(property.ownerPhone);
-    if (property.ownerMobilePhone) phones.push(property.ownerMobilePhone);
-    if (property.ownerLandLine) phones.push(property.ownerLandLine);
-    return phones.length > 0 ? phones.join(", ") : "Contact for details";
-  };
-
-  // Helper function to format DNC phone numbers
-  const formatDNCPhones = (property: Property) => {
-    if (property.ownerDNCPhone) {
-      return property.ownerDNCPhone;
+    // Check for direct email field
+    if (
+      property.ownerEmail &&
+      property.ownerEmail !== "null" &&
+      property.ownerEmail !== null &&
+      property.ownerEmail !== "undefined" &&
+      property.ownerEmail.trim() !== ""
+    ) {
+      emails.push(property.ownerEmail.trim());
     }
-    return null; // Return null if no DNC phone is available
+
+    // Check for emails array
+    if (
+      property.ownerEmails &&
+      Array.isArray(property.ownerEmails) &&
+      property.ownerEmails.length > 0
+    ) {
+      const validEmails = property.ownerEmails.filter(
+        (email: string) =>
+          email &&
+          email !== "null" &&
+          email !== "undefined" &&
+          email.trim() !== "" &&
+          !emails.includes(email.trim()),
+      );
+      emails.push(...validEmails);
+    }
+
+    // Check for owner object with email
+    if (
+      property.owner?.email &&
+      property.owner.email !== "null" &&
+      property.owner.email !== null &&
+      property.owner.email.trim() !== "" &&
+      !emails.includes(property.owner.email.trim())
+    ) {
+      emails.push(property.owner.email.trim());
+    }
+
+    // Check for owner object with emails array
+    if (
+      property.owner?.emails &&
+      Array.isArray(property.owner.emails) &&
+      property.owner.emails.length > 0
+    ) {
+      const validOwnerEmails = property.owner.emails.filter(
+        (email: string) =>
+          email &&
+          email !== "null" &&
+          email !== "undefined" &&
+          email.trim() !== "" &&
+          !emails.includes(email.trim()),
+      );
+      emails.push(...validOwnerEmails);
+    }
+
+    return emails.length > 0 ? emails.join(", ") : "Contact for details";
+  };
+
+  const formatPhoneNumbers = (property: any) => {
+    const phones = [];
+
+    // Collect individual phone fields
+    if (
+      property.ownerPhone &&
+      property.ownerPhone !== "undefined" &&
+      property.ownerPhone !== null &&
+      property.ownerPhone.trim() !== ""
+    ) {
+      phones.push(property.ownerPhone);
+    }
+    if (
+      property.ownerMobilePhone &&
+      property.ownerMobilePhone !== "undefined" &&
+      property.ownerMobilePhone !== null &&
+      property.ownerMobilePhone.trim() !== ""
+    ) {
+      phones.push(property.ownerMobilePhone);
+    }
+    if (
+      property.ownerLandLine &&
+      property.ownerLandLine !== "undefined" &&
+      property.ownerLandLine !== null &&
+      property.ownerLandLine.trim() !== ""
+    ) {
+      phones.push(property.ownerLandLine);
+    }
+
+    // Handle ownerPhoneNumbers array - SIMPLIFIED for strings
+    if (
+      Array.isArray(property.ownerPhoneNumbers) &&
+      property.ownerPhoneNumbers.length > 0
+    ) {
+      property.ownerPhoneNumbers.forEach((phoneEntry: any) => {
+        let phoneNumber = null;
+
+        // Handle both string and object formats
+        if (typeof phoneEntry === "string") {
+          phoneNumber = phoneEntry.trim();
+        } else if (
+          typeof phoneEntry === "object" &&
+          phoneEntry !== null &&
+          phoneEntry.number
+        ) {
+          phoneNumber = String(phoneEntry.number).trim();
+        }
+
+        // Add if valid and not duplicate
+        if (
+          phoneNumber &&
+          phoneNumber !== "" &&
+          phoneNumber !== "undefined" &&
+          phoneNumber !== "null" &&
+          !phones.includes(phoneNumber)
+        ) {
+          phones.push(phoneNumber);
+        }
+      });
+    }
+
+    if (phones.length === 0) {
+      return "Contact for details";
+    }
+
+    // Format phone numbers for display
+    const formattedPhones = phones.map((phoneNumber) => {
+      const cleanedPhone = phoneNumber.replace(/\D/g, "");
+
+      if (cleanedPhone.length === 10) {
+        return `(${cleanedPhone.slice(0, 3)}) ${cleanedPhone.slice(3, 6)}-${cleanedPhone.slice(6)}`;
+      } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith("1")) {
+        return `+1 (${cleanedPhone.slice(1, 4)}) ${cleanedPhone.slice(4, 7)}-${cleanedPhone.slice(7)}`;
+      }
+      return phoneNumber; // Return as-is if format doesn't match
+    });
+
+    return formattedPhones.join(", ");
+  };
+  const formatDNCPhones = (property: any) => {
+    const dncPhones = [];
+    const addedNumbers = new Set();
+
+    // Helper function to clean and format phone number
+    const cleanPhoneNumber = (number: string) => {
+      if (!number) return "";
+      const digits = number.replace(/\D/g, "");
+      if (digits.length === 10) {
+        return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+      }
+      return number;
+    };
+
+    // Check direct DNC phone field
+    if (
+      property.ownerDNCPhone &&
+      property.ownerDNCPhone !== "null" &&
+      property.ownerDNCPhone !== null &&
+      property.ownerDNCPhone !== "undefined" &&
+      property.ownerDNCPhone.trim() !== ""
+    ) {
+      const directDncPhones = property.ownerDNCPhone
+        .split(",")
+        .map((phone: string) => phone.trim())
+        .filter(Boolean);
+
+      directDncPhones.forEach((phone: string) => {
+        if (!addedNumbers.has(phone)) {
+          const formattedPhone = cleanPhoneNumber(phone);
+          dncPhones.push(`${formattedPhone} (DNC)`);
+          addedNumbers.add(phone);
+        }
+      });
+    }
+
+    // Check for DNC phones in phone numbers array
+    if (
+      property.ownerPhoneNumbers &&
+      Array.isArray(property.ownerPhoneNumbers)
+    ) {
+      const dncFromArray = property.ownerPhoneNumbers.filter(
+        (phone: any) =>
+          phone &&
+          phone.number &&
+          phone.dnc &&
+          phone.number !== "null" &&
+          phone.number.trim() !== "",
+      );
+
+      dncFromArray.forEach((phone: any) => {
+        const phoneNumber = phone.number.trim();
+        if (!addedNumbers.has(phoneNumber)) {
+          const formattedPhone = cleanPhoneNumber(phoneNumber);
+          dncPhones.push(`${formattedPhone} (${phone.type || "DNC"})`);
+          addedNumbers.add(phoneNumber);
+        }
+      });
+    }
+
+    // Check for DNC phones in owner object
+    if (
+      property.owner?.phoneNumbers &&
+      Array.isArray(property.owner.phoneNumbers)
+    ) {
+      const ownerDncPhones = property.owner.phoneNumbers.filter(
+        (phone: any) =>
+          phone &&
+          phone.number &&
+          phone.dnc &&
+          phone.number !== "null" &&
+          phone.number.trim() !== "",
+      );
+
+      ownerDncPhones.forEach((phone: any) => {
+        const phoneNumber = phone.number.trim();
+        if (!addedNumbers.has(phoneNumber)) {
+          const formattedPhone = cleanPhoneNumber(phoneNumber);
+          dncPhones.push(`${formattedPhone} (${phone.type || "DNC"})`);
+          addedNumbers.add(phoneNumber);
+        }
+      });
+    }
+
+    return dncPhones.length > 0 ? dncPhones.join(", ") : "None on record";
+  };
+
+  const formatMailingAddress = (property: any) => {
+    // Check for direct mailing address field
+    if (
+      property.ownerMailingAddress &&
+      property.ownerMailingAddress !== "null" &&
+      property.ownerMailingAddress !== null &&
+      property.ownerMailingAddress !== "undefined" &&
+      property.ownerMailingAddress.trim() !== ""
+    ) {
+      return property.ownerMailingAddress.trim();
+    }
+
+    // Check for owner object mailing address
+    if (
+      property.owner?.mailingAddress &&
+      property.owner.mailingAddress !== "null" &&
+      property.owner.mailingAddress !== null &&
+      property.owner.mailingAddress !== "undefined" &&
+      property.owner.mailingAddress.trim() !== ""
+    ) {
+      return property.owner.mailingAddress.trim();
+    }
+
+    // Check for structured mailing address in owner object
+    if (property.owner?.mailingAddress) {
+      const addr = property.owner.mailingAddress;
+      if (typeof addr === "object" && addr.street) {
+        const fullAddress =
+          `${addr.street || ""}, ${addr.city || ""}, ${addr.state || ""} ${addr.zip || ""}`.trim();
+        if (fullAddress && fullAddress !== ", ") {
+          return fullAddress;
+        }
+      }
+    }
+
+    // Check for mailing address fields separately
+    const mailingParts = [];
+    if (property.mailingStreet) mailingParts.push(property.mailingStreet);
+    if (property.mailingCity) mailingParts.push(property.mailingCity);
+    if (property.mailingState && property.mailingZip) {
+      mailingParts.push(`${property.mailingState} ${property.mailingZip}`);
+    } else if (property.mailingState) {
+      mailingParts.push(property.mailingState);
+    }
+
+    if (mailingParts.length > 0) {
+      return mailingParts.join(", ");
+    }
+
+    // Fall back to property address
+    const propertyAddress =
+      `${property.address || ""}, ${property.city || ""}, ${property.state || ""} ${property.zipCode || ""}`.trim();
+    return propertyAddress || "Same as property address";
   };
 
   return (
@@ -303,46 +623,209 @@ const PropertyDetailsModal = ({
             Seller Lead Details
           </DialogTitle>
         </DialogHeader>
-        <div className="text-sm whitespace-pre-wrap font-mono text-gray-700 bg-white p-4 rounded-md border max-h-[70vh] overflow-y-auto">
-          {`━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🏠 SELLER LEAD
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        <div className="space-y-6 max-h-[70vh] overflow-y-auto">
+          {/* Property Header */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="text-lg font-bold text-blue-800 mb-2">
+              🏠 SELLER LEAD
+            </h3>
+            <div className="text-blue-700">
+              <p className="font-semibold">{property.address}</p>
+              <p>
+                {property.city}, {property.state} {property.zipCode}
+              </p>
+            </div>
+          </div>
 
-📍 LOCATION
-   ${property.address}, ${property.city}, ${property.state} ${property.zipCode}
+          {/* Building Details */}
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+              🏗️ Building Details
+            </h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium text-gray-600">
+                  Property Type:
+                </span>
+                <div>
+                  {property.propertyType?.replace(/_/g, " ") || "Single Family"}
+                </div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Year Built:</span>
+                <div>{property.yearBuilt || "N/A"}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Bedrooms:</span>
+                <div>{property.bedrooms || "N/A"}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Bathrooms:</span>
+                <div>{property.bathrooms || "N/A"}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Square Feet:</span>
+                <div>{formatNumber(property.squareFeet)} sq ft</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">Market Value:</span>
+                <div className="font-semibold text-blue-600">
+                  ${formatNumber(property.arv)}
+                </div>
+              </div>
+            </div>
+          </div>
 
-🏗️ BUILDING DETAILS
-   🏠 ${property.bedrooms || "N/A"} bed, ${property.bathrooms || "N/A"} bath | ${formatNumber(property.squareFeet)} sq ft
-   📅 Built: ${property.yearBuilt || "N/A"}
-   📐 Property Type: ${property.propertyType?.replace(/_/g, " ") || "single family"}
-   💰 Market Value: $${formatNumber(property.arv)}
+          {/* Owner Information */}
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+              👤 Owner Information
+            </h4>
+            <div className="grid grid-cols-1 gap-3 text-sm">
+              <div>
+                <span className="font-medium text-gray-600">Owner Name:</span>
+                <div className="font-medium">{property.ownerName || "N/A"}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">
+                  Mailing Address:
+                </span>
+                <div>{formatMailingAddress(property)}</div>
+              </div>
+            </div>
+          </div>
 
-🏠 PROPERTY DETAILS
-   Total Area                   ${formatNumber(property.squareFeet)} sqft
-   Property Type                ${property.propertyType?.replace(/_/g, " ") || "single family"}
-   Bedrooms                     ${property.bedrooms || "N/A"}
-   Bathrooms                    ${property.bathrooms || "N/A"}
+          {/* Contact Information - Structured Display */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <h4 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
+              📞 Contact Information
+            </h4>
+            <div className="space-y-3">
+              {/* Email Addresses */}
+              <div className="bg-white rounded-md p-3 border border-green-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg
+                    className="w-4 h-4 text-green-600"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M20,8L12,13L4,8M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,1.89 21.1,4 20,4Z" />
+                  </svg>
+                  <span className="font-medium text-green-700">
+                    Email Addresses
+                  </span>
+                </div>
+                <div className="text-sm text-gray-700">
+                  {formatEmail(property)}
+                </div>
+              </div>
 
-👤 OWNER INFORMATION
-   Owner Name                   ${property.ownerName || "N/A"}
-   Mailing Address              ${property.ownerMailingAddress || "N/A"}
+              {/* Phone Numbers */}
+              <div className="bg-white rounded-md p-3 border border-green-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg
+                    className="w-4 h-4 text-green-600"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M6.62,10.79C8.06,13.62 10.38,15.94 13.21,17.38L15.41,15.18C15.69,14.9 16.08,14.82 16.43,14.93C17.55,15.3 18.75,15.5 20,15.5A1,1 0 0,1 21,16.5V20A1,1 0 0,1 20,21A17,17 0 0,1 3,4A1,1 0 0,1 4,3H7.5A1,1 0 0,1 8.5,4C8.5,5.25 8.7,6.45 9.07,7.57C9.18,7.92 9.1,8.31 8.82,8.59L6.62,10.79Z" />
+                  </svg>
+                  <span className="font-medium text-green-700">
+                    Phone Numbers
+                  </span>
+                </div>
+                <div className="text-sm text-gray-700">
+                  {formatPhoneNumbers(property)}
+                </div>
+              </div>
 
-📞 CONTACT INFORMATION
-   Email(s)                     ${formatEmail(property.ownerEmail)}
-   Phone(s)                     ${formatPhoneNumbers(property)}
-   ${formatDNCPhones(property) ? `DNC Phone(s)                 ${formatDNCPhones(property)}` : ""}
-   Mailing Address              ${property.ownerMailingAddress || "N/A"}
+              {/* DNC Phone Numbers */}
+              <div className="bg-white rounded-md p-3 border border-red-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <svg
+                    className="w-4 h-4 text-red-600"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M17,7H22V9H19V12A5,5 0 0,1 14,17H10A5,5 0 0,1 5,12V9H2V7H7A2,2 0 0,1 9,5V4A2,2 0 0,1 11,2H13A2,2 0 0,1 15,4V5A2,2 0 0,1 17,7M13,4V7H11V4H13Z" />
+                  </svg>
+                  <span className="font-medium text-red-700">
+                    DNC Phone Numbers
+                  </span>
+                </div>
+                <div className="text-sm text-gray-700">
+                  {formatDNCPhones(property)}
+                </div>
+              </div>
+            </div>
+          </div>
 
-💰 VALUATION DETAILS
-   As of Date                   ${new Date().toLocaleDateString("en-US")}
-   Confidence Score             ${property.confidenceScore || "N/A"}
-   Equity Balance               $${formatNumber(property.equityBalance)}
-   Equity Percent               ${property.equityPercentage || "N/A"}%
-   Estimated Value              $${formatNumber(property.arv)}
-   Max Offer (70% Rule)         $${formatNumber(property.maxOffer)}
-   Last Sale Price              ${property.lastSalePrice ? `$${formatNumber(property.lastSalePrice)}` : "N/A"}
-   Last Sale Date               ${formatDate(property.lastSaleDate)}
-`}
+          {/* Financial Information */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+              💰 Valuation Details
+            </h4>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="font-medium text-gray-600">As of Date:</span>
+                <div>{new Date().toLocaleDateString("en-US")}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">
+                  Confidence Score:
+                </span>
+                <div>{property.confidenceScore || "N/A"}</div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">
+                  Equity Balance:
+                </span>
+                <div className="font-semibold text-green-600">
+                  ${formatNumber(property.equityBalance)}
+                </div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">
+                  Equity Percent:
+                </span>
+                <div className="font-semibold text-green-600">
+                  {property.equityPercentage || "N/A"}%
+                </div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">
+                  Estimated Value:
+                </span>
+                <div className="font-semibold text-blue-600">
+                  ${formatNumber(property.arv)}
+                </div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">
+                  Max Offer (70% Rule):
+                </span>
+                <div className="font-semibold text-orange-600">
+                  ${formatNumber(property.maxOffer)}
+                </div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">
+                  Last Sale Price:
+                </span>
+                <div>
+                  {property.lastSalePrice
+                    ? `$${formatNumber(property.lastSalePrice)}`
+                    : "N/A"}
+                </div>
+              </div>
+              <div>
+                <span className="font-medium text-gray-600">
+                  Last Sale Date:
+                </span>
+                <div>{formatDate(property.lastSaleDate)}</div>
+              </div>
+            </div>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -513,6 +996,11 @@ const PropertyCard = ({ content }: { content: string }) => {
   const extractPropertyData = (content: string) => {
     if (!isSellerLead) return null;
 
+    console.log(
+      "🔍 DEBUG extractPropertyData: Starting extraction from content length:",
+      content.length,
+    );
+
     try {
       // Extract address information - handle both new format (address on next line) and old format (same line)
       const addressMatch =
@@ -528,11 +1016,18 @@ const PropertyCard = ({ content }: { content: string }) => {
       const [state, zipCode] = stateZip.split(" ");
 
       // Extract building details
-      const bedroomsMatch = content.match(/🏠 (\d+) bed/) || content.match(/Bedrooms\s+(\d+)/);
-      const bathroomsMatch = content.match(/(\d+) bath/) || content.match(/Bathrooms\s+(\d+)/);
-      const squareFeetMatch = content.match(/(\d{1,3}(?:,\d{3})*) sq ft/) || content.match(/Total Area\s+(\d{1,3}(?:,\d{3})*) sqft/);
-      const yearBuiltMatch = content.match(/📅 Built: (\d{4})/) || content.match(/Built:\s*(\d{4})/);
-      const propertyTypeMatch = content.match(/📐 Property Type: (.+?)\n/) || content.match(/Property Type\s+(.+?)\n/);
+      const bedroomsMatch =
+        content.match(/🏠 (\d+) bed/) || content.match(/Bedrooms\s+(\d+)/);
+      const bathroomsMatch =
+        content.match(/(\d+) bath/) || content.match(/Bathrooms\s+(\d+)/);
+      const squareFeetMatch =
+        content.match(/(\d{1,3}(?:,\d{3})*) sq ft/) ||
+        content.match(/Total Area\s+(\d{1,3}(?:,\d{3})*) sqft/);
+      const yearBuiltMatch =
+        content.match(/📅 Built: (\d{4})/) || content.match(/Built:\s*(\d{4})/);
+      const propertyTypeMatch =
+        content.match(/📐 Property Type: (.+?)\n/) ||
+        content.match(/Property Type\s+(.+?)\n/);
 
       // Extract financial information - updated for new format
       // Try both "Market Value" in BUILDING DETAILS and "Estimated Value" in Valuation Details
@@ -543,7 +1038,9 @@ const PropertyCard = ({ content }: { content: string }) => {
       const maxOfferMatch = content.match(
         /Max Offer \(70% Rule\)\s*\$([0-9,]+)/,
       );
-      const equityMatch = content.match(/Equity Percent\s*(\d+)%/) || content.match(/Equity Percentage\s*(\d+)%/);
+      const equityMatch =
+        content.match(/Equity Percent\s*(\d+)%/) ||
+        content.match(/Equity Percentage\s*(\d+)%/);
 
       // Extract owner information - updated to handle both old and new formats
       const ownerNameMatch =
@@ -565,11 +1062,21 @@ const PropertyCard = ({ content }: { content: string }) => {
 
       // Clean and validate extracted data
       const bedrooms = bedroomsMatch ? parseInt(bedroomsMatch[1]) : undefined;
-      const bathrooms = bathroomsMatch ? parseInt(bathroomsMatch[1]) : undefined;
-      const squareFeet = squareFeetMatch ? parseInt(squareFeetMatch[1].replace(/,/g, "")) : undefined;
-      const yearBuilt = yearBuiltMatch ? parseInt(yearBuiltMatch[1]) : undefined;
-      const equityPercentage = equityMatch ? parseInt(equityMatch[1]) : undefined;
-      const confidenceScore = confidenceScoreMatch ? parseInt(confidenceScoreMatch[1]) : undefined;
+      const bathrooms = bathroomsMatch
+        ? parseInt(bathroomsMatch[1])
+        : undefined;
+      const squareFeet = squareFeetMatch
+        ? parseInt(squareFeetMatch[1].replace(/,/g, ""))
+        : undefined;
+      const yearBuilt = yearBuiltMatch
+        ? parseInt(yearBuiltMatch[1])
+        : undefined;
+      const equityPercentage = equityMatch
+        ? parseInt(equityMatch[1])
+        : undefined;
+      const confidenceScore = confidenceScoreMatch
+        ? parseInt(confidenceScoreMatch[1])
+        : undefined;
 
       return {
         address: streetAddress,
@@ -579,13 +1086,23 @@ const PropertyCard = ({ content }: { content: string }) => {
         bedrooms: bedrooms && bedrooms > 0 ? bedrooms : undefined,
         bathrooms: bathrooms && bathrooms > 0 ? bathrooms : undefined,
         squareFeet: squareFeet && squareFeet > 0 ? squareFeet : undefined,
-        yearBuilt: yearBuilt && yearBuilt > 1800 && yearBuilt <= new Date().getFullYear() + 5 ? yearBuilt : undefined,
+        yearBuilt:
+          yearBuilt &&
+          yearBuilt > 1800 &&
+          yearBuilt <= new Date().getFullYear() + 5
+            ? yearBuilt
+            : undefined,
         propertyType: propertyTypeMatch
           ? propertyTypeMatch[1].trim().toLowerCase().replace(/\s+/g, "_")
           : "single_family",
         arv: arvMatch ? arvMatch[1].replace(/,/g, "") : undefined,
-        maxOffer: maxOfferMatch ? maxOfferMatch[1].replace(/,/g, "") : undefined,
-        equityPercentage: equityPercentage && equityPercentage >= 0 && equityPercentage <= 100 ? equityPercentage : undefined,
+        maxOffer: maxOfferMatch
+          ? maxOfferMatch[1].replace(/,/g, "")
+          : undefined,
+        equityPercentage:
+          equityPercentage && equityPercentage >= 0 && equityPercentage <= 100
+            ? equityPercentage
+            : undefined,
         ownerName: ownerNameMatch ? ownerNameMatch[1].trim() : undefined,
         ownerPhone:
           ownerPhoneMatch && !isPlaceholderValue(ownerPhoneMatch[1])
@@ -598,7 +1115,10 @@ const PropertyCard = ({ content }: { content: string }) => {
         ownerMailingAddress: ownerMailingMatch
           ? ownerMailingMatch[1].trim()
           : undefined,
-        confidenceScore: confidenceScore && confidenceScore >= 0 && confidenceScore <= 100 ? confidenceScore : undefined,
+        confidenceScore:
+          confidenceScore && confidenceScore >= 0 && confidenceScore <= 100
+            ? confidenceScore
+            : undefined,
         status: "new",
       };
     } catch (error) {
@@ -628,6 +1148,38 @@ const PropertyCard = ({ content }: { content: string }) => {
     }
 
     try {
+      console.log("🏠 Attempting to add property to CRM:", propertyData.address);
+
+      // Check if property already exists to prevent duplicates
+      const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
+      
+      // Create a unique identifier for comparison
+      const createPropertyKey = (addr: string, city: string, state: string, zip?: string) => {
+        const normalizedAddr = addr?.toLowerCase().trim().replace(/[^\w\s]/g, '');
+        const normalizedCity = city?.toLowerCase().trim().replace(/[^\w\s]/g, '');
+        const normalizedState = state?.toLowerCase().trim();
+        const normalizedZip = zip?.toLowerCase().trim();
+        return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip || ''}`;
+      };
+      
+      const newPropertyKey = createPropertyKey(propertyData.address, propertyData.city, propertyData.state, propertyData.zipCode);
+      
+      const propertyExists = existingProperties?.some(p => {
+        const existingKey = createPropertyKey(p.address, p.city, p.state, p.zipCode);
+        return existingKey === newPropertyKey;
+      });
+
+      if (propertyExists) {
+        toast({
+          title: "Already in CRM",
+          description: `Property at ${propertyData.address} is already in your CRM.`,
+          variant: "default",
+        });
+        return;
+      }
+
+      console.log("🏠 Property data being sent:", propertyData);
+
       const result = await apiRequest("POST", "/api/properties", propertyData);
       console.log("🏠 Property successfully added to CRM:", result);
 
@@ -641,9 +1193,20 @@ const PropertyCard = ({ content }: { content: string }) => {
       await queryClient.refetchQueries({ queryKey: ["/api/properties"] });
     } catch (error: any) {
       console.error("Error adding property to CRM:", error);
+      console.error("Error details:", error.response || error);
+
+      let errorMessage = "Failed to add property to CRM. Please try again.";
+      if (error.response?.status === 401) {
+        errorMessage = "Authentication required. Please log in again.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.details) {
+        errorMessage = `Validation error: ${error.response.data.details}`;
+      }
+
       toast({
         title: "Error",
-        description: "Failed to add property to CRM. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -662,6 +1225,39 @@ const PropertyCard = ({ content }: { content: string }) => {
     }
 
     try {
+      console.log("🏠 Confirming add property to CRM:", propertyData.address);
+
+      // Check if property already exists to prevent duplicates
+      const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
+      
+      // Create a unique identifier for comparison
+      const createPropertyKey = (addr: string, city: string, state: string, zip?: string) => {
+        const normalizedAddr = addr?.toLowerCase().trim().replace(/[^\w\s]/g, '');
+        const normalizedCity = city?.toLowerCase().trim().replace(/[^\w\s]/g, '');
+        const normalizedState = state?.toLowerCase().trim();
+        const normalizedZip = zip?.toLowerCase().trim();
+        return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip || ''}`;
+      };
+      
+      const newPropertyKey = createPropertyKey(propertyData.address, propertyData.city, propertyData.state, propertyData.zipCode);
+      
+      const propertyExists = existingProperties?.some(p => {
+        const existingKey = createPropertyKey(p.address, p.city, p.state, p.zipCode);
+        return existingKey === newPropertyKey;
+      });
+
+      if (propertyExists) {
+        toast({
+          title: "Already in CRM",
+          description: `Property at ${propertyData.address} is already in your CRM.`,
+          variant: "default",
+        });
+        setShowDetailsDialog(false);
+        return;
+      }
+
+      console.log("🏠 Property data being sent:", propertyData);
+
       const result = await apiRequest("POST", "/api/properties", propertyData);
       console.log("🏠 Property successfully added to CRM:", result);
 
@@ -678,41 +1274,26 @@ const PropertyCard = ({ content }: { content: string }) => {
       setShowDetailsDialog(false);
     } catch (error: any) {
       console.error("Error adding property to CRM:", error);
+      console.error("Error details:", error.response || error);
+
+      let errorMessage = "Failed to add property to CRM. Please try again.";
+      if (error.response?.status === 401) {
+        errorMessage = "Authentication required. Please log in again.";
+      } else if (error.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error.response?.data?.details) {
+        errorMessage = `Validation error: ${error.response.data.details}`;
+      }
+
       toast({
         title: "Error",
-        description: "Failed to add property to CRM. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     }
   };
 
-  const handleAnalyzeDeal = () => {
-    if (isSellerLead) {
-      toast({
-        title: "Deal Analysis Started",
-        description: `Analyzing deal for property ${cardNumber}...`,
-      });
-    } else {
-      toast({
-        title: "Buyer Profile Analysis",
-        description: `Analyzing investment profile for buyer ${cardNumber}...`,
-      });
-    }
-  };
 
-  const handleContactOwner = () => {
-    if (isSellerLead) {
-      toast({
-        title: "Contact Owner",
-        description: `Preparing to contact property owner...`,
-      });
-    } else {
-      toast({
-        title: "Contact Investor",
-        description: `Preparing to contact cash buyer...`,
-      });
-    }
-  };
 
   // Remove any action sections from content for display
   const displayContent = content
@@ -723,47 +1304,14 @@ const PropertyCard = ({ content }: { content: string }) => {
     .trim();
 
   // Dynamic button labels based on card type
-  const actionButtons = isSellerLead
-    ? [
-        {
-          label: "Add to CRM",
-          icon: Plus,
-          color: "green",
-          action: handleAddToCRM,
-        },
-        {
-          label: "Analyze Deal",
-          icon: BarChart3,
-          color: "blue",
-          action: handleAnalyzeDeal,
-        },
-        {
-          label: "Contact Owner",
-          icon: PhoneCall,
-          color: "orange",
-          action: handleContactOwner,
-        },
-      ]
-    : [
-        {
-          label: "Add to CRM",
-          icon: Plus,
-          color: "green",
-          action: handleAddToCRM,
-        },
-        {
-          label: "View Portfolio",
-          icon: BarChart3,
-          color: "blue",
-          action: handleAnalyzeDeal,
-        },
-        {
-          label: "Contact Investor",
-          icon: PhoneCall,
-          color: "orange",
-          action: handleContactOwner,
-        },
-      ];
+  const actionButtons = [
+    {
+      label: "Add to CRM",
+      icon: Plus,
+      color: "green",
+      action: handleAddToCRM,
+    },
+  ];
 
   const minimalDetails = extractMinimalDetails(content);
 
@@ -923,41 +1471,20 @@ const PropertyCard = ({ content }: { content: string }) => {
           </div>
 
           {/* Action buttons */}
-          <div className="flex flex-wrap gap-2 pt-3">
+          <div className="flex gap-2 pt-3">
             <Button
               onClick={handleAddToCRM}
               variant="outline"
               size="sm"
-              className="flex items-center gap-1 bg-green-50 border-green-200 text-green-700 hover:bg-green-100 text-xs px-3 py-1"
+              className="flex-1 items-center gap-1 bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-xs px-3 py-1"
             >
               <Plus className="h-3 w-3" />
               Add to CRM
             </Button>
             <Button
-              onClick={handleAnalyzeDeal}
               variant="outline"
               size="sm"
-              className="flex items-center gap-1 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100 text-xs px-3 py-1"
-            >
-              <BarChart3 className="h-3 w-3" />
-              Analyze Deal
-            </Button>
-            <Button
-              onClick={handleContactOwner}
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-1 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100 text-xs px-3 py-1"
-            >
-              <PhoneCall className="h-3 w-3" />
-              Contact Owner
-            </Button>
-          </div>
-
-          <div className="flex gap-2 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 text-xs px-3 py-1 text-gray-600 hover:bg-gray-50"
+              className="flex-1 text-xs px-3 py-1 bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
             >
               I'll Pass
             </Button>
@@ -965,7 +1492,7 @@ const PropertyCard = ({ content }: { content: string }) => {
               onClick={() => setShowDetailsDialog(true)}
               variant="outline"
               size="sm"
-              className="flex-1 text-xs px-3 py-1 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+              className="flex-1 text-xs px-3 py-1 bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100"
             >
               View Details
             </Button>
@@ -996,22 +1523,6 @@ const PropertyCard = ({ content }: { content: string }) => {
               >
                 <Plus className="h-4 w-4" />
                 Confirm Add to CRM
-              </Button>
-              <Button
-                onClick={handleAnalyzeDeal}
-                variant="outline"
-                className="flex items-center gap-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
-              >
-                <BarChart3 className="h-4 w-4" />
-                Analyze Deal
-              </Button>
-              <Button
-                onClick={handleContactOwner}
-                variant="outline"
-                className="flex items-center gap-2 bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100"
-              >
-                <PhoneCall className="h-4 w-4" />
-                Contact Owner
               </Button>
             </div>
           </div>
@@ -1265,13 +1776,26 @@ ${buildingDetails}
    Owner Name                   ${property.ownerName}
    Mailing Address              ${property.ownerMailingAddress}
 
+
 📞 CONTACT INFORMATION
    Email(s)                     ${property.ownerEmails && property.ownerEmails.length > 0 ? property.ownerEmails.join(", ") : "Contact for details"}
    Phone(s)                     ${
      property.ownerPhoneNumbers && property.ownerPhoneNumbers.length > 0
        ? property.ownerPhoneNumbers
-           .filter((p: any) => !p.dnc)
-           .map((p: any) => `${p.number} (${p.type})`)
+           .filter((p: any) => {
+             if (typeof p === "string") return true;
+             return !p.dnc;
+           })
+           .map((p: any) => {
+             if (typeof p === "string") {
+               const cleaned = p.replace(/\D/g, "");
+               if (cleaned.length === 10) {
+                 return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+               }
+               return p;
+             }
+             return `${p.number} (${p.type})`;
+           })
            .join(", ") || "Contact for details"
        : "Contact for details"
    }
@@ -1493,7 +2017,10 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
       value: "preforeclosure",
       label: "Distressed Properties (Pre-foreclosure, Vacant)",
     },
-    { value: "out-of-state-absentee-owner", label: "Absentee Owners (Out-of-state/Non-resident)" },
+    {
+      value: "out-of-state-absentee-owner",
+      label: "Absentee Owners (Out-of-state/Non-resident)",
+    },
     { value: "high-equity", label: "High Equity Owners (70%+ equity)" },
     { value: "inherited", label: "Inherited Properties" },
     { value: "corporate-owned", label: "Corporate Owned Properties" },
@@ -1842,6 +2369,11 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
       location = `${cityInput}, ${buyerWizardData.state}`;
     }
 
+    console.log("🔍 BUYER WIZARD: Constructed location:", location);
+    console.log("🔍 BUYER WIZARD: City input:", cityInput);
+    console.log("🔍 BUYER WIZARD: State:", buyerWizardData.state);
+    console.log("🔍 BUYER WIZARD: QuickLists:", buyerWizardData.quickLists);
+
     setBuyerWizardProcessing(true);
     setShowBuyerWizard(false);
     setBuyerWizardStep(1);
@@ -1851,12 +2383,13 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
     localStorage.removeItem("pendingCashBuyerCards");
 
     try {
-      // Call real BatchData API for cash buyers
-      console.log("🔍 Calling BatchData API for cash buyers in:", location);
+      // Call real BatchData API for cash buyers with proper quickLists
+      console.log("🔍 Calling BatchData API for cash buyers with quickLists:", buyerWizardData.quickLists);
 
       const response = await apiRequest("POST", "/api/cash-buyers/search", {
         location: location,
         buyerType: buyerWizardData.buyerType,
+        quickLists: buyerWizardData.quickLists, // Pass quickLists array directly
         minProperties: 3, // Looking for investors with 3+ properties
       });
 
@@ -1921,6 +2454,11 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
           const regularPhones = phoneNumbers.filter((p: any) => !p.dnc);
           const dncPhones = phoneNumbers.filter((p: any) => p.dnc);
 
+          // Extract bed/bath from multiple possible fields
+          const bedrooms = building.bedroomCount || building.bedrooms || "N/A";
+          const bathrooms = building.bathroomCount || building.bathrooms || "N/A";
+          const squareFeet = building.totalBuildingAreaSquareFeet || building.livingArea || building.squareFeet || null;
+
           // Create modern, sleek card design
           let cardContent = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  QUALIFIED CASH BUYER #${index + 1}
@@ -1941,8 +2479,8 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
           cardContent += `🏠 𝗥𝗘𝗖𝗘𝗡𝗧 𝗣𝗨𝗥𝗖𝗛𝗔𝗦𝗘\n`;
           cardContent += `📍 ${address.street}\n`;
           cardContent += `    ${address.city}, ${address.state} ${address.zip}\n`;
-          cardContent += `🏘️ ${building.propertyType || "Single Family"} • ${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() + " sqft" : "N/A"}\n`;
-          cardContent += `🛏️ ${building.bedrooms || "N/A"} bed • 🛁 ${building.bathrooms || "N/A"} bath\n`;
+          cardContent += `🏘️ ${building.propertyType || "Single Family"} • ${squareFeet ? parseInt(squareFeet).toLocaleString() + " sqft" : "N/A"}\n`;
+          cardContent += `🛏️ ${bedrooms} bed • 🛁 ${bathrooms} bath\n`;
           cardContent += `💵 Last Sale: $${sale.lastSalePrice ? parseInt(sale.lastSalePrice).toLocaleString() : valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : "N/A"}\n\n`;
 
           cardContent += `📞 𝗖𝗢𝗡𝗧𝗔𝗖𝗧 𝗗𝗘𝗧𝗔𝗜𝗟𝗦\n`;
@@ -2118,28 +2656,30 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
               <div className="grid grid-cols-1 gap-3">
                 {[
                   {
-                    id: "active_landlord",
+                    id: "active-landlord",
                     name: "🏠 Active Landlord Buyers",
                     description:
                       "Investors focused on rental properties and portfolio growth",
+                    quickLists: ["active-landlord"],
                   },
                   {
-                    id: "fix_and_flip",
-                    name: "🔨 Fix and Flip Buyers",
-                    description:
-                      "Investors who buy, renovate, and resell properties",
+                    id: "fix-flip",
+                    name: "🔨 Fix & Flip Investors",
+                    description: "Investors who renovate and resell properties",
+                    quickLists: ["fix-flip"],
                   },
                   {
-                    id: "cash_buyers",
-                    name: "💰 Cash Buyers",
+                    id: "cash-buyer",
+                    name: "💰 All Cash Buyers",
                     description:
-                      "General cash buyers looking for investment opportunities",
+                      "Any investor who has purchased properties with cash",
+                    quickLists: ["cash-buyer"],
                   },
                   {
-                    id: "builders",
-                    name: "🏗️ Builders",
-                    description:
-                      "Construction companies and developers looking for projects",
+                    id: "cash-buyer",
+                    name: "📊 Portfolio Investors",
+                    description: "Large-scale investors with 5+ properties",
+                    quickLists: ["cash-buyer"],
                   },
                 ].map((type) => (
                   <div
@@ -2153,6 +2693,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                       setBuyerWizardData({
                         ...buyerWizardData,
                         buyerType: type.id,
+                        quickLists: type.quickLists,
                       })
                     }
                   >
@@ -2927,9 +3468,10 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                         );
                       }
                     } catch (e) {
-                      // Not JSON, check for legacy format
+                      // Not JSON, continue to legacy format check
                     }
 
+                    // Only render PropertyCard for legacy text format (not JSON)
                     if (
                       message.content.includes("🏠 SELLER LEAD") ||
                       message.content.includes("🎯 QUALIFIED CASH BUYER #")

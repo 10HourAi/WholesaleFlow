@@ -1,17 +1,19 @@
 import OpenAI from "openai";
-import type { Property, Contact, Message, DealAnalysisResult, DealAnalysisRequest } from "@shared/schema";
+import type { Property, Contact, Message, DealAnalysisResult, DealAnalysisRequest, InsertComp } from "@shared/schema";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 let openai: OpenAI | null = null;
 
 function getOpenAI(): OpenAI {
   if (!openai) {
-    if (!process.env.OPENAI_API_KEY) {
+    const apiKey = process.env.OPENAI5 || process.env.OPENAI_API_KEY;
+    if (!apiKey) {
       throw new Error("OpenAI API key is required but not configured");
     }
     openai = new OpenAI({ 
-      apiKey: process.env.OPENAI_API_KEY
+      apiKey: apiKey
     });
+    console.log('🔑 Using OpenAI key:', process.env.OPENAI5 ? 'OPENAI5' : 'OPENAI_API_KEY');
   }
   return openai;
 }
@@ -169,7 +171,7 @@ Task:
         { role: "system", content: system },
         { role: "user", content: user }
       ],
-      max_tokens: 2000,
+      max_completion_tokens: 2000,
       response_format: { type: "json_schema", json_schema: schema }
     });
 
@@ -227,6 +229,147 @@ Task:
   }
 }
 
+export async function findCompsWithOpenAI(
+  property: Property,
+  progressCallback?: (step: string, message: string, progress: number) => void
+): Promise<InsertComp[]> {
+  const schema = {
+    name: "ComparableProperties",
+    schema: {
+      type: "object",
+      additionalProperties: false,
+      properties: {
+        comps: {
+          type: "array",
+          minItems: 3,
+          maxItems: 3,
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              address: { type: "string" },
+              sold_price: { type: "number" },
+              sold_date: { type: "string" },
+              bedrooms: { type: "number" },
+              bathrooms: { type: "number" },
+              square_feet: { type: "number" },
+              price_per_sqft: { type: "number" },
+              distance: { type: "number" },
+              similarity_score: { type: "number", minimum: 0, maximum: 100 },
+              days_on_market: { type: "number" }
+            },
+            required: ["address", "sold_price", "sold_date", "bedrooms", "bathrooms", "square_feet", "price_per_sqft", "distance", "similarity_score", "days_on_market"]
+          }
+        }
+      },
+      required: ["comps"]
+    },
+    strict: true
+  };
+
+  try {
+    progressCallback?.('searching', 'Searching for comparable properties...', 20);
+    console.log('🔍 Starting comps search for property:', property.address);
+    
+    const openaiClient = getOpenAI();
+
+    const propertyContext = {
+      address: `${property.address}, ${property.city}, ${property.state} ${property.zipCode}`,
+      property_type: property.propertyType,
+      bedrooms: property.bedrooms,
+      bathrooms: property.bathrooms,
+      square_feet: property.squareFeet,
+      year_built: property.yearBuilt,
+      city: property.city,
+      state: property.state
+    };
+
+    progressCallback?.('analyzing', 'Analyzing market data with AI...', 50);
+    console.log('🤖 Calling GPT-5 with web search for comps analysis');
+
+    const system = `You are a real estate data analyst specializing in comparative market analysis.
+Use web search to find 3 recently sold comparable properties.
+Return ONLY JSON matching the provided schema with exactly 3 comparable properties.
+Each comp must be a real property found through your search.`;
+
+    const user = `
+Subject Property: ${propertyContext.address}
+Property Type: ${propertyContext.property_type || 'single_family'}
+Bedrooms: ${propertyContext.bedrooms}
+Bathrooms: ${propertyContext.bathrooms}
+Square Feet: ${propertyContext.square_feet}
+Year Built: ${propertyContext.year_built}
+
+SEARCH CRITERIA:
+1. Within 3-mile radius of subject property
+2. Same property type (${propertyContext.property_type || 'single_family'})
+3. Same number of bedrooms (${propertyContext.bedrooms})
+4. Sold within last 9 months
+5. Square footage within 20% (${Math.round((propertyContext.square_feet || 2000) * 0.8)} - ${Math.round((propertyContext.square_feet || 2000) * 1.2)} sqft)
+6. Year built within 10 years (${(propertyContext.year_built || 2000) - 10} - ${(propertyContext.year_built || 2000) + 10})
+7. Same school district if possible
+
+Use web search to find 3 REAL recently sold properties matching these criteria in ${propertyContext.city}, ${propertyContext.state}.
+
+For each comp, calculate:
+- price_per_sqft = sold_price / square_feet
+- similarity_score (0-100, higher = more similar to subject property)
+- distance in miles from subject property
+
+Return exactly 3 comps with complete data.`;
+
+    const requestPayload = {
+      model: "gpt-5",
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user }
+      ],
+      max_completion_tokens: 6000,
+      response_format: { type: "json_schema", json_schema: schema }
+    };
+
+    console.log('📤 GPT-5 REQUEST:', JSON.stringify({
+      model: requestPayload.model,
+      max_completion_tokens: requestPayload.max_completion_tokens,
+      system_prompt: system.substring(0, 150) + '...',
+      user_prompt: user.substring(0, 200) + '...'
+    }, null, 2));
+
+    const response = await openaiClient.chat.completions.create(requestPayload);
+
+    progressCallback?.('processing', 'Processing comparable properties data...', 80);
+
+    console.log('📊 OpenAI response received:', JSON.stringify(response, null, 2).substring(0, 500));
+    
+    const compsContent = response.choices[0]?.message?.content;
+    if (!compsContent) {
+      console.error('❌ Empty response from OpenAI. Full response:', JSON.stringify(response, null, 2));
+      throw new Error("No comps data received from OpenAI");
+    }
+
+    const compsData = JSON.parse(compsContent);
+    console.log('✅ Successfully found', compsData.comps.length, 'comparable properties');
+
+    return compsData.comps.map((comp: any) => ({
+      propertyId: property.id,
+      address: comp.address,
+      soldPrice: comp.sold_price.toString(),
+      soldDate: comp.sold_date,
+      bedrooms: comp.bedrooms,
+      bathrooms: comp.bathrooms,
+      squareFeet: comp.square_feet,
+      pricePerSqft: comp.price_per_sqft.toString(),
+      distance: comp.distance.toString(),
+      similarityScore: comp.similarity_score,
+      daysOnMarket: comp.days_on_market
+    }));
+
+  } catch (error) {
+    console.error("❌ Error finding comps with OpenAI:", error);
+    throw new Error("Unable to find comparable properties. Please try again.");
+  }
+}
+
 // OpenAI service for Terry chat
 export const openaiService = {
   async getChatCompletion(messages: Array<{role: string, content: string}>): Promise<string> {
@@ -236,7 +379,7 @@ export const openaiService = {
       const response = await openaiClient.chat.completions.create({
         model: "gpt-5", // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
         messages: messages as any,
-        max_tokens: 500
+        max_completion_tokens: 500
       });
 
       return response.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";

@@ -86,7 +86,7 @@ class BatchLeadsService {
         "Content-Type": "application/json",
         Authorization: `Bearer ${this.apiKey}`,
         Accept: "application/json",
-        "User-Agent": "10HourAi/1.0",
+        "User-Agent": "AiClosings/1.0",
       },
       body: JSON.stringify(requestBody),
     });
@@ -105,11 +105,21 @@ class BatchLeadsService {
     criteria: SearchCriteria,
     page = 1,
     perPage = 50,
+    userId?: string,
   ): Promise<BatchLeadsResponse> {
     console.log(
       `🔍 STARTING BatchLeads API search for: "${criteria.location}"`,
     );
     console.log(`🔍 SEARCH CRITERIA:`, JSON.stringify(criteria, null, 2));
+
+    let skipValue = (page - 1) * perPage;
+
+    // If userId is provided, check for existing skip mapping
+    if (userId) {
+      const skipFromDb = await this.getOrCreateSkipMapping(userId, criteria);
+      skipValue = skipFromDb;
+      console.log(`📊 Using skip value from database: ${skipValue}`);
+    }
 
     const requestBody: any = {
       searchCriteria: {
@@ -117,7 +127,7 @@ class BatchLeadsService {
         quickLists: ["preforeclosure"], // Default to preforeclosure properties
       },
       options: {
-        skip: (page - 1) * perPage,
+        skip: skipValue,
         take: Math.min(perPage, 500),
         skipTrace: true, // ✅ Gets owner contact information
         includeBuilding: true, // ✅ Gets building details (bedrooms, bathrooms, etc.)
@@ -200,17 +210,16 @@ class BatchLeadsService {
       if (!requestBody.searchCriteria.building) {
         requestBody.searchCriteria.building = {};
       }
-      // Try multiple filter approaches for better API compatibility
-      requestBody.searchCriteria.building.bedrooms = {
+      // Use the correct BatchData API format for bedroom count
+      requestBody.searchCriteria.building.bedroomCount = {
         min: criteria.minBedrooms,
-        gte: criteria.minBedrooms, // Also try "greater than or equal" syntax
       };
 
-      // Also try filtering out null/empty bedroom data
-      requestBody.searchCriteria.building.bedroomsExists = true;
-
       console.log(
-        `🛏️ Added comprehensive bedroom filter: min ${criteria.minBedrooms} bedrooms (with existence check)`,
+        `🛏️ Added bedroom filter to API request: min ${criteria.minBedrooms} bedrooms using bedroomCount.min format`,
+      );
+      console.log(
+        `🛏️ Full building criteria:`, JSON.stringify(requestBody.searchCriteria.building, null, 2),
       );
     }
 
@@ -306,8 +315,9 @@ class BatchLeadsService {
   // Single API Approach: Use only Property Search API with comprehensive options
   async searchValidProperties(
     criteria: any,
-    count: number = 5,
+    count = 5,
     excludePropertyIds: string[] = [],
+    userId?: string,
   ): Promise<{
     data: any[];
     totalChecked: number;
@@ -332,7 +342,7 @@ class BatchLeadsService {
         console.log(
           `📊 Getting comprehensive property data from BatchData Search API...`,
         );
-        const searchResponse = await this.searchProperties(criteria, page, 50);
+        const searchResponse = await this.searchProperties(criteria, page, 50, userId);
 
         if (!searchResponse.data || searchResponse.data.length === 0) {
           console.log(`📄 Page ${page}: No more properties available`);
@@ -378,17 +388,28 @@ class BatchLeadsService {
             continue;
           }
 
-          const convertedProperty = this.convertToProperty(
+          const convertedProperty = await this.convertToProperty(
             property,
             "demo-user",
             criteria,
           );
 
           if (convertedProperty !== null) {
+            // Additional bedroom validation as backup
+            if (criteria.minBedrooms && convertedProperty.bedrooms !== null && convertedProperty.bedrooms !== undefined) {
+              if (convertedProperty.bedrooms < criteria.minBedrooms) {
+                console.log(
+                  `❌ BACKUP FILTER: Property ${convertedProperty.address} has ${convertedProperty.bedrooms} bedrooms, minimum ${criteria.minBedrooms} required`,
+                );
+                filtered++;
+                continue;
+              }
+            }
+
             convertedProperty.id = propertyId;
             validProperties.push(convertedProperty);
             console.log(
-              `✅ Added property ${validProperties.length}/${count}: ${convertedProperty.address}`,
+              `✅ Added property ${validProperties.length}/${count}: ${convertedProperty.address} (${convertedProperty.bedrooms || 'N/A'} bedrooms)`,
             );
 
             if (validProperties.length >= count) {
@@ -409,6 +430,8 @@ class BatchLeadsService {
     console.log(
       `📊 Single API integration complete: ${validProperties.length} valid properties, ${totalChecked} checked, ${filtered} filtered`,
     );
+
+    // Note: Skip mapping will be updated by the calling service based on actual delivered count
 
     return {
       data: validProperties,
@@ -940,7 +963,7 @@ class BatchLeadsService {
             continue;
           }
 
-          const convertedProperty = this.convertToProperty(
+          const convertedProperty = await this.convertToProperty(
             rawProperty,
             "demo-user",
             criteria,
@@ -987,13 +1010,28 @@ class BatchLeadsService {
   }
 
   // Convert BatchData property with comprehensive data integration from all sources
-  convertToProperty(
+  async convertToProperty(
     batchProperty: any,
     userId: string,
     criteria?: SearchCriteria,
-  ): any {
+  ): Promise<any> {
     const propertyId = batchProperty._id || batchProperty.id || "unknown";
     console.log(`🔍 SINGLE API: Converting property with ID: ${propertyId}`);
+
+    // CONTACT ENRICHMENT - Extract contact data from BatchData API
+    let enrichedContactData = null;
+    try {
+      enrichedContactData = await this.enrichContactData(batchProperty);
+      console.log(
+        `📞 Contact enrichment result for ${batchProperty.address?.street}:`,
+        enrichedContactData ? "SUCCESS" : "NO DATA",
+      );
+    } catch (error) {
+      console.log(
+        `📞 Contact enrichment failed for ${batchProperty.address?.street}:`,
+        error,
+      );
+    }
 
     // Extract data directly from comprehensive Property Search API response
     const building = batchProperty.building || {};
@@ -1104,16 +1142,21 @@ class BatchLeadsService {
       // Continue processing with fallback values instead of rejecting
     }
 
-    // Apply bedroom filter if provided in criteria - DISABLED for UI demonstration
+    // Apply bedroom filter if provided in criteria
     if (criteria?.minBedrooms && bedrooms !== null && bedrooms !== undefined) {
-      // Log bedroom mismatches but don't filter out - allow for UI demonstration
       if (bedrooms < criteria.minBedrooms) {
         console.log(
-          `⚠️ Bedroom requirement not met (${bedrooms} bedrooms found, ${criteria.minBedrooms} required) - keeping for UI demonstration`,
+          `❌ FILTERED OUT: Property has ${bedrooms} bedrooms, but minimum ${criteria.minBedrooms} required`,
         );
+        return null;
       }
     }
-    // Note: We allow properties with missing bedroom data to pass through since API often lacks this info
+    // Allow properties with missing bedroom data to pass through, but log it
+    if (criteria?.minBedrooms && (bedrooms === null || bedrooms === undefined)) {
+      console.log(
+        `⚠️ Property has no bedroom data but minBedrooms filter (${criteria.minBedrooms}) is active - allowing through`,
+      );
+    }
 
     // Apply price filter if provided in criteria - DISABLED for UI demonstration
     // Note: We'll use fallback pricing so all properties pass through for beautiful UI display
@@ -1137,6 +1180,32 @@ class BatchLeadsService {
       }
     }
 
+    // Process phone numbers properly from enriched contact data or original owner data
+    const allPhoneNumbers = enrichedContactData?.phoneNumbers || ownerPhoneNumbers || [];
+    const dncPhones = enrichedContactData?.dncPhones || [];
+
+    console.log(`📞 DEBUG: convertToProperty - processing phones for ${propertyAddress}:`, {
+      enrichedContactData: !!enrichedContactData,
+      allPhoneNumbers: allPhoneNumbers,
+      allPhoneNumbersType: typeof allPhoneNumbers,
+      allPhoneNumbersLength: allPhoneNumbers.length,
+      ownerPhoneNumbers: ownerPhoneNumbers,
+      dncPhones: dncPhones
+    });
+
+    // Find best phones by type
+    const landLinePhone = allPhoneNumbers.find((phone: any) => {
+      const phoneStr = typeof phone === 'string' ? phone : phone?.number;
+      const phoneType = typeof phone === 'string' ? 'unknown' : phone?.type;
+      return phoneType?.toLowerCase().includes('land') || phoneType?.toLowerCase().includes('landline');
+    });
+
+    const mobilePhone = allPhoneNumbers.find((phone: any) => {
+      const phoneStr = typeof phone === 'string' ? phone : phone?.number;
+      const phoneType = typeof phone === 'string' ? 'unknown' : phone?.type;
+      return phoneType?.toLowerCase().includes('mobile') || phoneType?.toLowerCase().includes('cell');
+    });
+
     const convertedProperty = {
       userId,
       address: propertyAddress,
@@ -1155,20 +1224,20 @@ class BatchLeadsService {
       lastSalePrice: lastSalePrice?.toString() || null,
       lastSaleDate: lastSaleDate || null,
       ownerName: ownerName,
-      ownerPhone: ownerPhoneNumbers.find((p) => !p.dnc)?.number || null,
-      ownerEmail: ownerEmails.length > 0 ? ownerEmails[0] : null, // Use first email for DB schema
-      ownerDNCPhone:
-        ownerPhoneNumbers
-          .filter((p) => p.dnc)
-          .map((p) => p.number)
-          .join(", ") || null,
-      ownerLandLine:
-        ownerPhoneNumbers.find((p) => p.type === "Land Line")?.number || null,
-      ownerMobilePhone:
-        ownerPhoneNumbers.find((p) => p.type === "Mobile")?.number || null,
+      ownerPhone: enrichedContactData?.bestPhone || (typeof allPhoneNumbers[0] === 'string' ? allPhoneNumbers[0] : allPhoneNumbers[0]?.number) || null,
+      ownerEmail: enrichedContactData?.bestEmail || ownerEmails[0] || null,
+      ownerEmails: enrichedContactData?.emailAddresses || ownerEmails || [],
+      ownerPhoneNumbers: allPhoneNumbers.map((phone: any) => {
+        const phoneNumber = typeof phone === 'string' ? phone : phone?.number;
+        console.log(`📞 DEBUG: Converting phone to string:`, phone, '->', phoneNumber);
+        return phoneNumber;
+      }).filter(Boolean),
+      ownerMailingAddress: ownerMailingAddress,
+      ownerDncPhone: dncPhones.length > 0 ? dncPhones.join(', ') : null,
+      ownerLandLine: typeof landLinePhone === 'string' ? landLinePhone : landLinePhone?.number || null,
+      ownerMobilePhone: typeof mobilePhone === 'string' ? mobilePhone : mobilePhone?.number || null,
       equityPercentage: Math.round(equityPercent),
       equityBalance: equityBalance?.toString() || null,
-      ownerMailingAddress: ownerMailingAddress,
       confidenceScore: this.calculateConfidenceScore(batchProperty),
       distressedIndicator: this.getDistressedIndicator(batchProperty),
     };
@@ -1275,6 +1344,7 @@ class BatchLeadsService {
   // NEW: Simple raw cash buyer search - returns all data as-is from BatchData API
   async searchCashBuyersRaw(criteria: {
     location: string;
+    quickLists?: string[];
     limit?: number;
   }): Promise<{
     buyers: any[];
@@ -1282,11 +1352,17 @@ class BatchLeadsService {
     location: string;
   }> {
     const limit = criteria.limit || 5;
+    const quickLists = criteria.quickLists || ["cash-buyer"];
+
+    console.log("🔍 BatchLeads searchCashBuyersRaw called with:", {
+      location: criteria.location,
+      quickLists: quickLists,
+    });
 
     const requestBody = {
       searchCriteria: {
         query: criteria.location,
-        quickLists: ["cash-buyer"],
+        quickLists: quickLists, // Use the provided quickLists
       },
       options: {
         skip: 0,
@@ -1361,7 +1437,12 @@ class BatchLeadsService {
 
   // Search for cash buyers using BatchLeads quicklists.cashbuyer API
   async searchCashBuyers(
-    criteria: { location: string },
+    criteria: {
+      location: string;
+      buyerType?: string;
+      quickLists?: string[];
+      minProperties?: number;
+    },
     limit = 5,
   ): Promise<{
     data: any[];
@@ -1372,7 +1453,7 @@ class BatchLeadsService {
     const requestBody: any = {
       searchCriteria: {
         query: criteria.location,
-        quickLists: ["cash-buyer"],
+        quickLists: criteria.quickLists || ["cash-buyer"], // Use provided quickLists or default to "cash-buyer"
       },
       options: {
         skip: 0,
@@ -1383,6 +1464,21 @@ class BatchLeadsService {
         includeAssessment: true,
       },
     };
+
+    // Add specific buyerType filtering if provided
+    if (criteria.buyerType) {
+      // This is a placeholder. Actual filtering by buyerType would require deeper integration
+      // or a specific API endpoint that supports it. For now, we'll log it.
+      console.log(`ℹ️ NOTE: buyerType filter "${criteria.buyerType}" is not directly supported by this API endpoint, but quickLists are being used.`);
+    }
+
+    // Add minProperties filtering if provided
+    if (criteria.minProperties !== undefined) {
+      // This filtering is typically done client-side after receiving results,
+      // as the BatchData API doesn't directly expose a `minProperties` filter for buyers.
+      console.log(`ℹ️ NOTE: minProperties filter (${criteria.minProperties}) will be applied client-side.`);
+    }
+
 
     try {
       const response = await this.makeRequest(
@@ -1400,11 +1496,20 @@ class BatchLeadsService {
         const firstBuyer = response.results.properties[0];
       }
 
-      const buyers = (response.results?.properties || [])
+      let buyers = (response.results?.properties || [])
         .slice(0, limit)
         .map((buyer: any, index: number) => {
+          // Apply client-side filtering for minProperties if specified
+          if (criteria.minProperties !== undefined && (buyer.propertyOwnerProfile?.propertiesCount || 1) < criteria.minProperties) {
+            return null; // Skip this buyer if it doesn't meet minProperties
+          }
           return this.convertToCashBuyer(buyer, index + 1);
-        });
+        })
+        .filter(Boolean); // Remove any null entries from the filtered list
+
+      // Ensure we return exactly 'limit' buyers if possible, or fewer if not enough qualified ones were found.
+      buyers = buyers.slice(0, limit);
+
 
       return {
         data: buyers,
@@ -1541,6 +1646,168 @@ class BatchLeadsService {
   ): boolean {
     if (!propertyAddress?.state || !mailingAddress?.state) return false;
     return propertyAddress.state !== mailingAddress.state;
+  }
+
+  // Add enrichContactData method here
+  // Skip mapping methods for pagination tracking
+  private async getOrCreateSkipMapping(userId: string, criteria: any): Promise<number> {
+    try {
+      const { db } = await import("./db");
+      const { skipMapping } = await import("@shared/schema");
+      const { eq, and, sql } = await import("drizzle-orm");
+
+      // Create a normalized search key for comparison
+      const searchKey = JSON.stringify({
+        location: criteria.location,
+        sellerType: criteria.sellerType || null,
+        propertyType: criteria.propertyType || null,
+        minBedrooms: criteria.minBedrooms || null,
+        maxPrice: criteria.maxPrice || null,
+      });
+
+      // Try to find existing mapping
+      const [existing] = await db
+        .select()
+        .from(skipMapping)
+        .where(
+          and(
+            eq(skipMapping.userId, userId),
+            eq(skipMapping.userSearch, searchKey as any)
+          )
+        )
+        .limit(1);
+
+      if (existing) {
+        console.log(`📊 Found existing skip mapping: ${existing.skip}`);
+        return existing.skip;
+      } else {
+        // Create new mapping
+        const [newMapping] = await db
+          .insert(skipMapping)
+          .values({
+            id: sql`gen_random_uuid()`, // Generate UUID for id
+            userId,
+            userSearch: searchKey as any,
+            skip: 0,
+          })
+          .returning();
+
+        console.log(`📊 Created new skip mapping: ${newMapping.skip}`);
+        return newMapping.skip;
+      }
+    } catch (error) {
+      console.error("❌ Error with skip mapping:", error);
+      return 0; // Fallback to 0 if there's an error
+    }
+  }
+
+  private async updateSkipMapping(userId: string, criteria: any, newSkip: number): Promise<void> {
+    try {
+      const { db } = await import("./db");
+      const { skipMapping } = await import("@shared/schema");
+      const { eq, and, sql } = await import("drizzle-orm");
+
+      const searchKey = JSON.stringify({
+        location: criteria.location,
+        sellerType: criteria.sellerType || null,
+        propertyType: criteria.propertyType || null,
+        minBedrooms: criteria.minBedrooms || null,
+        maxPrice: criteria.maxPrice || null,
+      });
+
+      await db
+        .update(skipMapping)
+        .set({ skip: newSkip })
+        .where(
+          and(
+            eq(skipMapping.userId, userId),
+            eq(skipMapping.userSearch, searchKey as any)
+          )
+        );
+
+      console.log(`📊 Updated skip mapping to: ${newSkip}`);
+    } catch (error) {
+      console.error("❌ Error updating skip mapping:", error);
+    }
+  }
+
+  private async enrichContactData(property: any): Promise<{
+    phoneNumbers: string[];
+    emailAddresses: string[];
+    bestPhone: string | null;
+    bestEmail: string | null;
+    dncPhones: string[];
+  } | null> {
+    // This method enriches contact data from the property object
+    const owner = property.owner || {};
+    const phoneNumbers = owner.phoneNumbers || [];
+    const emailAddresses = owner.emails || [];
+
+    console.log(`📞 ENRICHING CONTACT DATA for ${property.address?.street || 'unknown address'}`);
+    console.log(`📞 Raw phone numbers:`, phoneNumbers);
+    console.log(`📞 Raw email addresses:`, emailAddresses);
+    console.log(`📞 Raw owner object keys:`, Object.keys(owner));
+    console.log(`📞 First phone number detailed:`, phoneNumbers[0]);
+
+    // Process phone numbers and identify DNC phones
+    let bestPhone: string | null = null;
+    const dncPhones: string[] = [];
+    const processedPhones: string[] = [];
+
+    phoneNumbers.forEach((phone: any) => {
+      const phoneNumber = typeof phone === 'string' ? phone : phone?.number;
+      if (phoneNumber) {
+        processedPhones.push(phoneNumber);
+
+        // Check if it's a DNC phone
+        const isDnc = typeof phone === 'object' && (phone?.dnc === true || phone?.type === 'dnc');
+        if (isDnc) {
+          dncPhones.push(phoneNumber);
+        } else if (!bestPhone) {
+          // Use first non-DNC phone as best phone
+          bestPhone = phoneNumber;
+        }
+      }
+    });
+
+    // If no non-DNC phone found, use the first phone as best phone
+    if (!bestPhone && processedPhones.length > 0) {
+      bestPhone = processedPhones[0];
+    }
+
+    // Process email addresses
+    const processedEmails: string[] = [];
+    let bestEmail: string | null = null;
+
+    emailAddresses.forEach((email: any) => {
+      const emailAddress = typeof email === 'string' ? email : email?.email;
+      if (emailAddress && emailAddress.includes('@')) {
+        processedEmails.push(emailAddress);
+        if (!bestEmail) {
+          bestEmail = emailAddress;
+        }
+      }
+    });
+
+    console.log(`📞 PROCESSED CONTACT DATA:`, {
+      phoneCount: processedPhones.length,
+      emailCount: processedEmails.length,
+      bestPhone,
+      bestEmail,
+      dncCount: dncPhones.length
+    });
+
+    if (processedPhones.length > 0 || processedEmails.length > 0) {
+      return {
+        phoneNumbers: processedPhones,
+        emailAddresses: processedEmails,
+        bestPhone,
+        bestEmail,
+        dncPhones,
+      };
+    }
+
+    return null;
   }
 }
 

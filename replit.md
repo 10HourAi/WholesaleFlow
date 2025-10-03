@@ -1,8 +1,8 @@
-# 10HourAi - Real Estate Wholesaling Assistant
+# AiClosings - Real Estate Wholesaling Assistant
 
 ## Overview
 
-10HourAi is a comprehensive real estate wholesaling platform that leverages AI agents to assist with lead generation, deal analysis, negotiation, and closing processes. The application provides a complete CRM system, deal pipeline management, document handling, and integrated AI chat interfaces to streamline real estate wholesaling operations.
+AiClosings is a comprehensive real estate wholesaling platform that leverages AI agents to assist with lead generation, deal analysis, negotiation, and closing processes. The application provides a complete CRM system, deal pipeline management, document handling, and integrated AI chat interfaces to streamline real estate wholesaling operations.
 
 The platform features multiple specialized AI agents (Lead Finder, Deal Analyzer, Negotiation, and Closing agents) that work together to help users identify distressed properties, analyze deals, negotiate with sellers, and manage the closing process.
 
@@ -58,6 +58,13 @@ Preferred communication style: Simple, everyday language.
 - Contact management linked to properties
 - Lead tracking with status progression (new, contacted, qualified, under_contract, closed)
 - Property details including ARV, bedrooms, bathrooms, square footage
+- **Run Comps Feature**: GPT-5 powered comparable property search
+  - Finds 3 recently sold comparable properties using AI and web search
+  - Search criteria: same property type, bedrooms, sqft within 20%, year built within 10 years, same school district, sold within 9 months
+  - Displays comps with: address, sold price, sold date, beds/baths, square feet, price per sqft, distance, similarity score, days on market
+  - Comps persist to database for future reference
+  - Button updates to "Re-Run Comps" after initial analysis
+  - Show/hide comps section for better UX
 
 #### Deal Pipeline
 - Kanban-style deal management across stages (lead_generation, analysis, negotiation, closing)

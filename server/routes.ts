@@ -30,38 +30,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/signup", async (req, res) => {
     try {
       const { email, password, firstName, lastName } = req.body;
-      
+
       console.log("🔐 Signup attempt:", { email, firstName, lastName });
-      
+
       // Validate required fields
       if (!email || !password || !firstName || !lastName) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "All fields are required" 
+        return res.status(400).json({
+          success: false,
+          message: "All fields are required",
         });
       }
 
       // Validate password strength
       if (password.length < 6) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Password must be at least 6 characters long" 
+        return res.status(400).json({
+          success: false,
+          message: "Password must be at least 6 characters long",
         });
       }
-      
+
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "User already exists with this email" 
+        return res.status(400).json({
+          success: false,
+          message: "User already exists with this email",
         });
       }
-      
+
       // Hash password with bcrypt
       const saltRounds = 12;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
-      
+
       // Create user with hashed password
       const user = await storage.upsertUser({
         id: `email_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Generate unique ID
@@ -71,60 +71,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
         lastName,
         profileImageUrl: null,
       });
-      
+
       console.log("✅ User created successfully:", user.id);
       console.log("🔐 Password hashed and stored securely");
-      
+
       res.json({ success: true, message: "Account created successfully" });
     } catch (error: any) {
       console.error("❌ Signup error:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to create account" 
+      res.status(500).json({
+        success: false,
+        message: "Failed to create account",
       });
     }
   });
-  
+
   app.post("/api/auth/login", async (req, res) => {
     try {
       const { email, password } = req.body;
-      
+
       console.log("🔐 Login attempt:", { email });
-      
+
       // Validate required fields
       if (!email || !password) {
-        return res.status(400).json({ 
-          success: false, 
-          message: "Email and password are required" 
+        return res.status(400).json({
+          success: false,
+          message: "Email and password are required",
         });
       }
-      
+
       // Check if user exists
       const user = await storage.getUserByEmail(email);
       if (!user) {
-        return res.status(401).json({ 
-          success: false, 
-          message: "Invalid email or password" 
+        return res.status(401).json({
+          success: false,
+          message: "Invalid email or password",
         });
       }
 
       // Check if user has a password (might be Replit Auth only user)
       if (!user.password) {
-        return res.status(401).json({ 
-          success: false, 
-          message: "Please use 'Continue with Replit' to login" 
+        return res.status(401).json({
+          success: false,
+          message: "Please use 'Continue with Replit' to login",
         });
       }
-      
+
       // Verify password with bcrypt
       const isPasswordValid = await bcrypt.compare(password, user.password);
       if (!isPasswordValid) {
-        return res.status(401).json({ 
-          success: false, 
-          message: "Invalid email or password" 
+        return res.status(401).json({
+          success: false,
+          message: "Invalid email or password",
         });
       }
-      
+
       // Create session for traditional auth
       (req as any).session.user = {
         id: user.id,
@@ -134,13 +134,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         name: `${user.firstName} ${user.lastName}`,
         profileImage: user.profileImageUrl,
       };
-      
+
       console.log("✅ Login successful:", user.id);
       console.log("🔐 Password verified and session created");
-      
-      res.json({ 
-        success: true, 
-        message: "Login successful", 
+
+      res.json({
+        success: true,
+        message: "Login successful",
         user: {
           id: user.id,
           email: user.email,
@@ -148,13 +148,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           lastName: user.lastName,
           name: `${user.firstName} ${user.lastName}`,
           profileImage: user.profileImageUrl,
-        }
+        },
       });
     } catch (error: any) {
       console.error("❌ Login error:", error);
-      res.status(401).json({ 
-        success: false, 
-        message: "Invalid email or password" 
+      res.status(401).json({
+        success: false,
+        message: "Invalid email or password",
       });
     }
   });
@@ -166,9 +166,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         req.session.destroy((err: any) => {
           if (err) {
             console.error("❌ Session destroy error:", err);
-            return res.status(500).json({ 
-              success: false, 
-              message: "Failed to logout" 
+            return res.status(500).json({
+              success: false,
+              message: "Failed to logout",
             });
           }
           res.json({ success: true, message: "Logged out successfully" });
@@ -178,9 +178,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error: any) {
       console.error("❌ Logout error:", error);
-      res.status(500).json({ 
-        success: false, 
-        message: "Failed to logout" 
+      res.status(500).json({
+        success: false,
+        message: "Failed to logout",
       });
     }
   });
@@ -197,11 +197,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check for Replit Auth
       if (req.user && req.user.claims) {
         console.log("🔐 Replit Auth session found");
-        
+
         // Try to get full user data from database
         const userId = req.user.claims.sub;
         const user = await storage.getUser(userId);
-        
+
         if (user) {
           // Return full user data from database
           const userData = {
@@ -209,7 +209,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             email: user.email,
             firstName: user.firstName,
             lastName: user.lastName,
-            name: user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.email,
+            name:
+              user.firstName && user.lastName
+                ? `${user.firstName} ${user.lastName}`
+                : user.email,
             profileImage: user.profileImageUrl,
           };
           return res.json(userData);
@@ -229,7 +232,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // No authentication found
       return res.status(401).json({ message: "Unauthorized" });
-      
     } catch (error) {
       console.error("❌ Error fetching user:", error);
       return res.status(401).json({ message: "Unauthorized" });
@@ -238,7 +240,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Properties
   app.get("/api/properties", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Get userId from either traditional auth (session.user.id) or OAuth (user.claims.sub)
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
       const properties = await storage.getProperties(userId);
       res.json(properties);
     } catch (error: any) {
@@ -248,53 +251,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/properties", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Get userId from either traditional auth (session.user.id) or OAuth (user.claims.sub)
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
       console.log("🏠 Creating property for user:", userId);
       console.log("🏠 Request body:", req.body);
-      
+
       // Clean the data before validation and ADD userId
-      const cleanedData = { 
+      const cleanedData = {
         ...req.body,
-        userId // Add userId from authenticated user
+        userId, // Add userId from authenticated user
       };
-      
+
       // Convert string numbers to actual numbers
-      if (cleanedData.bedrooms && typeof cleanedData.bedrooms === 'string') {
+      if (cleanedData.bedrooms && typeof cleanedData.bedrooms === "string") {
         cleanedData.bedrooms = parseInt(cleanedData.bedrooms);
       }
-      if (cleanedData.bathrooms && typeof cleanedData.bathrooms === 'string') {
+      if (cleanedData.bathrooms && typeof cleanedData.bathrooms === "string") {
         cleanedData.bathrooms = parseFloat(cleanedData.bathrooms);
       }
-      if (cleanedData.squareFeet && typeof cleanedData.squareFeet === 'string') {
+      if (
+        cleanedData.squareFeet &&
+        typeof cleanedData.squareFeet === "string"
+      ) {
         cleanedData.squareFeet = parseInt(cleanedData.squareFeet);
       }
-      if (cleanedData.yearBuilt && typeof cleanedData.yearBuilt === 'string') {
+      if (cleanedData.yearBuilt && typeof cleanedData.yearBuilt === "string") {
         cleanedData.yearBuilt = parseInt(cleanedData.yearBuilt);
       }
-      if (cleanedData.equityPercentage && typeof cleanedData.equityPercentage === 'string') {
+      if (
+        cleanedData.equityPercentage &&
+        typeof cleanedData.equityPercentage === "string"
+      ) {
         cleanedData.equityPercentage = parseInt(cleanedData.equityPercentage);
       }
-      if (cleanedData.confidenceScore && typeof cleanedData.confidenceScore === 'string') {
+      if (
+        cleanedData.confidenceScore &&
+        typeof cleanedData.confidenceScore === "string"
+      ) {
         cleanedData.confidenceScore = parseInt(cleanedData.confidenceScore);
       }
-      
+
       console.log("🏠 Cleaned data with userId:", cleanedData);
-      
+
       const validatedData = insertPropertySchema.parse(cleanedData);
       console.log("🏠 Validated data:", validatedData);
-      
+
       const property = await storage.createProperty(validatedData);
-      
+
       console.log("🏠 Property created successfully:", property.id);
       res.json(property);
     } catch (error: any) {
       console.error("❌ Property creation error:", error);
-      if (error.name === 'ZodError') {
+      if (error.name === "ZodError") {
         console.error("❌ Validation errors:", error.errors);
-        res.status(400).json({ 
-          message: "Validation failed", 
+        res.status(400).json({
+          message: "Validation failed",
           errors: error.errors,
-          details: error.errors.map((err: any) => `${err.path.join('.')}: ${err.message}`).join(', ')
+          details: error.errors
+            .map((err: any) => `${err.path.join(".")}: ${err.message}`)
+            .join(", "),
         });
       } else {
         res.status(400).json({ message: error.message });
@@ -304,7 +319,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/properties/search", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
       const { city, state, status, leadType } = req.query;
       const properties = await storage.searchProperties(userId, {
         city: city as string,
@@ -320,7 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/properties/:id", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
       const property = await storage.updateProperty(
         req.params.id,
         userId,
@@ -332,10 +347,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Comps endpoints
+  app.get("/api/properties/:id/comps", isAuthenticated, async (req: any, res) => {
+    try {
+      const comps = await storage.getCompsByProperty(req.params.id);
+      res.json(comps);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.post("/api/properties/:id/comps", isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
+      const property = await storage.getProperty(req.params.id, userId);
+      if (!property) {
+        return res.status(404).json({ message: "Property not found" });
+      }
+
+      // Delete existing comps before generating new ones
+      await storage.deleteCompsByProperty(req.params.id);
+
+      // Generate new comps using OpenAI
+      const { findCompsWithOpenAI } = await import("./openai");
+      const comps = await findCompsWithOpenAI(property);
+
+      // Save comps to database
+      const savedComps = [];
+      for (const comp of comps) {
+        const savedComp = await storage.createComp(comp);
+        savedComps.push(savedComp);
+      }
+
+      res.json(savedComps);
+    } catch (error: any) {
+      console.error("Error generating comps:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // Google Street View endpoint
+  app.get("/api/streetview/:address", async (req: any, res) => {
+    try {
+      const address = decodeURIComponent(req.params.address);
+      const apiKey = process.env.GOOGLE_STREET_VIEW_API_KEY;
+      
+      if (!apiKey) {
+        return res.status(500).json({ message: "Google Street View API key not configured" });
+      }
+
+      // Generate Google Street View Static API URL
+      const streetViewUrl = `https://maps.googleapis.com/maps/api/streetview?size=600x400&location=${encodeURIComponent(address)}&key=${apiKey}`;
+      
+      res.json({ url: streetViewUrl });
+    } catch (error: any) {
+      console.error("Error generating street view URL:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // Contacts
   app.get("/api/contacts", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
       const contacts = await storage.getContacts(userId);
       res.json(contacts);
     } catch (error: any) {
@@ -476,9 +550,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Conversations
-  app.get("/api/conversations", isAuthenticated, async (req: any, res) => {
+  app.get("/api/conversations", async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
+
+      if (req.session && req.session.user) {
+        // Traditional session
+        userId = req.session.user.id;
+      } else if (req.user && req.user.claims) {
+        // Replit Auth session
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const conversations = await storage.getConversations(userId);
       res.json(conversations);
     } catch (error: any) {
@@ -486,8 +571,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/conversations", isAuthenticated, async (req: any, res) => {
+  app.post("/api/conversations", async (req: any, res) => {
     try {
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
+
+      if (req.session && req.session.user) {
+        // Traditional session
+        userId = req.session.user.id;
+      } else if (req.user && req.user.claims) {
+        // Replit Auth session
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
       const validatedData = insertConversationSchema.parse(req.body);
       const conversation = await storage.createConversation(validatedData);
       res.json(conversation);
@@ -497,158 +595,164 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Messages
-  app.get(
-    "/api/conversations/:id/messages",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        const messages = await storage.getMessagesByConversation(req.params.id);
-        res.json(messages);
-      } catch (error: any) {
-        res.status(500).json({ message: error.message });
+  app.get("/api/conversations/:id/messages", async (req: any, res) => {
+    try {
+      // Check authentication for both traditional and Replit Auth sessions
+      if (!req.session?.user && !req.user?.claims) {
+        return res.status(401).json({ message: "Unauthorized" });
       }
-    },
-  );
 
-  app.post(
-    "/api/conversations/:id/messages",
-    isAuthenticated,
-    async (req: any, res) => {
-      try {
-        const userId = req.user.claims.sub;
-        const validatedData = insertMessageSchema.parse({
-          ...req.body,
-          conversationId: req.params.id,
-        });
-        const userMessage = await storage.createMessage(validatedData);
+      const messages = await storage.getMessagesByConversation(req.params.id);
+      res.json(messages);
+    } catch (error: any) {
+      res.status(500).json({ message: error.message });
+    }
+  });
 
-        // Skip AI responses for wizard-generated messages OR any property search messages
-        const isWizardMessage =
-          validatedData.content.toLowerCase().includes("find") &&
-          validatedData.content.toLowerCase().includes("properties") &&
-          (validatedData.content.toLowerCase().includes("distressed") ||
-            validatedData.content.toLowerCase().includes("motivated") ||
-            validatedData.content.toLowerCase().includes("leads"));
+  app.post("/api/conversations/:id/messages", async (req: any, res) => {
+    try {
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
 
-        // Also skip if it looks like any property search to let frontend wizard handle it
-        const isAnyPropertySearch =
-          validatedData.content
-            .toLowerCase()
-            .match(/(find|search|show|get)\s+(properties|distressed|leads)/i) ||
-          validatedData.content.toLowerCase().includes("properties in") ||
-          validatedData.content.match(/\d+\s+properties/i);
+      if (req.session && req.session.user) {
+        // Traditional session
+        userId = req.session.user.id;
+      } else if (req.user && req.user.claims) {
+        // Replit Auth session
+        userId = req.user.claims.sub;
+      } else {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const validatedData = insertMessageSchema.parse({
+        ...req.body,
+        conversationId: req.params.id,
+      });
+      const userMessage = await storage.createMessage(validatedData);
 
-        // Generate AI response based on agent type (skip for wizard messages)
-        const conversation = await storage.getConversation(req.params.id);
-        let aiResponse = "";
+      // Skip AI responses for wizard-generated messages OR any property search messages
+      const isWizardMessage =
+        validatedData.content.toLowerCase().includes("find") &&
+        validatedData.content.toLowerCase().includes("properties") &&
+        (validatedData.content.toLowerCase().includes("distressed") ||
+          validatedData.content.toLowerCase().includes("motivated") ||
+          validatedData.content.toLowerCase().includes("leads"));
 
-        if (conversation && !isWizardMessage && !isAnyPropertySearch) {
-          switch (conversation.agentType) {
-            case "lead-finder":
-              // Check if this is a property search request from Seller Lead Wizard
-              const isPropertySearch =
-                validatedData.content
-                  .toLowerCase()
-                  .match(
-                    /(find|search|show|get)\s+(properties|distressed|leads)/i,
-                  ) ||
-                validatedData.content.toLowerCase().includes("properties in") ||
-                validatedData.content.match(/\d+\s+properties/i);
+      // Also skip if it looks like any property search to let frontend wizard handle it
+      const isAnyPropertySearch =
+        validatedData.content
+          .toLowerCase()
+          .match(/(find|search|show|get)\s+(properties|distressed|leads)/i) ||
+        validatedData.content.toLowerCase().includes("properties in") ||
+        validatedData.content.match(/\d+\s+properties/i);
 
-              // Check if this is a cash buyer search request from Cash Buyer Wizard
-              const isCashBuyerSearch =
-                validatedData.content
-                  .toLowerCase()
-                  .match(
-                    /(find|search|show|get)\s+(cash\s+buyers?|buyers?)/i,
-                  ) ||
-                validatedData.content.toLowerCase().includes("cash buyers in");
+      // Generate AI response based on agent type (skip for wizard messages)
+      const conversation = await storage.getConversation(req.params.id);
+      let aiResponse = "";
 
-              if (isCashBuyerSearch) {
-                // Route directly to BatchLeads Cash Buyer API, bypass OpenAI
-                const { batchLeadsService } = await import("./batchleads");
+      if (conversation && !isWizardMessage && !isAnyPropertySearch) {
+        switch (conversation.agentType) {
+          case "lead-finder":
+            // Check if this is a property search request from Seller Lead Wizard
+            const isPropertySearch =
+              validatedData.content
+                .toLowerCase()
+                .match(
+                  /(find|search|show|get)\s+(properties|distressed|leads)/i,
+                ) ||
+              validatedData.content.toLowerCase().includes("properties in") ||
+              validatedData.content.match(/\d+\s+properties/i);
 
-                // Extract location from message
-                let location = "Orlando, FL"; // Default
-                const locationMatch = validatedData.content.match(
-                  /in\s+([^,\n]+(?:,\s*[A-Z]{2})?)/i,
-                );
-                if (locationMatch) {
-                  location = locationMatch[1].trim();
-                }
+            // Check if this is a cash buyer search request from Cash Buyer Wizard
+            const isCashBuyerSearch =
+              validatedData.content
+                .toLowerCase()
+                .match(/(find|search|show|get)\s+(cash\s+buyers?|buyers?)/i) ||
+              validatedData.content.toLowerCase().includes("cash buyers in");
 
-                console.log(
-                  `💰 ROUTES: About to call BatchLeads Cash Buyer API with location:`,
-                  location,
-                );
-                const results = await batchLeadsService.searchCashBuyersRaw({
-                  location,
-                  limit: 5,
-                });
-                console.log(
-                  `💰 ROUTES: Cash Buyer API returned:`,
-                  JSON.stringify(results, null, 2),
-                );
+            if (isCashBuyerSearch) {
+              // Route directly to BatchLeads Cash Buyer API, bypass OpenAI
+              const { batchLeadsService } = await import("./batchleads");
 
-                if (results.buyers.length === 0) {
-                  aiResponse = `I couldn't find any qualified cash buyers with 3+ properties in ${location}. Try a different location or check back later as new buyers enter the market regularly.`;
-                } else {
-                  // Simple response - the frontend wizard will handle the detailed card formatting
-                  aiResponse = `Found ${results.buyers.length} qualified cash buyers with 3+ properties in ${location}. Processing individual cards now...`;
-                }
-              } else if (isPropertySearch) {
-                // Seller Lead Wizard will handle the formatted card display
-                aiResponse =
-                  "I'm ready to help you find motivated sellers! Please use the Seller Lead Wizard above to search for properties with beautiful formatted cards.";
-              } else {
-                // Non-property search - using dummy response while API is paused
-                aiResponse =
-                  "I'm here to help you find motivated sellers and distressed properties! Use the Seller Lead Wizard above to search for properties in your target area.";
+              // Extract location from message
+              let location = "Orlando, FL"; // Default
+              const locationMatch = validatedData.content.match(
+                /in\s+([^,\n]+(?:,\s*[A-Z]{2})?)/i,
+              );
+              if (locationMatch) {
+                location = locationMatch[1].trim();
               }
-              break;
-            case "deal-analyzer":
-              // Using dummy response while API is paused
-              aiResponse =
-                "I'm the Deal Analyzer Agent! I help analyze property deals and calculate profit potential. All API calls are currently paused - using dummy data for testing.";
-              break;
-            case "negotiation":
-              // Using dummy response while API is paused
-              aiResponse =
-                "I'm the Negotiation Agent! I help craft compelling offers and negotiate with sellers. All API calls are currently paused - using dummy data for testing.";
-              break;
-            case "closing":
-              // Using dummy response while API is paused
-              aiResponse =
-                "I'm the Closing Agent! I help manage transactions and prepare closing documents. All API calls are currently paused - using dummy data for testing.";
-              break;
-            default:
-              aiResponse =
-                "I'm here to help with your real estate wholesaling needs!";
-          }
 
-          // Create AI response message
-          const aiMessage = await storage.createMessage({
-            conversationId: req.params.id,
-            content: aiResponse,
-            role: "assistant",
-            isAiGenerated: true,
-          });
+              console.log(
+                `💰 ROUTES: About to call BatchLeads Cash Buyer API with location:`,
+                location,
+              );
+              const results = await batchLeadsService.searchCashBuyersRaw({
+                location,
+                limit: 5,
+              });
+              console.log(
+                `💰 ROUTES: Cash Buyer API returned:`,
+                JSON.stringify(results, null, 2),
+              );
 
-          res.json([userMessage, aiMessage]);
-        } else {
-          res.json([userMessage]);
+              if (results.buyers.length === 0) {
+                aiResponse = `I couldn't find any qualified cash buyers with 3+ properties in ${location}. Try a different location or check back later as new buyers enter the market regularly.`;
+              } else {
+                // Simple response - the frontend wizard will handle the detailed card formatting
+                aiResponse = `Found ${results.buyers.length} qualified cash buyers with 3+ properties in ${location}. Processing individual cards now...`;
+              }
+            } else if (isPropertySearch) {
+              // Seller Lead Wizard will handle the formatted card display
+              aiResponse =
+                "I'm ready to help you find motivated sellers! Please use the Seller Lead Wizard above to search for properties with beautiful formatted cards.";
+            } else {
+              // Non-property search - using dummy response while API is paused
+              aiResponse =
+                "I'm here to help you find motivated sellers and distressed properties! Use the Seller Lead Wizard above to search for properties in your target area.";
+            }
+            break;
+          case "deal-analyzer":
+            // Using dummy response while API is paused
+            aiResponse =
+              "I'm the Deal Analyzer Agent! I help analyze property deals and calculate profit potential. All API calls are currently paused - using dummy data for testing.";
+            break;
+          case "negotiation":
+            // Using dummy response while API is paused
+            aiResponse =
+              "I'm the Negotiation Agent! I help craft compelling offers and negotiate with sellers. All API calls are currently paused - using dummy data for testing.";
+            break;
+          case "closing":
+            // Using dummy response while API is paused
+            aiResponse =
+              "I'm the Closing Agent! I help manage transactions and prepare closing documents. All API calls are currently paused - using dummy data for testing.";
+            break;
+          default:
+            aiResponse =
+              "I'm here to help with your real estate wholesaling needs!";
         }
-      } catch (error: any) {
-        console.error("Error in message handler:", error);
-        res.status(400).json({ message: error.message });
+
+        // Create AI response message
+        const aiMessage = await storage.createMessage({
+          conversationId: req.params.id,
+          content: aiResponse,
+          role: "assistant",
+          isAiGenerated: true,
+        });
+
+        res.json([userMessage, aiMessage]);
+      } else {
+        res.json([userMessage]);
       }
-    },
-  );
+    } catch (error: any) {
+      console.error("Error in message handler:", error);
+      res.status(400).json({ message: error.message });
+    }
+  });
 
   // Documents
   app.get("/api/documents", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
       const documents = await storage.getDocuments(userId);
       res.json(documents);
     } catch (error: any) {
@@ -669,7 +773,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Deals
   app.get("/api/deals", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
       const deals = await storage.getDeals(userId);
       res.json(deals);
     } catch (error: any) {
@@ -833,7 +937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // BatchLeads Property Search
   app.post("/api/properties/search", isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
       const {
         location,
         maxPrice,
@@ -1082,13 +1186,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get multiple properties at once - WITH LEAD DELIVERY DEDUPLICATION & AUTO-SAVE SEARCH
-  app.post("/api/properties/batch", isAuthenticated, async (req: any, res) => {
+  app.post("/api/properties/batch", async (req: any, res) => {
     console.log(
       "🔥🔥🔥 ENHANCED BATCH ROUTE WITH LEAD DELIVERIES - TIMESTAMP:",
       new Date().toISOString(),
     );
     try {
-      const userId = req.user.claims.sub;
+      // Check authentication for both traditional and Replit Auth sessions
+      let userId: string;
+
+      if (req.session && req.session.user) {
+        // Traditional session
+        userId = req.session.user.id;
+        console.log("🔐 Using traditional session userId:", userId);
+      } else if (req.user && req.user.claims) {
+        // Replit Auth session
+        userId = req.user.claims.sub;
+        console.log("🔐 Using Replit Auth session userId:", userId);
+      } else {
+        console.log("❌ No valid session found");
+        return res.status(401).json({ message: "Unauthorized" });
+      }
       const { count = 5, criteria = {} } = req.body;
 
       console.log(
@@ -1446,133 +1564,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Dedicated Cash Buyer API endpoint - Using mock data for UI testing
+  // Dedicated Cash Buyer API endpoint - Using real BatchData API
   app.post("/api/cash-buyers/search", async (req, res) => {
     try {
       const {
         location,
-        buyerType = "all_cash_buyers",
+        buyerType = "cash-buyer",
+        quickLists,
         minProperties = 3,
       } = req.body;
 
-      console.log("🔍 Cash buyer search:", {
+      console.log("🔍 Cash buyer search with real API:", {
         location,
         buyerType,
+        quickLists,
         minProperties,
       });
 
-      // Generate realistic mock cash buyer data for UI testing
-      const mockBuyers = [
-        {
-          _id: "buyer1",
-          address: {
-            street: "1425 E Desert Garden Dr",
-            city: "Phoenix",
-            state: "AZ",
-            zip: "85048",
-          },
-          owner: {
-            fullName: "PINNACLE INVESTMENT GROUP LLC",
-            emails: ["contact@pinnacleig.com"],
-            phoneNumbers: [{ number: "6025551234", type: "business" }],
-            mailingAddress: {
-              street: "3540 W Sahara Ave Ste 440",
-              city: "Las Vegas",
-              state: "NV",
-              zip: "89102",
-            },
-          },
-          valuation: { estimatedValue: 845000 },
-          building: {
-            propertyType: "Single Family",
-            bedrooms: 4,
-            bathrooms: 3,
-            squareFeet: 2200,
-          },
-          sale: { lastSaleDate: "2024-01-15", lastSalePrice: 785000 },
-          propertyOwnerProfile: {
-            propertiesCount: 12,
-            propertiesTotalEstimatedValue: 8500000,
-            averagePurchasePrice: 650000,
-          },
-        },
-        {
-          _id: "buyer2",
-          address: {
-            street: "7842 S 19th Ave",
-            city: "Phoenix",
-            state: "AZ",
-            zip: "85041",
-          },
-          owner: {
-            fullName: "DESERT CAPITAL VENTURES",
-            emails: ["invest@desertcapital.com"],
-            phoneNumbers: [{ number: "6025559876", type: "business" }],
-            mailingAddress: {
-              street: "7842 S 19th Ave",
-              city: "Phoenix",
-              state: "AZ",
-              zip: "85041",
-            },
-          },
-          valuation: { estimatedValue: 675000 },
-          building: {
-            propertyType: "Single Family",
-            bedrooms: 3,
-            bathrooms: 2,
-            squareFeet: 1850,
-          },
-          sale: { lastSaleDate: "2024-02-28", lastSalePrice: 620000 },
-          propertyOwnerProfile: {
-            propertiesCount: 8,
-            propertiesTotalEstimatedValue: 5200000,
-            averagePurchasePrice: 575000,
-          },
-        },
-        {
-          _id: "buyer3",
-          address: {
-            street: "2156 W Union Hills Dr",
-            city: "Phoenix",
-            state: "AZ",
-            zip: "85027",
-          },
-          owner: {
-            fullName: "ARIZONA PORTFOLIO HOLDINGS",
-            emails: ["deals@azportfolio.com"],
-            phoneNumbers: [
-              { number: "6025554567", type: "business" },
-              { number: "6025554568", type: "cell", dnc: true },
-            ],
-            mailingAddress: {
-              street: "15950 N Scottsdale Rd Ste 104",
-              city: "Scottsdale",
-              state: "AZ",
-              zip: "85254",
-            },
-          },
-          valuation: { estimatedValue: 925000 },
-          building: {
-            propertyType: "Single Family",
-            bedrooms: 5,
-            bathrooms: 3,
-            squareFeet: 2650,
-          },
-          sale: { lastSaleDate: "2023-11-12", lastSalePrice: 875000 },
-          propertyOwnerProfile: {
-            propertiesCount: 15,
-            propertiesTotalEstimatedValue: 12500000,
-            averagePurchasePrice: 720000,
-          },
-        },
-      ];
+      // Use real BatchData API with proper quickLists
+      const { batchLeadsService } = await import("./batchleads");
+      
+      // Always use "cash-buyer" as the valid quickList value
+      const effectiveQuickLists = quickLists && quickLists.length > 0 ? ["cash-buyer"] : ["cash-buyer"];
+      
+      const results = await batchLeadsService.searchCashBuyersRaw({
+        location,
+        quickLists: effectiveQuickLists,
+        limit: 5,
+      });
+
+      console.log("💰 BatchData API returned:", {
+        totalFound: results.totalFound,
+        buyersReturned: results.buyers.length,
+        location: results.location,
+        quickLists: effectiveQuickLists,
+      });
 
       res.json({
         success: true,
-        location: location,
-        totalFound: 3,
-        returned: 3,
-        buyers: mockBuyers,
+        location: results.location,
+        totalFound: results.totalFound,
+        returned: results.buyers.length,
+        buyers: results.buyers,
       });
     } catch (error: any) {
       console.error("Cash buyer search error:", error);

@@ -12,9 +12,21 @@ import { useAuth } from "@/hooks/useAuth";
 function Router() {
   const { isAuthenticated, isLoading } = useAuth();
 
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-slate-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <Switch>
-      {isLoading || !isAuthenticated ? (
+      {!isAuthenticated ? (
         <>
           <Route path="/" component={Landing} />
           <Route path="/auth" component={Auth} />
@@ -22,6 +34,13 @@ function Router() {
       ) : (
         <>
           <Route path="/" component={Home} />
+          <Route path="/auth">
+            {() => {
+              // Redirect authenticated users away from auth page
+              window.location.href = "/";
+              return null;
+            }}
+          </Route>
         </>
       )}
       <Route component={NotFound} />

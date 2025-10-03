@@ -5,8 +5,8 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useState, useEffect, useRef } from "react";
-import { useMutation } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { 
   MapPin, 
@@ -22,7 +22,7 @@ import {
   Calculator,
   Loader2
 } from "lucide-react";
-import type { Property, Contact, DealAnalysisRequest, DealAnalysisResult } from "@shared/schema";
+import type { Property, Contact, DealAnalysisRequest, DealAnalysisResult, Comp } from "@shared/schema";
 
 interface PropertyCardProps {
   property: Property | null;
@@ -43,6 +43,57 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
   const [streamMessage, setStreamMessage] = useState('');
   const eventSourceRef = useRef<EventSource | null>(null);
   const { toast } = useToast();
+
+  const [comps, setComps] = useState<Comp[]>([]);
+  const [showComps, setShowComps] = useState(false);
+  const [isLoadingComps, setIsLoadingComps] = useState(false);
+  const [compsProgress, setCompsProgress] = useState(0);
+
+  // Street View Component
+  const StreetView = ({ address, className = "" }: { address: string, className?: string }) => {
+    const [imageUrl, setImageUrl] = useState<string>('');
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
+
+    useEffect(() => {
+      const fetchStreetView = async () => {
+        try {
+          const response = await fetch(`/api/streetview/${encodeURIComponent(address)}`);
+          const data = await response.json();
+          if (data.url) {
+            setImageUrl(data.url);
+          } else {
+            setError(true);
+          }
+        } catch (err) {
+          setError(true);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchStreetView();
+    }, [address]);
+
+    if (loading) {
+      return (
+        <div className={`bg-slate-200 dark:bg-slate-800 animate-pulse rounded-lg ${className}`} style={{ height: '200px' }} />
+      );
+    }
+
+    if (error || !imageUrl) {
+      return null;
+    }
+
+    return (
+      <img 
+        src={imageUrl} 
+        alt={`Street view of ${address}`}
+        className={`rounded-lg object-cover ${className}`}
+        style={{ height: '200px', width: '100%' }}
+        data-testid="img-streetview"
+      />
+    );
+  };
 
   // Helper function to transform database fields to DealAnalysisResult format
   const transformPropertyToAnalysisResult = (prop: Property): DealAnalysisResult | null => {
@@ -116,14 +167,92 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
     },
   });
 
+  // Query to fetch existing comps
+  const { data: existingComps } = useQuery<Comp[]>({
+    queryKey: ['/api/properties', property.id, 'comps'],
+    enabled: !!property.id,
+  });
+
+  // Update comps state when existing comps are fetched
+  useEffect(() => {
+    if (existingComps && existingComps.length > 0) {
+      setComps(existingComps);
+      setShowComps(true);
+    }
+  }, [existingComps]);
+
+  // Mutation for running comps
+  const runCompsMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", `/api/properties/${property.id}/comps`);
+      return await response.json();
+    },
+    onMutate: () => {
+      setIsLoadingComps(true);
+      setCompsProgress(0);
+      
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setCompsProgress(prev => {
+          if (prev >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return prev + 10;
+        });
+      }, 500);
+      
+      return { progressInterval };
+    },
+    onSuccess: (data: Comp[], _variables, context: any) => {
+      setComps(data);
+      setShowComps(true);
+      setCompsProgress(100);
+      setIsLoadingComps(false);
+      
+      // Clear the progress interval
+      if (context?.progressInterval) {
+        clearInterval(context.progressInterval);
+      }
+      
+      // Invalidate cache to refetch
+      queryClient.invalidateQueries({ queryKey: ['/api/properties', property.id, 'comps'] });
+      
+      toast({
+        title: "Comps Analysis Complete",
+        description: `Found ${data.length} comparable properties.`,
+      });
+    },
+    onError: (error: any, _variables, context: any) => {
+      console.error("Comps error:", error);
+      setIsLoadingComps(false);
+      setCompsProgress(0);
+      
+      // Clear the progress interval
+      if (context?.progressInterval) {
+        clearInterval(context.progressInterval);
+      }
+      
+      toast({
+        title: "Comps Analysis Failed",
+        description: "Unable to find comparable properties. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleRunComps = () => {
+    runCompsMutation.mutate();
+  };
+
   // Stream-based deal analysis function
   const startStreamAnalysis = async () => {
     if (isStreaming || !property) return;
-    
+
     setIsStreaming(true);
     setStreamProgress(0);
     setStreamMessage('Connecting to analysis service...');
-    
+
     try {
       const eventSource = new EventSource(
         `/api/deals/analyze/${property.id}/stream`,
@@ -240,6 +369,12 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
           </DialogTitle>
         </DialogHeader>
 
+        {/* Property Street View */}
+        <StreetView 
+          address={`${property.address}, ${property.city}, ${property.state} ${property.zipCode}`}
+          className="mb-4"
+        />
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Property Details */}
           <Card>
@@ -339,23 +474,51 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                 <div>
                   <span className="font-medium text-slate-700">Phone Numbers:</span>
                   <div className="mt-1 space-y-1">
-                    {property.ownerPhone && (
+                    {property.ownerPhone && property.ownerPhone !== 'undefined' && (
                       <div className="flex items-center gap-2">
                         <Phone className="w-4 h-4 text-slate-500" />
                         <span>{property.ownerPhone}</span>
+                        <span className="text-xs text-green-600 bg-green-100 px-1 rounded">Primary</span>
                       </div>
                     )}
-                    {property.ownerLandLine && (
+                    {property.ownerLandLine && property.ownerLandLine !== 'undefined' && property.ownerLandLine !== property.ownerPhone && (
+                      <div className="text-sm flex items-center gap-2">
+                        <Phone className="w-3 h-3 text-slate-500" />
+                        <span className="text-slate-600">Land Line:</span> 
+                        <span>{property.ownerLandLine}</span>
+                      </div>
+                    )}
+                    {property.ownerMobilePhone && property.ownerMobilePhone !== 'undefined' && property.ownerMobilePhone !== property.ownerPhone && (
+                      <div className="text-sm flex items-center gap-2">
+                        <Phone className="w-3 h-3 text-slate-500" />
+                        <span className="text-slate-600">Mobile:</span> 
+                        <span>{property.ownerMobilePhone}</span>
+                      </div>
+                    )}
+                    {/* Show all phone numbers from the string array */}
+                    {property.ownerPhoneNumbers && Array.isArray(property.ownerPhoneNumbers) && property.ownerPhoneNumbers.length > 0 && (
                       <div className="text-sm">
-                        <span className="text-slate-600">Land Line:</span> {property.ownerLandLine}
+                        <span className="text-slate-600">All Phone Numbers:</span>
+                        <div className="mt-1 space-y-1">
+                          {property.ownerPhoneNumbers.map((phone, index) => {
+                            // Handle only string arrays - phone numbers are strings
+                            if (typeof phone === 'string' && phone && phone !== 'undefined' && phone.trim() !== '') {
+                              return (
+                                <div key={index} className="flex items-center gap-2 pl-2">
+                                  <Phone className="w-3 h-3 text-slate-400" />
+                                  <span className="text-xs">{phone}</span>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }).filter(Boolean)}
+                        </div>
                       </div>
                     )}
-                    {property.ownerMobilePhone && (
-                      <div className="text-sm">
-                        <span className="text-slate-600">Mobile:</span> {property.ownerMobilePhone}
-                      </div>
-                    )}
-                    {!property.ownerPhone && !property.ownerLandLine && !property.ownerMobilePhone && (
+                    {(!property.ownerPhone || property.ownerPhone === 'undefined') && 
+                     (!property.ownerLandLine || property.ownerLandLine === 'undefined') && 
+                     (!property.ownerMobilePhone || property.ownerMobilePhone === 'undefined') && 
+                     (!property.ownerPhoneNumbers || property.ownerPhoneNumbers.length === 0) && (
                       <span className="text-slate-500 text-sm">No phone numbers available</span>
                     )}
                   </div>
@@ -377,11 +540,11 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                 </div>
 
                 {/* DNC Phone Numbers */}
-                {property.ownerDNCPhone && (
+                {property.ownerDncPhone && property.ownerDncPhone !== 'undefined' && property.ownerDncPhone.trim() !== '' && (
                   <div>
                     <span className="font-medium text-slate-700">DNC Phone Numbers:</span>
                     <div className="mt-1 text-sm text-red-600">
-                      {property.ownerDNCPhone.split(',').map((phone, index) => (
+                      {property.ownerDncPhone.split(',').filter(phone => phone.trim() && phone.trim() !== 'undefined').map((phone, index) => (
                         <div key={index} className="flex items-center gap-2">
                           <Phone className="w-3 h-3" />
                           <span>{phone.trim()}</span>
@@ -427,8 +590,8 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
             </CardContent>
           </Card>
 
-          {/* Contact Information (if available) */}
-          {contact && (
+          {/* Contact Information - Show from either contact prop or embedded property data */}
+          {(contact || property.ownerPhone || property.ownerEmail || property.ownerLandLine || property.ownerMobilePhone) && (
             <Card className="md:col-span-2">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
@@ -437,21 +600,68 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="font-medium text-slate-700">Contact Name:</span>
-                    <div className="mt-1">{contact.name}</div>
+                    <div className="mt-1">{contact?.name || property.ownerName || "Property Owner"}</div>
                   </div>
-                  {contact.phone && (
-                    <div className="flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-slate-500" />
-                      <span>{contact.phone}</span>
+
+                  {/* Primary Phone */}
+                  {(contact?.phone || property.ownerPhone) && (
+                    <div>
+                      <span className="font-medium text-slate-700">Primary Phone:</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Phone className="w-4 h-4 text-slate-500" />
+                        <span>{contact?.phone || property.ownerPhone}</span>
+                      </div>
                     </div>
                   )}
-                  {contact.email && (
-                    <div className="flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-slate-500" />
-                      <span>{contact.email}</span>
+
+                  {/* Email */}
+                  {(contact?.email || property.ownerEmail) && (
+                    <div>
+                      <span className="font-medium text-slate-700">Email:</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Mail className="w-4 h-4 text-slate-500" />
+                        <span>{contact?.email || property.ownerEmail}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Additional Phone Numbers */}
+                  {property.ownerLandLine && property.ownerLandLine !== property.ownerPhone && (
+                    <div>
+                      <span className="font-medium text-slate-700">Land Line:</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Phone className="w-4 h-4 text-slate-500" />
+                        <span>{property.ownerLandLine}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {property.ownerMobilePhone && property.ownerMobilePhone !== property.ownerPhone && (
+                    <div>
+                      <span className="font-medium text-slate-700">Mobile:</span>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Phone className="w-4 h-4 text-slate-500" />
+                        <span>{property.ownerMobilePhone}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* DNC Phone Numbers */}
+                  {property.ownerDncPhone && (
+                    <div className="md:col-span-2">
+                      <span className="font-medium text-slate-700">DNC Phone Numbers:</span>
+                      <div className="mt-1 text-sm text-red-600">
+                        {property.ownerDncPhone.split(',').map((phone, index) => (
+                          <div key={index} className="flex items-center gap-2">
+                            <Phone className="w-3 h-3" />
+                            <span>{phone.trim()}</span>
+                            <span className="text-xs bg-red-100 text-red-800 px-1 rounded">DNC</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -634,6 +844,121 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
           </>
         )}
 
+        {/* Comps Results */}
+        {showComps && comps.length > 0 && (
+          <>
+            <Separator className="my-4" />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Home className="w-5 h-5 text-blue-600" />
+                  Comparable Properties
+                </h3>
+                <Badge variant="outline" className="text-xs">
+                  {comps.length} Comps Found
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {comps.slice(0, 3).map((comp, index) => (
+                  <Card key={comp.id || index}>
+                    <CardHeader>
+                      <CardTitle className="text-sm flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        Comp #{index + 1}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2">
+                      {/* Comp Street View */}
+                      <StreetView 
+                        address={comp.address}
+                        className="mb-3"
+                      />
+                      <div className="text-xs font-medium text-slate-900 dark:text-slate-100 mb-2">
+                        {comp.address}
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Sold Price:</span>
+                        <span className="font-mono font-semibold text-green-600">
+                          ${Number(comp.soldPrice).toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Sold Date:</span>
+                        <span>{comp.soldDate}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Beds/Baths:</span>
+                        <span>{comp.bedrooms || 'N/A'} / {comp.bathrooms || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Square Feet:</span>
+                        <span>{comp.squareFeet ? comp.squareFeet.toLocaleString() : 'N/A'} sq ft</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Price/Sqft:</span>
+                        <span className="font-mono">
+                          ${comp.pricePerSqft ? Number(comp.pricePerSqft).toLocaleString() : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs border-t pt-2">
+                        <span>Distance:</span>
+                        <span>{comp.distance ? Number(comp.distance).toFixed(2) : 'N/A'} mi</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Similarity:</span>
+                        <Badge variant="secondary" className="text-xs">
+                          {comp.similarityScore || 'N/A'}%
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Days on Market:</span>
+                        <span>{comp.daysOnMarket || 'N/A'} days</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              <div className="flex justify-end">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setShowComps(false)}
+                  data-testid="button-hide-comps"
+                >
+                  Hide Comps
+                </Button>
+              </div>
+            </div>
+            <Separator className="my-4" />
+          </>
+        )}
+
+        {/* Comps Loading Progress Indicator */}
+        {isLoadingComps && (
+          <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <div className="flex items-center gap-3 mb-3">
+              <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+              <div className="flex-1">
+                <div className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  Finding Comparable Properties
+                </div>
+                <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                  Analyzing similar properties in the area...
+                </div>
+              </div>
+            </div>
+            <Progress 
+              value={compsProgress} 
+              className="w-full h-2"
+            />
+            <div className="text-xs text-blue-600 dark:text-blue-400 mt-1 text-right">
+              {compsProgress}%
+            </div>
+          </div>
+        )}
+
         {/* Streaming Progress Indicator */}
         {isStreaming && (
           <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg">
@@ -672,6 +997,32 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
               Show Analysis
             </Button>
           )}
+          {/* Show Comps Button - appears when comps exist but are hidden */}
+          {comps.length > 0 && !showComps && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              data-testid="button-show-comps"
+              onClick={() => setShowComps(true)}
+            >
+              <Home className="w-4 h-4 mr-2" />
+              Show Comps
+            </Button>
+          )}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            data-testid="button-run-comps"
+            onClick={handleRunComps}
+            disabled={isLoadingComps || runCompsMutation.isPending}
+          >
+            {(isLoadingComps || runCompsMutation.isPending) ? (
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            ) : (
+              <Home className="w-4 h-4 mr-2" />
+            )}
+            {(isLoadingComps || runCompsMutation.isPending) ? "Finding Comps..." : comps.length > 0 ? "Re-Run Comps" : "Run Comps"}
+          </Button>
           <Button 
             variant="outline" 
             size="sm" 
@@ -685,14 +1036,6 @@ export default function PropertyCard({ property, contact, isOpen, onClose }: Pro
               <Calculator className="w-4 h-4 mr-2" />
             )}
             {(isStreaming || analyzeDealMutation.isPending) ? "Analyzing..." : hasExistingAnalysis ? "Re-analyze Deal" : "Analyze Deal"}
-          </Button>
-          <Button variant="outline" size="sm" data-testid="button-generate-contract">
-            <FileText className="w-4 h-4 mr-2" />
-            Generate Contract
-          </Button>
-          <Button variant="outline" size="sm" data-testid="button-start-conversation">
-            <MessageSquare className="w-4 h-4 mr-2" />
-            Start Conversation
           </Button>
           <Button onClick={onClose} data-testid="button-close-property-card">
             Close
