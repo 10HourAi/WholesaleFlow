@@ -1568,7 +1568,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const {
         location,
-        buyerType = "all_cash_buyers",
+        buyerType = "cash-buyer",
         quickLists,
         minProperties = 3,
       } = req.body;
@@ -1583,8 +1583,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use real BatchData API with proper quickLists
       const { batchLeadsService } = await import("./batchleads");
       
-      // Map buyer type to proper quicklist if not already provided
-      const effectiveQuickLists = quickLists || [buyerType];
+      // Always use "cash-buyer" as the valid quickList value
+      const effectiveQuickLists = quickLists && quickLists.length > 0 ? ["cash-buyer"] : ["cash-buyer"];
       
       const results = await batchLeadsService.searchCashBuyersRaw({
         location,

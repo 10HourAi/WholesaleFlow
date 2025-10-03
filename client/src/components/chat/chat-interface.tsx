@@ -95,7 +95,7 @@ const CondensedPropertyCard = ({
   const handleAddToCRM = async () => {
     try {
       console.log("🏠 Attempting to add property to CRM:", property.address);
-      
+
       // Check if property already exists to prevent duplicates
       const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
       const propertyExists = existingProperties?.some(p => 
@@ -103,7 +103,7 @@ const CondensedPropertyCard = ({
         p.city === property.city && 
         p.state === property.state
       );
-      
+
       if (propertyExists) {
         toast({
           title: "Already in CRM",
@@ -112,7 +112,7 @@ const CondensedPropertyCard = ({
         });
         return;
       }
-      
+
       // Prepare property data for API
       const propertyData = {
         address: property.address,
@@ -142,27 +142,27 @@ const CondensedPropertyCard = ({
       };
 
       console.log("🏠 Property data being sent:", propertyData);
-      
+
       const result = await apiRequest("POST", "/api/properties", propertyData);
       console.log("🏠 Property successfully added to CRM:", result);
-      
+
       toast({
         title: "Added to CRM",
         description: `Property at ${property.address} has been added to your CRM.`,
       });
-      
+
       await queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
     } catch (error: any) {
       console.error("Error adding property to CRM:", error);
       console.error("Error details:", error.response || error);
-      
+
       let errorMessage = "Failed to add property to CRM.";
       if (error.response?.status === 401) {
         errorMessage = "Authentication required. Please log in again.";
       } else if (error.response?.data?.message) {
         errorMessage = error.response.data.message;
       }
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -171,7 +171,7 @@ const CondensedPropertyCard = ({
     }
   };
 
-  
+
 
   return (
     <Card className="w-full max-w-2xl mx-auto overflow-hidden bg-white border border-gray-200 shadow-sm">
@@ -692,7 +692,7 @@ const PropertyDetailsModal = ({
                     viewBox="0 0 24 24"
                     fill="currentColor"
                   >
-                    <path d="M20,8L12,13L4,8V6L12,11L20,6M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,1.89 21.1,4 20,4Z" />
+                    <path d="M20,8L12,13L4,8M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,1.89 21.1,4 20,4Z" />
                   </svg>
                   <span className="font-medium text-green-700">
                     Email Addresses
@@ -1132,7 +1132,7 @@ const PropertyCard = ({ content }: { content: string }) => {
 
     try {
       console.log("🏠 Attempting to add property to CRM:", propertyData.address);
-      
+
       // Check if property already exists to prevent duplicates
       const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
       const propertyExists = existingProperties?.some(p => 
@@ -1140,7 +1140,7 @@ const PropertyCard = ({ content }: { content: string }) => {
         p.city === propertyData.city && 
         p.state === propertyData.state
       );
-      
+
       if (propertyExists) {
         toast({
           title: "Already in CRM",
@@ -1149,9 +1149,9 @@ const PropertyCard = ({ content }: { content: string }) => {
         });
         return;
       }
-      
+
       console.log("🏠 Property data being sent:", propertyData);
-      
+
       const result = await apiRequest("POST", "/api/properties", propertyData);
       console.log("🏠 Property successfully added to CRM:", result);
 
@@ -1166,7 +1166,7 @@ const PropertyCard = ({ content }: { content: string }) => {
     } catch (error: any) {
       console.error("Error adding property to CRM:", error);
       console.error("Error details:", error.response || error);
-      
+
       let errorMessage = "Failed to add property to CRM. Please try again.";
       if (error.response?.status === 401) {
         errorMessage = "Authentication required. Please log in again.";
@@ -1175,7 +1175,7 @@ const PropertyCard = ({ content }: { content: string }) => {
       } else if (error.response?.data?.details) {
         errorMessage = `Validation error: ${error.response.data.details}`;
       }
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -1198,7 +1198,7 @@ const PropertyCard = ({ content }: { content: string }) => {
 
     try {
       console.log("🏠 Confirming add property to CRM:", propertyData.address);
-      
+
       // Check if property already exists to prevent duplicates
       const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
       const propertyExists = existingProperties?.some(p => 
@@ -1206,7 +1206,7 @@ const PropertyCard = ({ content }: { content: string }) => {
         p.city === propertyData.city && 
         p.state === propertyData.state
       );
-      
+
       if (propertyExists) {
         toast({
           title: "Already in CRM",
@@ -1216,9 +1216,9 @@ const PropertyCard = ({ content }: { content: string }) => {
         setShowDetailsDialog(false);
         return;
       }
-      
+
       console.log("🏠 Property data being sent:", propertyData);
-      
+
       const result = await apiRequest("POST", "/api/properties", propertyData);
       console.log("🏠 Property successfully added to CRM:", result);
 
@@ -1236,7 +1236,7 @@ const PropertyCard = ({ content }: { content: string }) => {
     } catch (error: any) {
       console.error("Error adding property to CRM:", error);
       console.error("Error details:", error.response || error);
-      
+
       let errorMessage = "Failed to add property to CRM. Please try again.";
       if (error.response?.status === 401) {
         errorMessage = "Authentication required. Please log in again.";
@@ -1245,7 +1245,7 @@ const PropertyCard = ({ content }: { content: string }) => {
       } else if (error.response?.data?.details) {
         errorMessage = `Validation error: ${error.response.data.details}`;
       }
-      
+
       toast({
         title: "Error",
         description: errorMessage,
@@ -1254,7 +1254,7 @@ const PropertyCard = ({ content }: { content: string }) => {
     }
   };
 
-  
+
 
   // Remove any action sections from content for display
   const displayContent = content
@@ -2617,32 +2617,30 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
               <div className="grid grid-cols-1 gap-3">
                 {[
                   {
-                    id: "active_landlord",
+                    id: "active-landlord",
                     name: "🏠 Active Landlord Buyers",
                     description:
                       "Investors focused on rental properties and portfolio growth",
                     quickLists: ["active-landlord"],
                   },
                   {
-                    id: "fix_and_flip",
-                    name: "🔨 Fix and Flip Buyers",
-                    description:
-                      "Investors who buy, renovate, and resell properties",
+                    id: "fix-flip",
+                    name: "🔨 Fix & Flip Investors",
+                    description: "Investors who renovate and resell properties",
                     quickLists: ["fix-flip"],
                   },
                   {
-                    id: "cash_buyers",
-                    name: "💰 Cash Buyers",
+                    id: "cash-buyer",
+                    name: "💰 All Cash Buyers",
                     description:
-                      "General cash buyers looking for investment opportunities",
+                      "Any investor who has purchased properties with cash",
                     quickLists: ["cash-buyer"],
                   },
                   {
-                    id: "builders",
-                    name: "🏗️ Builders",
-                    description:
-                      "Construction companies and developers looking for projects",
-                    quickLists: ["builder"],
+                    id: "cash-buyer",
+                    name: "📊 Portfolio Investors",
+                    description: "Large-scale investors with 5+ properties",
+                    quickLists: ["cash-buyer"],
                   },
                 ].map((type) => (
                   <div
