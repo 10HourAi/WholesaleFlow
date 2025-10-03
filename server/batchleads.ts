@@ -1344,6 +1344,7 @@ class BatchLeadsService {
   // NEW: Simple raw cash buyer search - returns all data as-is from BatchData API
   async searchCashBuyersRaw(criteria: {
     location: string;
+    quickLists?: string[];
     limit?: number;
   }): Promise<{
     buyers: any[];
@@ -1351,13 +1352,17 @@ class BatchLeadsService {
     location: string;
   }> {
     const limit = criteria.limit || 5;
+    const quickLists = criteria.quickLists || ["cash-buyer"];
 
-    console.log("🔍 BatchLeads searchCashBuyersRaw called with location:", criteria.location);
+    console.log("🔍 BatchLeads searchCashBuyersRaw called with:", {
+      location: criteria.location,
+      quickLists: quickLists,
+    });
 
     const requestBody = {
       searchCriteria: {
-        query: criteria.location, // This should use the actual location passed in
-        quickLists: ["cash-buyer"],
+        query: criteria.location,
+        quickLists: quickLists, // Use the provided quickLists
       },
       options: {
         skip: 0,

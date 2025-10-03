@@ -2333,6 +2333,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
     console.log("🔍 BUYER WIZARD: Constructed location:", location);
     console.log("🔍 BUYER WIZARD: City input:", cityInput);
     console.log("🔍 BUYER WIZARD: State:", buyerWizardData.state);
+    console.log("🔍 BUYER WIZARD: QuickLists:", buyerWizardData.quickLists);
 
     setBuyerWizardProcessing(true);
     setShowBuyerWizard(false);
@@ -2343,13 +2344,13 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
     localStorage.removeItem("pendingCashBuyerCards");
 
     try {
-      // Call real BatchData API for cash buyers
-      console.log("🔍 Calling BatchData API for cash buyers in:", location);
+      // Call real BatchData API for cash buyers with proper quickLists
+      console.log("🔍 Calling BatchData API for cash buyers with quickLists:", buyerWizardData.quickLists);
 
       const response = await apiRequest("POST", "/api/cash-buyers/search", {
         location: location,
         buyerType: buyerWizardData.buyerType,
-        quickLists: buyerWizardData.quickLists || ["cash-buyer"],
+        quickLists: buyerWizardData.quickLists, // Pass quickLists array directly
         minProperties: 3, // Looking for investors with 3+ properties
       });
 
@@ -2414,6 +2415,11 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
           const regularPhones = phoneNumbers.filter((p: any) => !p.dnc);
           const dncPhones = phoneNumbers.filter((p: any) => p.dnc);
 
+          // Extract bed/bath from multiple possible fields
+          const bedrooms = building.bedroomCount || building.bedrooms || "N/A";
+          const bathrooms = building.bathroomCount || building.bathrooms || "N/A";
+          const squareFeet = building.totalBuildingAreaSquareFeet || building.livingArea || building.squareFeet || null;
+
           // Create modern, sleek card design
           let cardContent = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  QUALIFIED CASH BUYER #${index + 1}
@@ -2434,8 +2440,8 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
           cardContent += `🏠 𝗥𝗘𝗖𝗘𝗡𝗧 𝗣𝗨𝗥𝗖𝗛𝗔𝗦𝗘\n`;
           cardContent += `📍 ${address.street}\n`;
           cardContent += `    ${address.city}, ${address.state} ${address.zip}\n`;
-          cardContent += `🏘️ ${building.propertyType || "Single Family"} • ${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() + " sqft" : "N/A"}\n`;
-          cardContent += `🛏️ ${building.bedrooms || "N/A"} bed • 🛁 ${building.bathrooms || "N/A"} bath\n`;
+          cardContent += `🏘️ ${building.propertyType || "Single Family"} • ${squareFeet ? parseInt(squareFeet).toLocaleString() + " sqft" : "N/A"}\n`;
+          cardContent += `🛏️ ${bedrooms} bed • 🛁 ${bathrooms} bath\n`;
           cardContent += `💵 Last Sale: $${sale.lastSalePrice ? parseInt(sale.lastSalePrice).toLocaleString() : valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : "N/A"}\n\n`;
 
           cardContent += `📞 𝗖𝗢𝗡𝗧𝗔𝗖𝗧 𝗗𝗘𝗧𝗔𝗜𝗟𝗦\n`;

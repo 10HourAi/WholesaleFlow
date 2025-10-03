@@ -1569,20 +1569,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const {
         location,
         buyerType = "all_cash_buyers",
+        quickLists,
         minProperties = 3,
       } = req.body;
 
       console.log("🔍 Cash buyer search with real API:", {
         location,
         buyerType,
+        quickLists,
         minProperties,
       });
 
-      // Use real BatchData API
+      // Use real BatchData API with proper quickLists
       const { batchLeadsService } = await import("./batchleads");
+      
+      // Map buyer type to proper quicklist if not already provided
+      const effectiveQuickLists = quickLists || [buyerType];
       
       const results = await batchLeadsService.searchCashBuyersRaw({
         location,
+        quickLists: effectiveQuickLists,
         limit: 5,
       });
 
@@ -1590,6 +1596,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalFound: results.totalFound,
         buyersReturned: results.buyers.length,
         location: results.location,
+        quickLists: effectiveQuickLists,
       });
 
       res.json({
