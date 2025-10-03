@@ -96,17 +96,24 @@ const CondensedPropertyCard = ({
     try {
       console.log("🏠 Attempting to add property to CRM:", property.address);
 
-      // Check if property already exists to prevent duplicates - use normalized address comparison
+      // Check if property already exists to prevent duplicates
       const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
-      const normalizedAddress = property.address?.toLowerCase().trim();
-      const normalizedCity = property.city?.toLowerCase().trim();
-      const normalizedState = property.state?.toLowerCase().trim();
       
-      const propertyExists = existingProperties?.some(p => 
-        p.address?.toLowerCase().trim() === normalizedAddress && 
-        p.city?.toLowerCase().trim() === normalizedCity && 
-        p.state?.toLowerCase().trim() === normalizedState
-      );
+      // Create a unique identifier for comparison
+      const createPropertyKey = (addr: string, city: string, state: string, zip?: string) => {
+        const normalizedAddr = addr?.toLowerCase().trim().replace(/[^\w\s]/g, '');
+        const normalizedCity = city?.toLowerCase().trim().replace(/[^\w\s]/g, '');
+        const normalizedState = state?.toLowerCase().trim();
+        const normalizedZip = zip?.toLowerCase().trim();
+        return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip || ''}`;
+      };
+      
+      const newPropertyKey = createPropertyKey(property.address, property.city, property.state, property.zipCode);
+      
+      const propertyExists = existingProperties?.some(p => {
+        const existingKey = createPropertyKey(p.address, p.city, p.state, p.zipCode);
+        return existingKey === newPropertyKey;
+      });
 
       if (propertyExists) {
         toast({
@@ -1137,17 +1144,24 @@ const PropertyCard = ({ content }: { content: string }) => {
     try {
       console.log("🏠 Attempting to add property to CRM:", propertyData.address);
 
-      // Check if property already exists to prevent duplicates - use normalized address comparison
+      // Check if property already exists to prevent duplicates
       const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
-      const normalizedAddress = propertyData.address?.toLowerCase().trim();
-      const normalizedCity = propertyData.city?.toLowerCase().trim();
-      const normalizedState = propertyData.state?.toLowerCase().trim();
       
-      const propertyExists = existingProperties?.some(p => 
-        p.address?.toLowerCase().trim() === normalizedAddress && 
-        p.city?.toLowerCase().trim() === normalizedCity && 
-        p.state?.toLowerCase().trim() === normalizedState
-      );
+      // Create a unique identifier for comparison
+      const createPropertyKey = (addr: string, city: string, state: string, zip?: string) => {
+        const normalizedAddr = addr?.toLowerCase().trim().replace(/[^\w\s]/g, '');
+        const normalizedCity = city?.toLowerCase().trim().replace(/[^\w\s]/g, '');
+        const normalizedState = state?.toLowerCase().trim();
+        const normalizedZip = zip?.toLowerCase().trim();
+        return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip || ''}`;
+      };
+      
+      const newPropertyKey = createPropertyKey(propertyData.address, propertyData.city, propertyData.state, propertyData.zipCode);
+      
+      const propertyExists = existingProperties?.some(p => {
+        const existingKey = createPropertyKey(p.address, p.city, p.state, p.zipCode);
+        return existingKey === newPropertyKey;
+      });
 
       if (propertyExists) {
         toast({
@@ -1207,17 +1221,24 @@ const PropertyCard = ({ content }: { content: string }) => {
     try {
       console.log("🏠 Confirming add property to CRM:", propertyData.address);
 
-      // Check if property already exists to prevent duplicates - use normalized address comparison
+      // Check if property already exists to prevent duplicates
       const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
-      const normalizedAddress = propertyData.address?.toLowerCase().trim();
-      const normalizedCity = propertyData.city?.toLowerCase().trim();
-      const normalizedState = propertyData.state?.toLowerCase().trim();
       
-      const propertyExists = existingProperties?.some(p => 
-        p.address?.toLowerCase().trim() === normalizedAddress && 
-        p.city?.toLowerCase().trim() === normalizedCity && 
-        p.state?.toLowerCase().trim() === normalizedState
-      );
+      // Create a unique identifier for comparison
+      const createPropertyKey = (addr: string, city: string, state: string, zip?: string) => {
+        const normalizedAddr = addr?.toLowerCase().trim().replace(/[^\w\s]/g, '');
+        const normalizedCity = city?.toLowerCase().trim().replace(/[^\w\s]/g, '');
+        const normalizedState = state?.toLowerCase().trim();
+        const normalizedZip = zip?.toLowerCase().trim();
+        return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip || ''}`;
+      };
+      
+      const newPropertyKey = createPropertyKey(propertyData.address, propertyData.city, propertyData.state, propertyData.zipCode);
+      
+      const propertyExists = existingProperties?.some(p => {
+        const existingKey = createPropertyKey(p.address, p.city, p.state, p.zipCode);
+        return existingKey === newPropertyKey;
+      });
 
       if (propertyExists) {
         toast({
