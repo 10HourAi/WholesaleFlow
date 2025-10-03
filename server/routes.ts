@@ -359,7 +359,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/properties/:id/comps", isAuthenticated, async (req: any, res) => {
     try {
-      const property = await storage.getProperty(req.params.id);
+      const userId = req.session?.user?.id || req.user?.claims?.sub;
+      const property = await storage.getProperty(req.params.id, userId);
       if (!property) {
         return res.status(404).json({ message: "Property not found" });
       }
