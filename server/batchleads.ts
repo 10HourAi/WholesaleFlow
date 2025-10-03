@@ -1352,9 +1352,11 @@ class BatchLeadsService {
   }> {
     const limit = criteria.limit || 5;
 
+    console.log("🔍 BatchLeads searchCashBuyersRaw called with location:", criteria.location);
+
     const requestBody = {
       searchCriteria: {
-        query: criteria.location,
+        query: criteria.location, // This should use the actual location passed in
         quickLists: ["cash-buyer"],
       },
       options: {

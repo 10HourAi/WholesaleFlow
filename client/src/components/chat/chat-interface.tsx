@@ -2330,6 +2330,10 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
       location = `${cityInput}, ${buyerWizardData.state}`;
     }
 
+    console.log("🔍 BUYER WIZARD: Constructed location:", location);
+    console.log("🔍 BUYER WIZARD: City input:", cityInput);
+    console.log("🔍 BUYER WIZARD: State:", buyerWizardData.state);
+
     setBuyerWizardProcessing(true);
     setShowBuyerWizard(false);
     setBuyerWizardStep(1);
