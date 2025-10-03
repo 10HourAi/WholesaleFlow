@@ -99,20 +99,26 @@ const CondensedPropertyCard = ({
       // Check if property already exists to prevent duplicates
       const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
       
-      // Create a unique identifier for comparison
+      // Create a unique identifier for comparison (more strict)
       const createPropertyKey = (addr: string, city: string, state: string, zip?: string) => {
-        const normalizedAddr = addr?.toLowerCase().trim().replace(/[^\w\s]/g, '');
-        const normalizedCity = city?.toLowerCase().trim().replace(/[^\w\s]/g, '');
-        const normalizedState = state?.toLowerCase().trim();
-        const normalizedZip = zip?.toLowerCase().trim();
-        return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip || ''}`;
+        const normalizedAddr = (addr || '').toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, '');
+        const normalizedCity = (city || '').toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, '');
+        const normalizedState = (state || '').toLowerCase().trim();
+        const normalizedZip = (zip || '').toLowerCase().trim();
+        return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip}`;
       };
       
       const newPropertyKey = createPropertyKey(property.address, property.city, property.state, property.zipCode);
       
+      console.log('🔍 Checking for duplicate property:', newPropertyKey);
+      
       const propertyExists = existingProperties?.some(p => {
         const existingKey = createPropertyKey(p.address, p.city, p.state, p.zipCode);
-        return existingKey === newPropertyKey;
+        const isMatch = existingKey === newPropertyKey;
+        if (isMatch) {
+          console.log('❌ Duplicate found:', existingKey);
+        }
+        return isMatch;
       });
 
       if (propertyExists) {
@@ -3462,9 +3468,10 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                         );
                       }
                     } catch (e) {
-                      // Not JSON, check for legacy format
+                      // Not JSON, continue to legacy format check
                     }
 
+                    // Only render PropertyCard for legacy text format (not JSON)
                     if (
                       message.content.includes("🏠 SELLER LEAD") ||
                       message.content.includes("🎯 QUALIFIED CASH BUYER #")
