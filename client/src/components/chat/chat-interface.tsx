@@ -96,12 +96,16 @@ const CondensedPropertyCard = ({
     try {
       console.log("🏠 Attempting to add property to CRM:", property.address);
 
-      // Check if property already exists to prevent duplicates
+      // Check if property already exists to prevent duplicates - use normalized address comparison
       const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
+      const normalizedAddress = property.address?.toLowerCase().trim();
+      const normalizedCity = property.city?.toLowerCase().trim();
+      const normalizedState = property.state?.toLowerCase().trim();
+      
       const propertyExists = existingProperties?.some(p => 
-        p.address === property.address && 
-        p.city === property.city && 
-        p.state === property.state
+        p.address?.toLowerCase().trim() === normalizedAddress && 
+        p.city?.toLowerCase().trim() === normalizedCity && 
+        p.state?.toLowerCase().trim() === normalizedState
       );
 
       if (propertyExists) {
@@ -1133,12 +1137,16 @@ const PropertyCard = ({ content }: { content: string }) => {
     try {
       console.log("🏠 Attempting to add property to CRM:", propertyData.address);
 
-      // Check if property already exists to prevent duplicates
+      // Check if property already exists to prevent duplicates - use normalized address comparison
       const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
+      const normalizedAddress = propertyData.address?.toLowerCase().trim();
+      const normalizedCity = propertyData.city?.toLowerCase().trim();
+      const normalizedState = propertyData.state?.toLowerCase().trim();
+      
       const propertyExists = existingProperties?.some(p => 
-        p.address === propertyData.address && 
-        p.city === propertyData.city && 
-        p.state === propertyData.state
+        p.address?.toLowerCase().trim() === normalizedAddress && 
+        p.city?.toLowerCase().trim() === normalizedCity && 
+        p.state?.toLowerCase().trim() === normalizedState
       );
 
       if (propertyExists) {
@@ -1199,12 +1207,16 @@ const PropertyCard = ({ content }: { content: string }) => {
     try {
       console.log("🏠 Confirming add property to CRM:", propertyData.address);
 
-      // Check if property already exists to prevent duplicates
+      // Check if property already exists to prevent duplicates - use normalized address comparison
       const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
+      const normalizedAddress = propertyData.address?.toLowerCase().trim();
+      const normalizedCity = propertyData.city?.toLowerCase().trim();
+      const normalizedState = propertyData.state?.toLowerCase().trim();
+      
       const propertyExists = existingProperties?.some(p => 
-        p.address === propertyData.address && 
-        p.city === propertyData.city && 
-        p.state === propertyData.state
+        p.address?.toLowerCase().trim() === normalizedAddress && 
+        p.city?.toLowerCase().trim() === normalizedCity && 
+        p.state?.toLowerCase().trim() === normalizedState
       );
 
       if (propertyExists) {
