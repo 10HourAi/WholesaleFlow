@@ -1,7 +1,7 @@
 // Test the BatchLeads API integration directly
 
 async function testIntegration() {
-  console.log('🚀 Testing 10HourAi BatchLeads Integration...\n');
+  console.log('🚀 Testing AiClosings BatchLeads Integration...\n');
   
   try {
     // Test 1: Search properties in ZIP 17112
@@ -14,7 +14,7 @@ async function testIntegration() {
     console.log(`✅ Found ${response.data.length} properties (${response.total_results} total available)`);
     
     // Test 2: Convert to our property format
-    console.log('\n🔄 Converting to 10HourAi format...');
+    console.log('\n🔄 Converting to AiClosings format...');
     const convertedProperties = response.data.map(prop => 
       batchLeadsService.convertToProperty(prop, 'demo-user')
     );

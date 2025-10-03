@@ -86,7 +86,7 @@ class BatchLeadsService {
         "Content-Type": "application/json",
         Authorization: `Bearer ${this.apiKey}`,
         Accept: "application/json",
-        "User-Agent": "10HourAi/1.0",
+        "User-Agent": "AiClosings/1.0",
       },
       body: JSON.stringify(requestBody),
     });

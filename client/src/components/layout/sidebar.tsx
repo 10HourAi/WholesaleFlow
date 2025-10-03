@@ -67,7 +67,7 @@ export default function Sidebar({ activeSection, onSectionChange, onClose }: Sid
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
             <Briefcase className="w-5 h-5 text-white" />
           </div>
-          <span className="ml-2 text-xl font-bold text-slate-900">10HourAi</span>
+          <span className="ml-2 text-xl font-bold text-slate-900">AiClosings</span>
         </div>
         {isMobile && onClose && (
           <Button variant="ghost" size="sm" onClick={onClose}>

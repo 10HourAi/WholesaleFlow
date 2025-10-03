@@ -81,7 +81,7 @@ export function Auth() {
           <div className="flex items-center justify-center mb-4">
             <Building2 className="h-8 w-8 text-blue-600 mr-2" />
             <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-              10HourAi
+              AiClosings
             </h1>
           </div>
           <p className="text-slate-600 dark:text-slate-300">

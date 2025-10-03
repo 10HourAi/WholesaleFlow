@@ -1,7 +1,7 @@
 # BatchData API Migration: From Hardcoded to Live Integration
 
 ## Overview
-This document outlines the critical code changes made to migrate the Seller Lead Wizard from hardcoded demo data to live BatchData API integration in the 10HourAi real estate platform.
+This document outlines the critical code changes made to migrate the Seller Lead Wizard from hardcoded demo data to live BatchData API integration in the AiClosings real estate platform.
 
 ## Before: Hardcoded Demo Data
 

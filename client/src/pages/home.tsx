@@ -52,7 +52,7 @@ export default function Home() {
         {/* Mobile header */}
         {isMobile && (
           <div className="flex items-center justify-between p-4 bg-white border-b border-slate-200">
-            <h1 className="text-lg font-semibold text-slate-900">10HourAi</h1>
+            <h1 className="text-lg font-semibold text-slate-900">AiClosings</h1>
             <Button
               variant="ghost"
               size="sm"
