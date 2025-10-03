@@ -369,8 +369,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       await storage.deleteCompsByProperty(req.params.id);
 
       // Generate new comps using OpenAI
-      const { generateCompsAnalysis } = await import("./openai");
-      const comps = await generateCompsAnalysis(property);
+      const { findCompsWithOpenAI } = await import("./openai");
+      const comps = await findCompsWithOpenAI(property);
 
       // Save comps to database
       const savedComps = [];
