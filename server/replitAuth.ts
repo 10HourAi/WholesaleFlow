@@ -116,10 +116,10 @@ export async function setupAuth(app: Express) {
     },
     verify,
   );
-  passport.use(strategy);
+  passport.use("replit-auth", strategy);
 
-  // Get the actual strategy name (it includes the domain)
-  const strategyName = strategy.name;
+  // Use a fixed strategy name instead of the dynamic one
+  const strategyName = "replit-auth";
   console.log("🔐 Registered Replit Auth strategy with name:", strategyName);
 
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
