@@ -35,7 +35,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Conversation, Message, Property } from "@shared/schema";
-import { BuyerCardDisplay } from "./buyer-card-display";
 
 const agentTypes = [
   { id: "lead-finder", name: "🔍 Lead Finder Agent", icon: Search },
@@ -2673,14 +2672,14 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                     quickLists: ["fix-flip"],
                   },
                   {
-                    id: "all-cash-buyer",
+                    id: "cash-buyer",
                     name: "💰 All Cash Buyers",
                     description:
                       "Any investor who has purchased properties with cash",
                     quickLists: ["cash-buyer"],
                   },
                   {
-                    id: "portfolio-investor",
+                    id: "cash-buyer",
                     name: "📊 Portfolio Investors",
                     description: "Large-scale investors with 5+ properties",
                     quickLists: ["cash-buyer"],
@@ -2752,134 +2751,6 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
     );
   };
 
-  const renderSellerWizard = () => {
-    if (!showWizard) return null;
-
-    return (
-      <Card className="mb-4 border-2 border-blue-200">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Search className="h-5 w-5 text-blue-600" />
-            Seller Lead Wizard - Step {wizardStep} of 2
-          </CardTitle>
-          <p className="text-sm text-gray-600 mt-1">
-            Find motivated sellers and distressed properties
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {wizardStep === 1 && (
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg">
-                Where are you looking for properties?
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="city">City or ZIP Code</Label>
-                  <Input
-                    id="city"
-                    placeholder="e.g., Miami, Philadelphia, 33132"
-                    value={wizardData.city}
-                    onChange={(e) =>
-                      setWizardData({
-                        ...wizardData,
-                        city: e.target.value,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="state">State</Label>
-                  <Select
-                    value={wizardData.state}
-                    onValueChange={(value) =>
-                      setWizardData({ ...wizardData, state: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select state" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {states.map((state) => (
-                        <SelectItem key={state} value={state}>
-                          {state}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {wizardStep === 2 && (
-            <div className="space-y-4">
-              <h3 className="font-semibold text-lg">
-                What type of seller are you looking for?
-              </h3>
-              <div className="grid grid-cols-1 gap-3">
-                {sellerTypes.map((type) => (
-                  <div
-                    key={type.value}
-                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
-                      wizardData.sellerType === type.value
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 hover:border-blue-300"
-                    }`}
-                    onClick={() =>
-                      setWizardData({
-                        ...wizardData,
-                        sellerType: type.value,
-                      })
-                    }
-                  >
-                    <div className="font-medium text-sm">{type.label}</div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-between pt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (wizardStep === 1) {
-                  setShowWizard(false);
-                  setWizardStep(1);
-                  setWizardData({ city: "", state: "", sellerType: "", propertyType: "" });
-                } else {
-                  setWizardStep(1);
-                }
-              }}
-            >
-              {wizardStep === 1 ? "Cancel" : "Back"}
-            </Button>
-
-            {wizardStep === 1 ? (
-              <Button
-                onClick={() => setWizardStep(2)}
-                disabled={!wizardData.city || !wizardData.state}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-              >
-                Next
-                <ArrowRight className="h-4 w-4" />
-              </Button>
-            ) : (
-              <Button
-                onClick={handleWizardSubmit}
-                disabled={!wizardData.sellerType}
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
-              >
-                <Search className="h-4 w-4" />
-                Find Properties
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -2907,7 +2778,6 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
-        {renderSellerWizard()}
         {renderBuyerWizard()}
 
         {/* Target Market Finder Results - Separate Output Page */}
@@ -3344,75 +3214,152 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
             </div>
           )}
 
-        {messages.map((message) => {
-          // Check if this is a property card message
-          let isPropertyCard = false;
-          let propertyData = null;
-          
-          try {
-            const parsed = JSON.parse(message.content);
-            if (parsed.type === "property_card" && parsed.data) {
-              isPropertyCard = true;
-              propertyData = parsed.data;
-            }
-          } catch {
-            // Not a JSON message, continue with normal rendering
-          }
-
-          // Check if this is a buyer card
-          const isBuyerCard = message.content.includes('QUALIFIED CASH BUYER') && 
-                             message.content.includes('𝗜𝗡𝗩𝗘𝗦𝗧𝗢𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘');
-
-          return (
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`flex items-start space-x-3 ${message.role === "user" ? "justify-end" : ""}`}
+          >
+            {message.role === "assistant" && (
+              <Avatar>
+                <AvatarImage />
+                <AvatarFallback>
+                  {currentAgent && <currentAgent.icon className="h-4 w-4" />}
+                </AvatarFallback>
+              </Avatar>
+            )}
             <div
-              key={message.id}
-              className={`flex items-start space-x-3 ${message.role === "user" ? "justify-end" : ""}`}
+              className={`flex-1 ${message.role === "user" ? "max-w-xs sm:max-w-md" : ""}`}
             >
-              {message.role === "assistant" && (
-                <Avatar>
-                  <AvatarImage />
-                  <AvatarFallback>
-                    {currentAgent && <currentAgent.icon className="h-4 w-4" />}
-                  </AvatarFallback>
-                </Avatar>
-              )}
-              <div
-                className={`flex-1 ${message.role === "user" ? "max-w-xs sm:max-w-md" : ""}`}
+              <Card
+                className={
+                  message.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : ""
+                }
               >
-                {isPropertyCard ? (
-                  // Render property card directly without Card wrapper
-                  <CondensedPropertyCard
-                    property={propertyData}
-                    onViewDetails={handleViewDetails}
-                  />
-                ) : isBuyerCard ? (
-                  // Render buyer card
-                  <BuyerCardDisplay content={message.content} />
-                ) : (
-                  // Render regular message
-                  <Card
-                    className={
-                      message.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : ""
+                <CardContent className="p-4">
+                  {/* Render property cards */}
+                  {(() => {
+                    try {
+                      const parsed = JSON.parse(message.content);
+                      if (parsed.type === "property_card") {
+                        return <PropertyCardMessage property={parsed.data} />;
+                      }
+                    } catch {
+                      // Not a JSON message, continue with normal rendering
                     }
-                  >
-                    <CardContent className="p-4">
-                      <div className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
-                        {message.content}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-              {message.role === "user" && (
-                <Avatar>
-                  <AvatarFallback>U</AvatarFallback>
-                </Avatar>
-              )}
+                    return null;
+                  })()}
+
+                  {/* Render cash buyer action buttons */}
+                  {message.content.includes('[BUYER_ACTIONS:') && (() => {
+                    const buyerMatch = message.content.match(/\[BUYER_ACTIONS:(.*?)\]/s);
+                    if (buyerMatch) {
+                      const buyerData = JSON.parse(buyerMatch[1]);
+                      return (
+                        <div className="flex gap-2 mt-2">
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                            onClick={async () => {
+                              try {
+                                const propertyPayload = {
+                                  address: buyerData.address,
+                                  city: buyerData.city,
+                                  state: buyerData.state,
+                                  zipCode: buyerData.zipCode,
+                                  bedrooms: parseInt(buyerData.bedrooms) || 0,
+                                  bathrooms: parseInt(buyerData.bathrooms) || 0,
+                                  squareFeet: buyerData.squareFeet,
+                                  yearBuilt: buyerData.yearBuilt,
+                                  propertyType: buyerData.propertyType,
+                                  arv: buyerData.arv,
+                                  maxOffer: buyerData.maxOffer,
+                                  equityPercentage: buyerData.equityPercentage,
+                                  ownerName: buyerData.ownerName,
+                                  ownerPhone: buyerData.ownerPhone,
+                                  ownerEmail: buyerData.ownerEmail,
+                                  ownerMailingAddress: buyerData.ownerMailingAddress,
+                                  confidenceScore: buyerData.confidenceScore,
+                                  status: "new",
+                                  leadType: "cash_buyer",
+                                };
+
+                                const response = await apiRequest("POST", "/api/properties", propertyPayload);
+                                const result = await response.json();
+
+                                if (result) {
+                                  toast({
+                                    title: "✅ Cash Buyer Added to CRM",
+                                    description: `${buyerData.ownerName} has been added to your leads.`,
+                                  });
+                                  queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
+                                }
+                              } catch (error) {
+                                console.error("Error adding buyer to CRM:", error);
+                                toast({
+                                  title: "Error",
+                                  description: "Failed to add buyer to CRM",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          >
+                            ✅ Add to CRM
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="border-orange-500 text-orange-600 hover:bg-orange-50"
+                            onClick={() => {
+                              toast({
+                                title: "Skipped",
+                                description: "Moving to next cash buyer...",
+                              });
+                            }}
+                          >
+                            👋 I'll Pass
+                          </Button>
+                          <Button
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                            onClick={() => {
+                              const phone = buyerData.ownerPhone;
+                              const email = buyerData.ownerEmail;
+                              if (phone) {
+                                window.open(`tel:${phone}`, '_self');
+                              } else if (email) {
+                                window.open(`mailto:${email}`, '_self');
+                              } else {
+                                toast({
+                                  title: "No contact info",
+                                  description: "This buyer has no phone or email available",
+                                  variant: "destructive",
+                                });
+                              }
+                            }}
+                          >
+                            📞 Contact Buyer
+                          </Button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  <div className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
+                    {message.content.replace(/\[BUYER_ACTIONS:.*?\]/s, '').trim()}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-          );
-        })}
+            {message.role === "user" && (
+              <Avatar>
+                <AvatarFallback>U</AvatarFallback>
+              </Avatar>
+            )}
+          </div>
+        ))}
         <div ref={messagesEndRef} />
       </div>
 
