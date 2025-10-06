@@ -35,6 +35,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Conversation, Message, Property } from "@shared/schema";
+import { BuyerCardDisplay } from "./buyer-card-display";
 
 const agentTypes = [
   { id: "lead-finder", name: "🔍 Lead Finder Agent", icon: Search },
@@ -98,7 +99,7 @@ const CondensedPropertyCard = ({
 
       // Check if property already exists to prevent duplicates
       const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
-      
+
       // Create a unique identifier for comparison (more strict)
       const createPropertyKey = (addr: string, city: string, state: string, zip?: string) => {
         const normalizedAddr = (addr || '').toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, '');
@@ -107,11 +108,11 @@ const CondensedPropertyCard = ({
         const normalizedZip = (zip || '').toLowerCase().trim();
         return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip}`;
       };
-      
+
       const newPropertyKey = createPropertyKey(property.address, property.city, property.state, property.zipCode);
-      
+
       console.log('🔍 Checking for duplicate property:', newPropertyKey);
-      
+
       const propertyExists = existingProperties?.some(p => {
         const existingKey = createPropertyKey(p.address, p.city, p.state, p.zipCode);
         const isMatch = existingKey === newPropertyKey;
@@ -290,9 +291,9 @@ const CondensedPropertyCard = ({
         >
           <Plus className="h-4 w-4 mr-2" /> Add to CRM
         </Button>
-        <Button 
-          size="sm" 
-          variant="outline" 
+        <Button
+          size="sm"
+          variant="outline"
           className="flex-1 bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
         >
           I'll Pass
@@ -1152,7 +1153,7 @@ const PropertyCard = ({ content }: { content: string }) => {
 
       // Check if property already exists to prevent duplicates
       const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
-      
+
       // Create a unique identifier for comparison
       const createPropertyKey = (addr: string, city: string, state: string, zip?: string) => {
         const normalizedAddr = addr?.toLowerCase().trim().replace(/[^\w\s]/g, '');
@@ -1161,9 +1162,9 @@ const PropertyCard = ({ content }: { content: string }) => {
         const normalizedZip = zip?.toLowerCase().trim();
         return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip || ''}`;
       };
-      
+
       const newPropertyKey = createPropertyKey(propertyData.address, propertyData.city, propertyData.state, propertyData.zipCode);
-      
+
       const propertyExists = existingProperties?.some(p => {
         const existingKey = createPropertyKey(p.address, p.city, p.state, p.zipCode);
         return existingKey === newPropertyKey;
@@ -1229,7 +1230,7 @@ const PropertyCard = ({ content }: { content: string }) => {
 
       // Check if property already exists to prevent duplicates
       const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
-      
+
       // Create a unique identifier for comparison
       const createPropertyKey = (addr: string, city: string, state: string, zip?: string) => {
         const normalizedAddr = addr?.toLowerCase().trim().replace(/[^\w\s]/g, '');
@@ -1238,9 +1239,9 @@ const PropertyCard = ({ content }: { content: string }) => {
         const normalizedZip = zip?.toLowerCase().trim();
         return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip || ''}`;
       };
-      
+
       const newPropertyKey = createPropertyKey(propertyData.address, propertyData.city, propertyData.state, propertyData.zipCode);
-      
+
       const propertyExists = existingProperties?.some(p => {
         const existingKey = createPropertyKey(p.address, p.city, p.state, p.zipCode);
         return existingKey === newPropertyKey;
@@ -1830,7 +1831,10 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                   "POST",
                   `/api/conversations/${conversation.id}/messages`,
                   {
-                    content: updatedPropertyCard,
+                    content: JSON.stringify({
+                      type: "property_card",
+                      data: property,
+                    }),
                     role: "assistant",
                     isAiGenerated: true,
                   },
@@ -2669,14 +2673,14 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                     quickLists: ["fix-flip"],
                   },
                   {
-                    id: "cash-buyer",
+                    id: "all-cash-buyer",
                     name: "💰 All Cash Buyers",
                     description:
                       "Any investor who has purchased properties with cash",
                     quickLists: ["cash-buyer"],
                   },
                   {
-                    id: "cash-buyer",
+                    id: "portfolio-investor",
                     name: "📊 Portfolio Investors",
                     description: "Large-scale investors with 5+ properties",
                     quickLists: ["cash-buyer"],
@@ -2938,7 +2942,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                       value={terryInput}
                       onChange={(e) => setTerryInput(e.target.value)}
                       onKeyPress={(e) =>
-                        e.key === "Enter" && handleTerrySendMessage()
+                        e.key === "Enter" && !e.shiftKey && handleTerrySendMessage()
                       }
                       placeholder="Let's Get Started! Type Anything You Need Help With"
                       className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -3211,227 +3215,6 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
             </div>
           )}
 
-        {/* Wizard */}
-        {showWizard && (
-          <Card className="mb-4 border-2 border-blue-200">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Search className="h-5 w-5 text-blue-600" />
-                Seller Lead Wizard - Step {wizardStep} of 4
-              </CardTitle>
-              <p className="text-sm text-gray-600 mt-1">
-                Find distressed properties and motivated sellers • First of 3
-                Lead Finder wizards
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {wizardStep === 1 && (
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-lg">
-                    Where are you looking for properties?
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="city">City or ZIP Code</Label>
-                      <Input
-                        id="city"
-                        placeholder="e.g., Valley Forge, Philadelphia, 19481"
-                        value={wizardData.city}
-                        onChange={(e) =>
-                          setWizardData({ ...wizardData, city: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="state">State</Label>
-                      <Select
-                        value={wizardData.state}
-                        onValueChange={(value) =>
-                          setWizardData({ ...wizardData, state: value })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select state" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {states.map((state) => (
-                            <SelectItem key={state} value={state}>
-                              {state}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {wizardStep === 2 && (
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-lg">
-                    What type of sellers are you targeting?
-                  </h3>
-                  <div className="grid grid-cols-1 gap-2">
-                    {sellerTypes.map((type) => (
-                      <button
-                        key={type.value}
-                        className={`p-3 text-left rounded-lg border transition-colors ${
-                          wizardData.sellerType === type.value
-                            ? "border-blue-500 bg-blue-50 text-blue-900"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                        onClick={() =>
-                          setWizardData({
-                            ...wizardData,
-                            sellerType: type.value,
-                          })
-                        }
-                      >
-                        <div className="font-medium">{type.label}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {wizardStep === 3 && (
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-lg">
-                    What property type are you interested in?
-                  </h3>
-                  <div className="grid grid-cols-1 gap-2">
-                    {propertyTypes.map((type) => (
-                      <button
-                        key={type.value}
-                        className={`p-3 text-left rounded-lg border transition-colors ${
-                          wizardData.propertyType === type.value
-                            ? "border-blue-500 bg-blue-50 text-blue-900"
-                            : "border-gray-200 hover:border-gray-300"
-                        }`}
-                        onClick={() =>
-                          setWizardData({
-                            ...wizardData,
-                            propertyType: type.value,
-                          })
-                        }
-                      >
-                        <div className="font-medium">{type.label}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {wizardStep === 4 && (
-                <div className="space-y-4">
-                  <h3 className="font-semibold text-lg">
-                    Additional filters (optional)
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="minBedrooms">Minimum Bedrooms</Label>
-                      <Select
-                        value={(wizardData.minBedrooms ?? 1).toString()}
-                        onValueChange={(value) =>
-                          setWizardData({
-                            ...wizardData,
-                            minBedrooms: value ? parseInt(value) : undefined,
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="1">1+</SelectItem>
-                          <SelectItem value="2">2+</SelectItem>
-                          <SelectItem value="3">3+</SelectItem>
-                          <SelectItem value="4">4+</SelectItem>
-                          <SelectItem value="5">5+</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="maxPrice">Maximum Price</Label>
-                      <Select
-                        value={(wizardData.maxPrice ?? 3000000).toString()}
-                        onValueChange={(value) =>
-                          setWizardData({
-                            ...wizardData,
-                            maxPrice: value ? parseInt(value) : undefined,
-                          })
-                        }
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="3000000">
-                            Up to $3M (default)
-                          </SelectItem>
-                          <SelectItem value="100000">Under $100k</SelectItem>
-                          <SelectItem value="200000">Under $200k</SelectItem>
-                          <SelectItem value="300000">Under $300k</SelectItem>
-                          <SelectItem value="500000">Under $500k</SelectItem>
-                          <SelectItem value="750000">Under $750k</SelectItem>
-                          <SelectItem value="1000000">Under $1M</SelectItem>
-                          <SelectItem value="1500000">$1–1.5M</SelectItem>
-                          <SelectItem value="2000000">$1–2M</SelectItem>
-                          <SelectItem value="3000000">$1–3M</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-between pt-4">
-                <Button variant="outline" onClick={() => setShowWizard(false)}>
-                  Cancel
-                </Button>
-                <div className="flex gap-2">
-                  {wizardStep > 1 && (
-                    <Button
-                      variant="outline"
-                      onClick={() => setWizardStep(wizardStep - 1)}
-                    >
-                      <ArrowLeft className="h-4 w-4 mr-1" />
-                      Back
-                    </Button>
-                  )}
-                  <Button
-                    onClick={async () => {
-                      if (wizardStep < 4) {
-                        setWizardStep(wizardStep + 1);
-                      } else {
-                        await handleWizardSubmit();
-                      }
-                    }}
-                    disabled={
-                      (wizardStep === 1 &&
-                        (!wizardData.city || !wizardData.state)) ||
-                      (wizardStep === 2 && !wizardData.sellerType) ||
-                      (wizardStep === 3 && !wizardData.propertyType)
-                    }
-                  >
-                    {wizardStep === 4 ? (
-                      <>
-                        <Search className="h-4 w-4 mr-1" />
-                        Find Properties
-                      </>
-                    ) : (
-                      <>
-                        Next
-                        <ArrowRight className="h-4 w-4 ml-1" />
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
         {messages.map((message) => (
           <div
             key={message.id}
@@ -3456,35 +3239,30 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                 }
               >
                 <CardContent className="p-4">
+                  {/* Render property cards */}
                   {(() => {
                     try {
                       const parsed = JSON.parse(message.content);
                       if (parsed.type === "property_card") {
-                        return (
-                          <CondensedPropertyCard
-                            property={parsed.data}
-                            onViewDetails={handleViewDetails}
-                          />
-                        );
+                        return <PropertyCardMessage property={parsed.data} />;
                       }
-                    } catch (e) {
-                      // Not JSON, continue to legacy format check
+                    } catch {
+                      // Not a JSON message, continue with normal rendering
                     }
-
-                    // Only render PropertyCard for legacy text format (not JSON)
-                    if (
-                      message.content.includes("🏠 SELLER LEAD") ||
-                      message.content.includes("🎯 QUALIFIED CASH BUYER #")
-                    ) {
-                      return <PropertyCard content={message.content} />;
-                    }
-
-                    return (
-                      <p className="text-sm whitespace-pre-wrap">
-                        {message.content}
-                      </p>
-                    );
+                    return null;
                   })()}
+
+                  {/* Render buyer cards */}
+                  {message.content.includes('QUALIFIED CASH BUYER') && message.content.includes('𝗜𝗡𝗩𝗘𝗦𝗧𝗢𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘') && (
+                    <BuyerCardDisplay content={message.content} />
+                  )}
+
+                  {/* Show text content only if not a buyer card */}
+                  {!(message.content.includes('QUALIFIED CASH BUYER') && message.content.includes('𝗜𝗡𝗩𝗘𝗦𝗧𝗢𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘')) && (
+                    <div className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
+                      {message.content}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
