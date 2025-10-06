@@ -1,13 +1,30 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Search } from "lucide-react";
+import { Search, Plus, Phone } from "lucide-react";
 
 interface CashBuyerCardProps {
   onStartWizard: () => void;
+  buyerData?: any;
+  showActionButtons?: boolean;
 }
 
-export function CashBuyerCard({ onStartWizard }: CashBuyerCardProps) {
+export function CashBuyerCard({ onStartWizard, buyerData, showActionButtons = false }: CashBuyerCardProps) {
+  const handleAddToCRM = () => {
+    console.log("Add to CRM clicked");
+    // Add CRM functionality here
+  };
+
+  const handlePass = () => {
+    console.log("I'll Pass clicked");
+    // Add pass functionality here
+  };
+
+  const handleContact = () => {
+    console.log("Contact Buyer clicked");
+    // Add contact functionality here
+  };
+
   return (
     <div className="flex items-start space-x-3">
       <Avatar>
@@ -33,6 +50,37 @@ export function CashBuyerCard({ onStartWizard }: CashBuyerCardProps) {
                 Use Cash Buyer Wizard
               </Button>
             </div>
+            
+            {showActionButtons && (
+              <div className="flex gap-2 pt-3 mt-3 border-t">
+                <Button
+                  onClick={handleAddToCRM}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 items-center gap-1 bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-xs px-3 py-1"
+                >
+                  <Plus className="h-3 w-3" />
+                  Add to CRM
+                </Button>
+                <Button
+                  onClick={handlePass}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 text-xs px-3 py-1 bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
+                >
+                  I'll Pass
+                </Button>
+                <Button
+                  onClick={handleContact}
+                  variant="outline"
+                  size="sm"
+                  className="flex-1 items-center gap-1 text-xs px-3 py-1 bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100"
+                >
+                  <Phone className="h-3 w-3" />
+                  Contact Buyer
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
