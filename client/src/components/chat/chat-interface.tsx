@@ -81,6 +81,25 @@ const formatDate = (dateStr?: string | null) => {
   }
 };
 
+// Component to render property card messages
+const PropertyCardMessage = ({ property }: { property: Property }) => {
+  const [showDetailsDialog, setShowDetailsDialog] = useState(false);
+  
+  return (
+    <>
+      <CondensedPropertyCard
+        property={property}
+        onViewDetails={() => setShowDetailsDialog(true)}
+      />
+      <PropertyDetailsModal
+        property={property}
+        isOpen={showDetailsDialog}
+        onClose={() => setShowDetailsDialog(false)}
+      />
+    </>
+  );
+};
+
 // New Component for Condensed Property Card
 const CondensedPropertyCard = ({
   property,
