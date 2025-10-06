@@ -3344,64 +3344,75 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
             </div>
           )}
 
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex items-start space-x-3 ${message.role === "user" ? "justify-end" : ""}`}
-          >
-            {message.role === "assistant" && (
-              <Avatar>
-                <AvatarImage />
-                <AvatarFallback>
-                  {currentAgent && <currentAgent.icon className="h-4 w-4" />}
-                </AvatarFallback>
-              </Avatar>
-            )}
+        {messages.map((message) => {
+          // Check if this is a property card message
+          let isPropertyCard = false;
+          let propertyData = null;
+          
+          try {
+            const parsed = JSON.parse(message.content);
+            if (parsed.type === "property_card" && parsed.data) {
+              isPropertyCard = true;
+              propertyData = parsed.data;
+            }
+          } catch {
+            // Not a JSON message, continue with normal rendering
+          }
+
+          // Check if this is a buyer card
+          const isBuyerCard = message.content.includes('QUALIFIED CASH BUYER') && 
+                             message.content.includes('𝗜𝗡𝗩𝗘𝗦𝗧𝗢𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘');
+
+          return (
             <div
-              className={`flex-1 ${message.role === "user" ? "max-w-xs sm:max-w-md" : ""}`}
+              key={message.id}
+              className={`flex items-start space-x-3 ${message.role === "user" ? "justify-end" : ""}`}
             >
-              <Card
-                className={
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground"
-                    : ""
-                }
+              {message.role === "assistant" && (
+                <Avatar>
+                  <AvatarImage />
+                  <AvatarFallback>
+                    {currentAgent && <currentAgent.icon className="h-4 w-4" />}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+              <div
+                className={`flex-1 ${message.role === "user" ? "max-w-xs sm:max-w-md" : ""}`}
               >
-                <CardContent className="p-4">
-                  {/* Render property cards */}
-                  {(() => {
-                    try {
-                      const parsed = JSON.parse(message.content);
-                      if (parsed.type === "property_card") {
-                        return <PropertyCardMessage property={parsed.data} />;
-                      }
-                    } catch {
-                      // Not a JSON message, continue with normal rendering
+                {isPropertyCard ? (
+                  // Render property card directly without Card wrapper
+                  <CondensedPropertyCard
+                    property={propertyData}
+                    onViewDetails={handleViewDetails}
+                  />
+                ) : isBuyerCard ? (
+                  // Render buyer card
+                  <BuyerCardDisplay content={message.content} />
+                ) : (
+                  // Render regular message
+                  <Card
+                    className={
+                      message.role === "user"
+                        ? "bg-primary text-primary-foreground"
+                        : ""
                     }
-                    return null;
-                  })()}
-
-                  {/* Render buyer cards */}
-                  {message.content.includes('QUALIFIED CASH BUYER') && message.content.includes('𝗜𝗡𝗩𝗘𝗦𝗧𝗢𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘') && (
-                    <BuyerCardDisplay content={message.content} />
-                  )}
-
-                  {/* Show text content only if not a buyer card */}
-                  {!(message.content.includes('QUALIFIED CASH BUYER') && message.content.includes('𝗜𝗡𝗩𝗘𝗦𝗧𝗢𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘')) && (
-                    <div className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
-                      {message.content}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  >
+                    <CardContent className="p-4">
+                      <div className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
+                        {message.content}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+              {message.role === "user" && (
+                <Avatar>
+                  <AvatarFallback>U</AvatarFallback>
+                </Avatar>
+              )}
             </div>
-            {message.role === "user" && (
-              <Avatar>
-                <AvatarFallback>U</AvatarFallback>
-              </Avatar>
-            )}
-          </div>
-        ))}
+          );
+        })}
         <div ref={messagesEndRef} />
       </div>
 
