@@ -30,6 +30,7 @@ import {
   ArrowRight,
   ArrowLeft,
   Plus,
+  Phone, // Import Phone icon
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -290,9 +291,9 @@ const CondensedPropertyCard = ({
         >
           <Plus className="h-4 w-4 mr-2" /> Add to CRM
         </Button>
-        <Button 
-          size="sm" 
-          variant="outline" 
+        <Button
+          size="sm"
+          variant="outline"
           className="flex-1 bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
         >
           I'll Pass
@@ -310,527 +311,68 @@ const CondensedPropertyCard = ({
   );
 };
 
-// New Component for Detailed Property View Modal
-const PropertyDetailsModal = ({
-  property,
-  isOpen,
-  onClose,
-}: {
-  property: Property | null;
-  isOpen: boolean;
-  onClose: () => void;
-}) => {
-  if (!property) return null;
+// BuyerCard component for rendering cash buyer cards with buttons
+const BuyerCard = ({ content }: { content: string }) => {
+  const { toast } = useToast();
 
-  console.log("🔍 DEBUG PropertyDetailsModal: Received property data:", {
-    address: property.address,
-    ownerPhone: property.ownerPhone,
-    ownerPhoneNumbers: property.ownerPhoneNumbers,
-    ownerPhoneNumbersType: typeof property.ownerPhoneNumbers,
-    ownerPhoneNumbersIsArray: Array.isArray(property.ownerPhoneNumbers),
-    ownerPhoneNumbersLength: property.ownerPhoneNumbers?.length,
-    rawProperty: property,
-  });
-
-  const formatEmail = (property: any) => {
-    const emails = [];
-
-    // Check for direct email field
-    if (
-      property.ownerEmail &&
-      property.ownerEmail !== "null" &&
-      property.ownerEmail !== null &&
-      property.ownerEmail !== "undefined" &&
-      property.ownerEmail.trim() !== ""
-    ) {
-      emails.push(property.ownerEmail.trim());
-    }
-
-    // Check for emails array
-    if (
-      property.ownerEmails &&
-      Array.isArray(property.ownerEmails) &&
-      property.ownerEmails.length > 0
-    ) {
-      const validEmails = property.ownerEmails.filter(
-        (email: string) =>
-          email &&
-          email !== "null" &&
-          email !== "undefined" &&
-          email.trim() !== "" &&
-          !emails.includes(email.trim()),
-      );
-      emails.push(...validEmails);
-    }
-
-    // Check for owner object with email
-    if (
-      property.owner?.email &&
-      property.owner.email !== "null" &&
-      property.owner.email !== null &&
-      property.owner.email.trim() !== "" &&
-      !emails.includes(property.owner.email.trim())
-    ) {
-      emails.push(property.owner.email.trim());
-    }
-
-    // Check for owner object with emails array
-    if (
-      property.owner?.emails &&
-      Array.isArray(property.owner.emails) &&
-      property.owner.emails.length > 0
-    ) {
-      const validOwnerEmails = property.owner.emails.filter(
-        (email: string) =>
-          email &&
-          email !== "null" &&
-          email !== "undefined" &&
-          email.trim() !== "" &&
-          !emails.includes(email.trim()),
-      );
-      emails.push(...validOwnerEmails);
-    }
-
-    return emails.length > 0 ? emails.join(", ") : "Contact for details";
-  };
-
-  const formatPhoneNumbers = (property: any) => {
-    const phones = [];
-
-    // Collect individual phone fields
-    if (
-      property.ownerPhone &&
-      property.ownerPhone !== "undefined" &&
-      property.ownerPhone !== null &&
-      property.ownerPhone.trim() !== ""
-    ) {
-      phones.push(property.ownerPhone);
-    }
-    if (
-      property.ownerMobilePhone &&
-      property.ownerMobilePhone !== "undefined" &&
-      property.ownerMobilePhone !== null &&
-      property.ownerMobilePhone.trim() !== ""
-    ) {
-      phones.push(property.ownerMobilePhone);
-    }
-    if (
-      property.ownerLandLine &&
-      property.ownerLandLine !== "undefined" &&
-      property.ownerLandLine !== null &&
-      property.ownerLandLine.trim() !== ""
-    ) {
-      phones.push(property.ownerLandLine);
-    }
-
-    // Handle ownerPhoneNumbers array - SIMPLIFIED for strings
-    if (
-      Array.isArray(property.ownerPhoneNumbers) &&
-      property.ownerPhoneNumbers.length > 0
-    ) {
-      property.ownerPhoneNumbers.forEach((phoneEntry: any) => {
-        let phoneNumber = null;
-
-        // Handle both string and object formats
-        if (typeof phoneEntry === "string") {
-          phoneNumber = phoneEntry.trim();
-        } else if (
-          typeof phoneEntry === "object" &&
-          phoneEntry !== null &&
-          phoneEntry.number
-        ) {
-          phoneNumber = String(phoneEntry.number).trim();
-        }
-
-        // Add if valid and not duplicate
-        if (
-          phoneNumber &&
-          phoneNumber !== "" &&
-          phoneNumber !== "undefined" &&
-          phoneNumber !== "null" &&
-          !phones.includes(phoneNumber)
-        ) {
-          phones.push(phoneNumber);
-        }
-      });
-    }
-
-    if (phones.length === 0) {
-      return "Contact for details";
-    }
-
-    // Format phone numbers for display
-    const formattedPhones = phones.map((phoneNumber) => {
-      const cleanedPhone = phoneNumber.replace(/\D/g, "");
-
-      if (cleanedPhone.length === 10) {
-        return `(${cleanedPhone.slice(0, 3)}) ${cleanedPhone.slice(3, 6)}-${cleanedPhone.slice(6)}`;
-      } else if (cleanedPhone.length === 11 && cleanedPhone.startsWith("1")) {
-        return `+1 (${cleanedPhone.slice(1, 4)}) ${cleanedPhone.slice(4, 7)}-${cleanedPhone.slice(7)}`;
-      }
-      return phoneNumber; // Return as-is if format doesn't match
+  const handleAddToCRM = () => {
+    toast({
+      title: "Added to CRM",
+      description: "Cash buyer has been added to your CRM system.",
     });
-
-    return formattedPhones.join(", ");
-  };
-  const formatDNCPhones = (property: any) => {
-    const dncPhones = [];
-    const addedNumbers = new Set();
-
-    // Helper function to clean and format phone number
-    const cleanPhoneNumber = (number: string) => {
-      if (!number) return "";
-      const digits = number.replace(/\D/g, "");
-      if (digits.length === 10) {
-        return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-      }
-      return number;
-    };
-
-    // Check direct DNC phone field
-    if (
-      property.ownerDNCPhone &&
-      property.ownerDNCPhone !== "null" &&
-      property.ownerDNCPhone !== null &&
-      property.ownerDNCPhone !== "undefined" &&
-      property.ownerDNCPhone.trim() !== ""
-    ) {
-      const directDncPhones = property.ownerDNCPhone
-        .split(",")
-        .map((phone: string) => phone.trim())
-        .filter(Boolean);
-
-      directDncPhones.forEach((phone: string) => {
-        if (!addedNumbers.has(phone)) {
-          const formattedPhone = cleanPhoneNumber(phone);
-          dncPhones.push(`${formattedPhone} (DNC)`);
-          addedNumbers.add(phone);
-        }
-      });
-    }
-
-    // Check for DNC phones in phone numbers array
-    if (
-      property.ownerPhoneNumbers &&
-      Array.isArray(property.ownerPhoneNumbers)
-    ) {
-      const dncFromArray = property.ownerPhoneNumbers.filter(
-        (phone: any) =>
-          phone &&
-          phone.number &&
-          phone.dnc &&
-          phone.number !== "null" &&
-          phone.number.trim() !== "",
-      );
-
-      dncFromArray.forEach((phone: any) => {
-        const phoneNumber = phone.number.trim();
-        if (!addedNumbers.has(phoneNumber)) {
-          const formattedPhone = cleanPhoneNumber(phoneNumber);
-          dncPhones.push(`${formattedPhone} (${phone.type || "DNC"})`);
-          addedNumbers.add(phoneNumber);
-        }
-      });
-    }
-
-    // Check for DNC phones in owner object
-    if (
-      property.owner?.phoneNumbers &&
-      Array.isArray(property.owner.phoneNumbers)
-    ) {
-      const ownerDncPhones = property.owner.phoneNumbers.filter(
-        (phone: any) =>
-          phone &&
-          phone.number &&
-          phone.dnc &&
-          phone.number !== "null" &&
-          phone.number.trim() !== "",
-      );
-
-      ownerDncPhones.forEach((phone: any) => {
-        const phoneNumber = phone.number.trim();
-        if (!addedNumbers.has(phoneNumber)) {
-          const formattedPhone = cleanPhoneNumber(phoneNumber);
-          dncPhones.push(`${formattedPhone} (${phone.type || "DNC"})`);
-          addedNumbers.add(phoneNumber);
-        }
-      });
-    }
-
-    return dncPhones.length > 0 ? dncPhones.join(", ") : "None on record";
   };
 
-  const formatMailingAddress = (property: any) => {
-    // Check for direct mailing address field
-    if (
-      property.ownerMailingAddress &&
-      property.ownerMailingAddress !== "null" &&
-      property.ownerMailingAddress !== null &&
-      property.ownerMailingAddress !== "undefined" &&
-      property.ownerMailingAddress.trim() !== ""
-    ) {
-      return property.ownerMailingAddress.trim();
-    }
+  const handlePass = () => {
+    toast({
+      title: "Passed",
+      description: "This buyer has been marked as passed.",
+    });
+  };
 
-    // Check for owner object mailing address
-    if (
-      property.owner?.mailingAddress &&
-      property.owner.mailingAddress !== "null" &&
-      property.owner.mailingAddress !== null &&
-      property.owner.mailingAddress !== "undefined" &&
-      property.owner.mailingAddress.trim() !== ""
-    ) {
-      return property.owner.mailingAddress.trim();
-    }
-
-    // Check for structured mailing address in owner object
-    if (property.owner?.mailingAddress) {
-      const addr = property.owner.mailingAddress;
-      if (typeof addr === "object" && addr.street) {
-        const fullAddress =
-          `${addr.street || ""}, ${addr.city || ""}, ${addr.state || ""} ${addr.zip || ""}`.trim();
-        if (fullAddress && fullAddress !== ", ") {
-          return fullAddress;
-        }
-      }
-    }
-
-    // Check for mailing address fields separately
-    const mailingParts = [];
-    if (property.mailingStreet) mailingParts.push(property.mailingStreet);
-    if (property.mailingCity) mailingParts.push(property.mailingCity);
-    if (property.mailingState && property.mailingZip) {
-      mailingParts.push(`${property.mailingState} ${property.mailingZip}`);
-    } else if (property.mailingState) {
-      mailingParts.push(property.mailingState);
-    }
-
-    if (mailingParts.length > 0) {
-      return mailingParts.join(", ");
-    }
-
-    // Fall back to property address
-    const propertyAddress =
-      `${property.address || ""}, ${property.city || ""}, ${property.state || ""} ${property.zipCode || ""}`.trim();
-    return propertyAddress || "Same as property address";
+  const handleContact = () => {
+    toast({
+      title: "Contact Initiated",
+      description: "Contact flow has been initiated for this buyer.",
+    });
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl bg-gray-50">
-        <DialogHeader>
-          <DialogTitle className="text-xl font-bold text-gray-800">
-            Seller Lead Details
-          </DialogTitle>
-        </DialogHeader>
-        <div className="space-y-6 max-h-[70vh] overflow-y-auto">
-          {/* Property Header */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-lg font-bold text-blue-800 mb-2">
-              🏠 SELLER LEAD
-            </h3>
-            <div className="text-blue-700">
-              <p className="font-semibold">{property.address}</p>
-              <p>
-                {property.city}, {property.state} {property.zipCode}
-              </p>
-            </div>
-          </div>
-
-          {/* Building Details */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              🏗️ Building Details
-            </h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="font-medium text-gray-600">
-                  Property Type:
-                </span>
-                <div>
-                  {property.propertyType?.replace(/_/g, " ") || "Single Family"}
-                </div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Year Built:</span>
-                <div>{property.yearBuilt || "N/A"}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Bedrooms:</span>
-                <div>{property.bedrooms || "N/A"}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Bathrooms:</span>
-                <div>{property.bathrooms || "N/A"}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Square Feet:</span>
-                <div>{formatNumber(property.squareFeet)} sq ft</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">Market Value:</span>
-                <div className="font-semibold text-blue-600">
-                  ${formatNumber(property.arv)}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Owner Information */}
-          <div className="bg-white border border-gray-200 rounded-lg p-4">
-            <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              👤 Owner Information
-            </h4>
-            <div className="grid grid-cols-1 gap-3 text-sm">
-              <div>
-                <span className="font-medium text-gray-600">Owner Name:</span>
-                <div className="font-medium">{property.ownerName || "N/A"}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">
-                  Mailing Address:
-                </span>
-                <div>{formatMailingAddress(property)}</div>
-              </div>
-            </div>
-          </div>
-
-          {/* Contact Information - Structured Display */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-            <h4 className="font-semibold text-green-800 mb-3 flex items-center gap-2">
-              📞 Contact Information
-            </h4>
-            <div className="space-y-3">
-              {/* Email Addresses */}
-              <div className="bg-white rounded-md p-3 border border-green-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg
-                    className="w-4 h-4 text-green-600"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M20,8L12,13L4,8M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,1.89 21.1,4 20,4Z" />
-                  </svg>
-                  <span className="font-medium text-green-700">
-                    Email Addresses
-                  </span>
-                </div>
-                <div className="text-sm text-gray-700">
-                  {formatEmail(property)}
-                </div>
-              </div>
-
-              {/* Phone Numbers */}
-              <div className="bg-white rounded-md p-3 border border-green-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg
-                    className="w-4 h-4 text-green-600"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M6.62,10.79C8.06,13.62 10.38,15.94 13.21,17.38L15.41,15.18C15.69,14.9 16.08,14.82 16.43,14.93C17.55,15.3 18.75,15.5 20,15.5A1,1 0 0,1 21,16.5V20A1,1 0 0,1 20,21A17,17 0 0,1 3,4A1,1 0 0,1 4,3H7.5A1,1 0 0,1 8.5,4C8.5,5.25 8.7,6.45 9.07,7.57C9.18,7.92 9.1,8.31 8.82,8.59L6.62,10.79Z" />
-                  </svg>
-                  <span className="font-medium text-green-700">
-                    Phone Numbers
-                  </span>
-                </div>
-                <div className="text-sm text-gray-700">
-                  {formatPhoneNumbers(property)}
-                </div>
-              </div>
-
-              {/* DNC Phone Numbers */}
-              <div className="bg-white rounded-md p-3 border border-red-100">
-                <div className="flex items-center gap-2 mb-2">
-                  <svg
-                    className="w-4 h-4 text-red-600"
-                    viewBox="0 0 24 24"
-                    fill="currentColor"
-                  >
-                    <path d="M17,7H22V9H19V12A5,5 0 0,1 14,17H10A5,5 0 0,1 5,12V9H2V7H7A2,2 0 0,1 9,5V4A2,2 0 0,1 11,2H13A2,2 0 0,1 15,4V5A2,2 0 0,1 17,7M13,4V7H11V4H13Z" />
-                  </svg>
-                  <span className="font-medium text-red-700">
-                    DNC Phone Numbers
-                  </span>
-                </div>
-                <div className="text-sm text-gray-700">
-                  {formatDNCPhones(property)}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Financial Information */}
-          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-            <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
-              💰 Valuation Details
-            </h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="font-medium text-gray-600">As of Date:</span>
-                <div>{new Date().toLocaleDateString("en-US")}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">
-                  Confidence Score:
-                </span>
-                <div>{property.confidenceScore || "N/A"}</div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">
-                  Equity Balance:
-                </span>
-                <div className="font-semibold text-green-600">
-                  ${formatNumber(property.equityBalance)}
-                </div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">
-                  Equity Percent:
-                </span>
-                <div className="font-semibold text-green-600">
-                  {property.equityPercentage || "N/A"}%
-                </div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">
-                  Estimated Value:
-                </span>
-                <div className="font-semibold text-blue-600">
-                  ${formatNumber(property.arv)}
-                </div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">
-                  Max Offer (70% Rule):
-                </span>
-                <div className="font-semibold text-orange-600">
-                  ${formatNumber(property.maxOffer)}
-                </div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">
-                  Last Sale Price:
-                </span>
-                <div>
-                  {property.lastSalePrice
-                    ? `$${formatNumber(property.lastSalePrice)}`
-                    : "N/A"}
-                </div>
-              </div>
-              <div>
-                <span className="font-medium text-gray-600">
-                  Last Sale Date:
-                </span>
-                <div>{formatDate(property.lastSaleDate)}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+    <div className="space-y-4">
+      <div className="text-sm whitespace-pre-wrap font-mono bg-slate-50 p-3 rounded border">
+        {content}
+      </div>
+      <div className="flex gap-2 pt-2 border-t">
+        <Button
+          onClick={handleAddToCRM}
+          variant="outline"
+          size="sm"
+          className="flex-1 items-center gap-1 bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-xs px-3 py-1"
+        >
+          <Plus className="h-3 w-3" />
+          Add to CRM
+        </Button>
+        <Button
+          onClick={handlePass}
+          variant="outline"
+          size="sm"
+          className="flex-1 text-xs px-3 py-1 bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
+        >
+          I'll Pass
+        </Button>
+        <Button
+          onClick={handleContact}
+          variant="outline"
+          size="sm"
+          className="flex-1 items-center gap-1 text-xs px-3 py-1 bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100"
+        >
+          <Phone className="h-3 w-3" />
+          Contact Buyer
+        </Button>
+      </div>
+    </div>
   );
 };
+
 
 // PropertyCard component for rendering property cards with buttons
 const PropertyCard = ({ content }: { content: string }) => {
@@ -840,7 +382,7 @@ const PropertyCard = ({ content }: { content: string }) => {
 
   // Detect card type and extract number
   const isSellerLead = content.includes("🏠 SELLER LEAD");
-  const isCashBuyer = content.includes("🎯 QUALIFIED CASH BUYER");
+  const isCashBuyer = content.includes("🎯 QUALIFIED CASH BUYER #");
 
   const cardNumber = isSellerLead
     ? content.match(/🏠 SELLER LEAD (\d+)/)?.[1] || "1"
@@ -917,9 +459,9 @@ const PropertyCard = ({ content }: { content: string }) => {
 
       // Extract bedrooms and bathrooms - updated patterns to match actual format
       const bedroomsMatch =
-        content.match(/Bedrooms\s+(\d+)/) || content.match(/🏠 (\d+) bed/);
+        content.match(/🏠 (\d+) bed/) || content.match(/Bedrooms\s+(\d+)/);
       const bathroomsMatch =
-        content.match(/Bathrooms\s+(\d+)/) || content.match(/(\d+) bath/);
+        content.match(/(\d+) bath/) || content.match(/Bathrooms\s+(\d+)/);
       const bedrooms = bedroomsMatch ? bedroomsMatch[1] : "";
       const bathrooms = bathroomsMatch ? bathroomsMatch[1] : "";
 
@@ -2938,7 +2480,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                       value={terryInput}
                       onChange={(e) => setTerryInput(e.target.value)}
                       onKeyPress={(e) =>
-                        e.key === "Enter" && handleTerrySendMessage()
+                        e.key === "Enter" && !e.shiftKey && handleTerrySendMessage()
                       }
                       placeholder="Let's Get Started! Type Anything You Need Help With"
                       className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -3476,6 +3018,11 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                       message.content.includes("🏠 SELLER LEAD") ||
                       message.content.includes("🎯 QUALIFIED CASH BUYER #")
                     ) {
+                      // Check if it's a cash buyer card and render BuyerCard
+                      if (message.content.includes("🎯 QUALIFIED CASH BUYER #")) {
+                        return <BuyerCard content={message.content} />;
+                      }
+                      // Otherwise, render PropertyCard for seller leads
                       return <PropertyCard content={message.content} />;
                     }
 
