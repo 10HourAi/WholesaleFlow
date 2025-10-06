@@ -213,20 +213,18 @@ export function BuyerCardDisplay({ content }: BuyerCardDisplayProps) {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex gap-3 pt-4 border-t">
+        <div className="flex gap-2 pt-4 border-t">
           <Button 
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium"
             onClick={() => {
               // TODO: Implement add to CRM functionality
               console.log('Add to CRM clicked');
             }}
           >
-            <DollarSign className="h-4 w-4 mr-2" />
             Add to CRM
           </Button>
           <Button 
-            variant="outline" 
-            className="flex-1 border-red-500 text-red-600 hover:bg-red-50"
+            className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium"
             onClick={() => {
               // TODO: Implement pass functionality
               console.log('Pass clicked');
@@ -235,14 +233,12 @@ export function BuyerCardDisplay({ content }: BuyerCardDisplayProps) {
             I'll Pass
           </Button>
           <Button 
-            variant="outline" 
-            className="flex-1 border-blue-500 text-blue-600 hover:bg-blue-50"
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-medium"
             onClick={() => {
               // TODO: Implement contact buyer functionality
               console.log('Contact buyer clicked');
             }}
           >
-            <Phone className="h-4 w-4 mr-2" />
             Contact Buyer
           </Button>
         </div>
