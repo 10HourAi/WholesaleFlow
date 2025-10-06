@@ -2673,14 +2673,14 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                     quickLists: ["fix-flip"],
                   },
                   {
-                    id: "cash-buyer",
+                    id: "all-cash-buyer",
                     name: "💰 All Cash Buyers",
                     description:
                       "Any investor who has purchased properties with cash",
                     quickLists: ["cash-buyer"],
                   },
                   {
-                    id: "cash-buyer",
+                    id: "portfolio-investor",
                     name: "📊 Portfolio Investors",
                     description: "Large-scale investors with 5+ properties",
                     quickLists: ["cash-buyer"],

@@ -1,6 +1,8 @@
 
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { MapPin, Home, DollarSign, Phone, Mail } from "lucide-react";
 
 interface BuyerCardDisplayProps {
   content: string;
@@ -87,56 +89,53 @@ export function BuyerCardDisplay({ content }: BuyerCardDisplayProps) {
   const buyerData = extractBuyerData(content);
 
   return (
-    <Card className="w-full max-w-2xl mx-auto overflow-hidden bg-white border border-gray-200 shadow-sm">
-      <CardContent className="p-6">
-        {/* Header with Location and Buyer Badge */}
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <p className="text-sm text-gray-500 mb-1">{buyerData.location || 'Location'}</p>
-            <p className="font-semibold text-lg text-gray-800">
+    <Card className="w-full max-w-2xl mx-auto overflow-hidden bg-white border border-slate-200 shadow-lg hover:shadow-xl transition-shadow">
+      <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-slate-200">
+        <div className="flex justify-between items-start">
+          <div className="flex-1">
+            <CardTitle className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <Home className="h-5 w-5 text-blue-600" />
               {buyerData.investorName}
+            </CardTitle>
+            <p className="text-sm text-slate-600 mt-1 flex items-center gap-1">
+              <MapPin className="h-4 w-4" />
+              {buyerData.location || 'Location'}
             </p>
           </div>
-          <Badge className="bg-blue-100 text-blue-800 border-blue-200">
-            Buyer
+          <Badge className="bg-blue-600 text-white border-0 px-3 py-1">
+            Cash Buyer
           </Badge>
         </div>
+      </CardHeader>
 
-        {/* Investor Name (Owner Name equivalent) */}
-        <div className="mb-4">
-          <p className="text-sm text-gray-500 mb-1">Investor Name</p>
-          <p className="font-medium text-gray-800">
-            {buyerData.investorName}
-          </p>
-        </div>
-
-        {/* Portfolio Details Grid (equivalent to Property Details) */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
-          <div>
-            <p className="text-sm text-gray-500 mb-1">Properties Owned</p>
-            <p className="font-semibold text-xl text-gray-800">
+      <CardContent className="p-6 space-y-6">
+        {/* Portfolio Summary */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="bg-slate-50 p-4 rounded-lg">
+            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Properties Owned</p>
+            <p className="text-2xl font-bold text-slate-800">
               {buyerData.propertiesCount}
             </p>
           </div>
-          <div>
-            <p className="text-sm text-gray-500 mb-1">Avg Purchase</p>
-            <p className="font-semibold text-xl text-gray-800">
-              ${buyerData.avgPurchasePrice}
+          <div className="bg-slate-50 p-4 rounded-lg">
+            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Portfolio Value</p>
+            <p className="text-2xl font-bold text-green-600">
+              ${buyerData.portfolioValue}
             </p>
           </div>
         </div>
 
-        {/* Financial Information */}
-        <div className="grid grid-cols-2 gap-4 mb-4">
+        {/* Financial Details */}
+        <div className="grid grid-cols-2 gap-4">
           <div>
-            <p className="text-sm text-gray-500 mb-1">Portfolio Value</p>
-            <p className="font-semibold text-lg text-gray-800">
-              ${buyerData.portfolioValue}
+            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Avg Purchase</p>
+            <p className="text-lg font-semibold text-slate-800">
+              ${buyerData.avgPurchasePrice}
             </p>
           </div>
           <div>
-            <p className="text-sm text-gray-500 mb-1">Last Activity</p>
-            <p className="font-semibold text-lg text-gray-800">
+            <p className="text-xs text-slate-500 uppercase tracking-wide mb-1">Last Activity</p>
+            <p className="text-lg font-semibold text-slate-800">
               {buyerData.lastActivity}
             </p>
           </div>
@@ -144,70 +143,108 @@ export function BuyerCardDisplay({ content }: BuyerCardDisplayProps) {
 
         {/* Recent Purchase Details */}
         {buyerData.recentAddress && (
-          <>
-            <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="border-t pt-4">
+            <p className="text-sm font-semibold text-slate-700 mb-3">Recent Purchase</p>
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-sm text-gray-500 mb-1">Recent Property</p>
-                <p className="font-semibold text-lg text-gray-800">
+                <p className="text-xs text-slate-500 mb-1">Property Type</p>
+                <p className="text-sm font-medium text-slate-800">
                   {buyerData.propertyType || 'N/A'}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500 mb-1">Square Feet</p>
-                <p className="font-semibold text-lg text-gray-800">
+                <p className="text-xs text-slate-500 mb-1">Square Feet</p>
+                <p className="text-sm font-medium text-slate-800">
                   {buyerData.squareFeet || 'N/A'}
                 </p>
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
-                <p className="text-sm text-gray-500 mb-1">Beds</p>
-                <p className="font-semibold text-xl text-gray-800">
+                <p className="text-xs text-slate-500 mb-1">Beds</p>
+                <p className="text-sm font-medium text-slate-800">
                   {buyerData.bedrooms}
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-500 mb-1">Baths</p>
-                <p className="font-semibold text-xl text-gray-800">
+                <p className="text-xs text-slate-500 mb-1">Baths</p>
+                <p className="text-sm font-medium text-slate-800">
                   {buyerData.bathrooms}
                 </p>
               </div>
             </div>
-          </>
-        )}
-
-        {/* Last Sale Price - Prominent Display */}
-        <div className="mb-6 p-3 bg-blue-50 rounded-lg">
-          <p className="text-sm text-blue-600 mb-1">Last Sale Price</p>
-          <p className="text-2xl font-bold text-blue-700">
-            ${buyerData.lastSalePrice}
-          </p>
-        </div>
-
-        {/* Contact Information */}
-        <div className="mb-4">
-          <p className="text-sm text-gray-500 mb-2">Contact Information</p>
-          <div className="space-y-2 text-sm">
-            <div>
-              <span className="font-medium text-gray-600">Email:</span>
-              <p className="text-gray-800">{buyerData.email}</p>
-            </div>
-            <div>
-              <span className="font-medium text-gray-600">Phone:</span>
-              <p className="text-gray-800">{buyerData.phone}</p>
-            </div>
-            {buyerData.dncPhone && (
-              <div>
-                <span className="font-medium text-gray-600">DNC Phone:</span>
-                <p className="text-red-600">{buyerData.dncPhone}</p>
-              </div>
-            )}
-            <div>
-              <span className="font-medium text-gray-600">Mailing Address:</span>
-              <p className="text-gray-800">{buyerData.mailingAddress}</p>
+            <div className="mt-3 bg-green-50 p-3 rounded-lg">
+              <p className="text-xs text-green-700 mb-1">Last Sale Price</p>
+              <p className="text-xl font-bold text-green-700">
+                ${buyerData.lastSalePrice}
+              </p>
             </div>
           </div>
+        )}
+
+        {/* Contact Information */}
+        <div className="border-t pt-4">
+          <p className="text-sm font-semibold text-slate-700 mb-3">Contact Information</p>
+          <div className="space-y-2">
+            {buyerData.email && buyerData.email !== 'Contact for details' && (
+              <div className="flex items-center gap-2 text-sm">
+                <Mail className="h-4 w-4 text-slate-500" />
+                <span className="text-slate-800">{buyerData.email}</span>
+              </div>
+            )}
+            {buyerData.phone && buyerData.phone !== 'Contact for details' && (
+              <div className="flex items-center gap-2 text-sm">
+                <Phone className="h-4 w-4 text-slate-500" />
+                <span className="text-slate-800">{buyerData.phone}</span>
+              </div>
+            )}
+            {buyerData.dncPhone && (
+              <div className="flex items-center gap-2 text-sm text-red-600">
+                <Phone className="h-4 w-4" />
+                <span>{buyerData.dncPhone}</span>
+                <Badge variant="destructive" className="text-xs">DNC</Badge>
+              </div>
+            )}
+            {buyerData.mailingAddress && buyerData.mailingAddress !== 'N/A' && (
+              <div className="text-sm">
+                <span className="text-slate-500">Mailing: </span>
+                <span className="text-slate-800">{buyerData.mailingAddress}</span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-3 pt-4 border-t">
+          <Button 
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+            onClick={() => {
+              // TODO: Implement add to CRM functionality
+              console.log('Add to CRM clicked');
+            }}
+          >
+            <DollarSign className="h-4 w-4 mr-2" />
+            Add to CRM
+          </Button>
+          <Button 
+            variant="outline" 
+            className="flex-1 border-red-500 text-red-600 hover:bg-red-50"
+            onClick={() => {
+              // TODO: Implement pass functionality
+              console.log('Pass clicked');
+            }}
+          >
+            I'll Pass
+          </Button>
+          <Button 
+            variant="outline" 
+            className="flex-1 border-blue-500 text-blue-600 hover:bg-blue-50"
+            onClick={() => {
+              // TODO: Implement contact buyer functionality
+              console.log('Contact buyer clicked');
+            }}
+          >
+            <Phone className="h-4 w-4 mr-2" />
+            Contact Buyer
+          </Button>
         </div>
       </CardContent>
     </Card>
