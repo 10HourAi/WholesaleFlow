@@ -36,6 +36,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Conversation, Message, Property } from "@shared/schema";
+import PropertyCard from "@/components/crm/property-card";
 
 const agentTypes = [
   { id: "lead-finder", name: "🔍 Lead Finder Agent", icon: Search },
@@ -3074,7 +3075,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
       </div>
 
       {/* Modal Renderer */}
-      <PropertyDetailsModal
+      <PropertyCard
         property={selectedProperty}
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
