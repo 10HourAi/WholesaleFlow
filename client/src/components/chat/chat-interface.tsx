@@ -30,7 +30,6 @@ import {
   ArrowRight,
   ArrowLeft,
   Plus,
-  Phone,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -833,73 +832,6 @@ const PropertyDetailsModal = ({
   );
 };
 
-// BuyerCard component for rendering cash buyer cards with buttons
-const BuyerCard = ({ content }: { content: string }) => {
-  const { toast } = useToast();
-
-  const cardNumber = content.match(/QUALIFIED CASH BUYER #(\d+)/)?.[1] || "1";
-
-  const handleAddToCRM = () => {
-    toast({
-      title: "Added to CRM",
-      description: `Cash Buyer #${cardNumber} has been added to your CRM system.`,
-    });
-  };
-
-  const handlePass = () => {
-    toast({
-      title: "Passed",
-      description: `Cash Buyer #${cardNumber} has been marked as passed.`,
-    });
-  };
-
-  const handleContact = () => {
-    toast({
-      title: "Contact Initiated",
-      description: `Opening contact options for Cash Buyer #${cardNumber}.`,
-    });
-  };
-
-  return (
-    <div className="space-y-4">
-      {/* Display the formatted content */}
-      <div className="text-sm whitespace-pre-wrap font-mono bg-slate-50 p-3 rounded border">
-        {content}
-      </div>
-
-      {/* Action buttons */}
-      <div className="flex gap-2 pt-2 border-t">
-        <Button
-          onClick={handleAddToCRM}
-          variant="outline"
-          size="sm"
-          className="flex-1 items-center gap-1 bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-xs px-3 py-1"
-        >
-          <Plus className="h-3 w-3" />
-          Add to CRM
-        </Button>
-        <Button
-          onClick={handlePass}
-          variant="outline"
-          size="sm"
-          className="flex-1 text-xs px-3 py-1 bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
-        >
-          I'll Pass
-        </Button>
-        <Button
-          onClick={handleContact}
-          variant="outline"
-          size="sm"
-          className="flex-1 items-center gap-1 text-xs px-3 py-1 bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100"
-        >
-          <Phone className="h-3 w-3" />
-          Contact Buyer
-        </Button>
-      </div>
-    </div>
-  );
-};
-
 // PropertyCard component for rendering property cards with buttons
 const PropertyCard = ({ content }: { content: string }) => {
   const { toast } = useToast();
@@ -908,7 +840,7 @@ const PropertyCard = ({ content }: { content: string }) => {
 
   // Detect card type and extract number
   const isSellerLead = content.includes("🏠 SELLER LEAD");
-  const isCashBuyer = content.includes("🎯 QUALIFIED CASH BUYER #");
+  const isCashBuyer = content.includes("🎯 QUALIFIED CASH BUYER");
 
   const cardNumber = isSellerLead
     ? content.match(/🏠 SELLER LEAD (\d+)/)?.[1] || "1"
@@ -1898,10 +1830,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                   "POST",
                   `/api/conversations/${conversation.id}/messages`,
                   {
-                    content: JSON.stringify({
-                      type: "property_card",
-                      data: property,
-                    }),
+                    content: updatedPropertyCard,
                     role: "assistant",
                     isAiGenerated: true,
                   },
@@ -3009,7 +2938,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                       value={terryInput}
                       onChange={(e) => setTerryInput(e.target.value)}
                       onKeyPress={(e) =>
-                        e.key === "Enter" && !e.shiftKey && handleTerrySendMessage()
+                        e.key === "Enter" && handleTerrySendMessage()
                       }
                       placeholder="Let's Get Started! Type Anything You Need Help With"
                       className="flex-1 p-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -3058,6 +2987,229 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
             </CardContent>
           </Card>
         )}
+
+        {/* Processing indicator */}
+        {(wizardProcessing ||
+          buyerWizardProcessing ||
+          sendMessageMutation.isPending) && (
+          <Card className="border-2 border-blue-200 bg-blue-50">
+            <CardContent className="p-6">
+              <div className="flex items-center space-x-4">
+                <div className="flex space-x-2">
+                  <div className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"></div>
+                  <div
+                    className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
+                    style={{ animationDelay: "0.1s" }}
+                  ></div>
+                  <div
+                    className="w-3 h-3 bg-blue-500 rounded-full animate-bounce"
+                    style={{ animationDelay: "0.2s" }}
+                  ></div>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-blue-800">
+                    🔍 Searching Properties...
+                  </h3>
+                  <p className="text-sm text-blue-600 mt-1">
+                    {wizardData.city && wizardData.state
+                      ? `Analyzing ${wizardData.city}, ${wizardData.state} with BatchData API for distressed properties and motivated sellers`
+                      : "Analyzing property data with BatchData API for distressed properties and motivated sellers"}
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {messages.length === 0 &&
+          !currentConversation &&
+          !showWizard &&
+          !showBuyerWizard &&
+          !targetMarketResults &&
+          !wizardProcessing &&
+          !buyerWizardProcessing && (
+            <div className="space-y-4">
+              {/* Seller Lead Finder Card */}
+              <div className="flex items-start space-x-3">
+                <Avatar>
+                  <AvatarImage />
+                  <AvatarFallback>
+                    <Search className="h-4 w-4" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1">
+                  <Card>
+                    <CardContent className="p-4">
+                      <p className="text-sm text-slate-900">
+                        {selectedAgent === "lead-finder" &&
+                          "Hello! I'm your Seller Lead Finder. I can help you discover off-market properties, distressed sales, and motivated sellers. Use the wizard below to get started!"}
+                        {selectedAgent === "deal-analyzer" &&
+                          "Hi! I'm your Deal Analyzer Agent. I can help you analyze property deals, calculate ARV, estimate repair costs, and determine maximum allowable offers. Share a property address to get started!"}
+                        {selectedAgent === "negotiation" &&
+                          "Hello! I'm your Negotiation Agent. I can help you craft compelling offers, write follow-up messages, and develop negotiation strategies for your deals. What property are you working on?"}
+                        {selectedAgent === "closing" &&
+                          "Hi! I'm your Closing Agent. I can help you prepare contracts, coordinate closings, and manage documents. What deal are you looking to close?"}
+                      </p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {selectedAgent === "lead-finder" && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setShowWizard(true)}
+                              className="flex items-center gap-2 mb-2 bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+                            >
+                              <Search className="h-4 w-4" />
+                              Use Seller Lead Wizard
+                            </Button>
+                          </>
+                        )}
+                        {selectedAgent === "deal-analyzer" && (
+                          <>
+                            <Badge
+                              variant="secondary"
+                              className="cursor-pointer hover:bg-slate-200"
+                            >
+                              Calculate ARV
+                            </Badge>
+                            <Badge
+                              variant="secondary"
+                              className="cursor-pointer hover:bg-slate-200"
+                            >
+                              Estimate repairs
+                            </Badge>
+                            <Badge
+                              variant="secondary"
+                              className="cursor-pointer hover:bg-slate-200"
+                            >
+                              Find comps
+                            </Badge>
+                          </>
+                        )}
+                        {selectedAgent === "negotiation" && (
+                          <>
+                            <Badge
+                              variant="secondary"
+                              className="cursor-pointer hover:bg-slate-200"
+                            >
+                              Write offer letter
+                            </Badge>
+                            <Badge
+                              variant="secondary"
+                              className="cursor-pointer hover:bg-slate-200"
+                            >
+                              Follow-up script
+                            </Badge>
+                            <Badge
+                              variant="secondary"
+                              className="cursor-pointer hover:bg-slate-200"
+                            >
+                              Objection handling
+                            </Badge>
+                          </>
+                        )}
+                        {selectedAgent === "closing" && (
+                          <>
+                            <Badge
+                              variant="secondary"
+                              className="cursor-pointer hover:bg-slate-200"
+                            >
+                              Purchase agreement
+                            </Badge>
+                            <Badge
+                              variant="secondary"
+                              className="cursor-pointer hover:bg-slate-200"
+                            >
+                              Assignment contract
+                            </Badge>
+                            <Badge
+                              variant="secondary"
+                              className="cursor-pointer hover:bg-slate-200"
+                            >
+                              Closing checklist
+                            </Badge>
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+
+              {/* Cash Buyer Wizard Card - Only for Lead Finder */}
+              {selectedAgent === "lead-finder" && (
+                <div className="flex items-start space-x-3">
+                  <Avatar>
+                    <AvatarImage />
+                    <AvatarFallback>
+                      <TrendingUp className="h-4 w-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-sm text-slate-900">
+                          Hello! I'm your Cash Buyer Finder. I can help you
+                          discover active real estate investors, cash buyers,
+                          and portfolio managers. Use the wizard below to get
+                          started!
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowBuyerWizard(true)}
+                            className="flex items-center gap-2 mb-2 bg-green-50 border-green-200 text-green-700 hover:bg-green-100"
+                          >
+                            <TrendingUp className="h-4 w-4" />
+                            Use Cash Buyer Wizard
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              )}
+
+              {/* Target Market Finder - Only for Lead Finder */}
+              {selectedAgent === "lead-finder" && (
+                <div className="flex items-start space-x-3">
+                  <Avatar>
+                    <AvatarImage />
+                    <AvatarFallback>
+                      <Lightbulb className="h-4 w-4" />
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <Card>
+                      <CardContent className="p-4">
+                        <p className="text-sm text-slate-900">
+                          Hello! I'm your Target Market Finder. I help identify
+                          and analyze ideal market areas for real estate
+                          investing. Click below to access the interactive
+                          market analysis tool!
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setShowTargetMarketFinder(false);
+                              setTargetMarketResults(true);
+                            }}
+                            className="flex items-center gap-2 mb-2 bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100"
+                          >
+                            <Lightbulb className="h-4 w-4" />
+                            Use Target Market Finder
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
         {/* Wizard */}
         {showWizard && (
@@ -3317,11 +3469,6 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                       }
                     } catch (e) {
                       // Not JSON, continue to legacy format check
-                    }
-
-                    // Check if the message content matches the format for BuyerCard
-                    if (message.content.includes("QUALIFIED CASH BUYER #")) {
-                      return <BuyerCard content={message.content} />;
                     }
 
                     // Only render PropertyCard for legacy text format (not JSON)
