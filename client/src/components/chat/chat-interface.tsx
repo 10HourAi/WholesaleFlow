@@ -35,6 +35,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Conversation, Message, Property } from "@shared/schema";
+import { BuyerCardDisplay } from "./buyer-card-display";
 
 const agentTypes = [
   { id: "lead-finder", name: "🔍 Lead Finder Agent", icon: Search },
@@ -3251,105 +3252,17 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                     return null;
                   })()}
 
-                  {/* Render cash buyer action buttons */}
-                  {message.content.includes('[BUYER_ACTIONS:') && (() => {
-                    const buyerMatch = message.content.match(/\[BUYER_ACTIONS:(.*?)\]/s);
-                    if (buyerMatch) {
-                      const buyerData = JSON.parse(buyerMatch[1]);
-                      return (
-                        <div className="flex gap-2 mt-2">
-                          <Button
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700 text-white"
-                            onClick={async () => {
-                              try {
-                                const propertyPayload = {
-                                  address: buyerData.address,
-                                  city: buyerData.city,
-                                  state: buyerData.state,
-                                  zipCode: buyerData.zipCode,
-                                  bedrooms: parseInt(buyerData.bedrooms) || 0,
-                                  bathrooms: parseInt(buyerData.bathrooms) || 0,
-                                  squareFeet: buyerData.squareFeet,
-                                  yearBuilt: buyerData.yearBuilt,
-                                  propertyType: buyerData.propertyType,
-                                  arv: buyerData.arv,
-                                  maxOffer: buyerData.maxOffer,
-                                  equityPercentage: buyerData.equityPercentage,
-                                  ownerName: buyerData.ownerName,
-                                  ownerPhone: buyerData.ownerPhone,
-                                  ownerEmail: buyerData.ownerEmail,
-                                  ownerMailingAddress: buyerData.ownerMailingAddress,
-                                  confidenceScore: buyerData.confidenceScore,
-                                  status: "new",
-                                  leadType: "cash_buyer",
-                                };
+                  {/* Render buyer cards */}
+                  {message.content.includes('QUALIFIED CASH BUYER') && message.content.includes('𝗜𝗡𝗩𝗘𝗦𝗧𝗢𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘') && (
+                    <BuyerCardDisplay content={message.content} />
+                  )}
 
-                                const response = await apiRequest("POST", "/api/properties", propertyPayload);
-                                const result = await response.json();
-
-                                if (result) {
-                                  toast({
-                                    title: "✅ Cash Buyer Added to CRM",
-                                    description: `${buyerData.ownerName} has been added to your leads.`,
-                                  });
-                                  queryClient.invalidateQueries({ queryKey: ["/api/properties"] });
-                                }
-                              } catch (error) {
-                                console.error("Error adding buyer to CRM:", error);
-                                toast({
-                                  title: "Error",
-                                  description: "Failed to add buyer to CRM",
-                                  variant: "destructive",
-                                });
-                              }
-                            }}
-                          >
-                            ✅ Add to CRM
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="border-orange-500 text-orange-600 hover:bg-orange-50"
-                            onClick={() => {
-                              toast({
-                                title: "Skipped",
-                                description: "Moving to next cash buyer...",
-                              });
-                            }}
-                          >
-                            👋 I'll Pass
-                          </Button>
-                          <Button
-                            size="sm"
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                            onClick={() => {
-                              const phone = buyerData.ownerPhone;
-                              const email = buyerData.ownerEmail;
-                              if (phone) {
-                                window.open(`tel:${phone}`, '_self');
-                              } else if (email) {
-                                window.open(`mailto:${email}`, '_self');
-                              } else {
-                                toast({
-                                  title: "No contact info",
-                                  description: "This buyer has no phone or email available",
-                                  variant: "destructive",
-                                });
-                              }
-                            }}
-                          >
-                            📞 Contact Buyer
-                          </Button>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
-
-                  <div className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
-                    {message.content.replace(/\[BUYER_ACTIONS:.*?\]/s, '').trim()}
-                  </div>
+                  {/* Show text content only if not a buyer card */}
+                  {!(message.content.includes('QUALIFIED CASH BUYER') && message.content.includes('𝗜𝗡𝗩𝗘𝗦𝗧𝗢𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘')) && (
+                    <div className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
+                      {message.content}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>
