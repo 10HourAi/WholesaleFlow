@@ -97,26 +97,51 @@ const CondensedPropertyCard = ({
       console.log("🏠 Attempting to add property to CRM:", property.address);
 
       // Check if property already exists to prevent duplicates
-      const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
+      const existingProperties = queryClient.getQueryData([
+        "/api/properties",
+      ]) as Property[] | undefined;
 
       // Create a unique identifier for comparison (more strict)
-      const createPropertyKey = (addr: string, city: string, state: string, zip?: string) => {
-        const normalizedAddr = (addr || '').toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, '');
-        const normalizedCity = (city || '').toLowerCase().trim().replace(/[^\w\s]/g, '').replace(/\s+/g, '');
-        const normalizedState = (state || '').toLowerCase().trim();
-        const normalizedZip = (zip || '').toLowerCase().trim();
+      const createPropertyKey = (
+        addr: string,
+        city: string,
+        state: string,
+        zip?: string,
+      ) => {
+        const normalizedAddr = (addr || "")
+          .toLowerCase()
+          .trim()
+          .replace(/[^\w\s]/g, "")
+          .replace(/\s+/g, "");
+        const normalizedCity = (city || "")
+          .toLowerCase()
+          .trim()
+          .replace(/[^\w\s]/g, "")
+          .replace(/\s+/g, "");
+        const normalizedState = (state || "").toLowerCase().trim();
+        const normalizedZip = (zip || "").toLowerCase().trim();
         return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip}`;
       };
 
-      const newPropertyKey = createPropertyKey(property.address, property.city, property.state, property.zipCode);
+      const newPropertyKey = createPropertyKey(
+        property.address,
+        property.city,
+        property.state,
+        property.zipCode,
+      );
 
-      console.log('🔍 Checking for duplicate property:', newPropertyKey);
+      console.log("🔍 Checking for duplicate property:", newPropertyKey);
 
-      const propertyExists = existingProperties?.some(p => {
-        const existingKey = createPropertyKey(p.address, p.city, p.state, p.zipCode);
+      const propertyExists = existingProperties?.some((p) => {
+        const existingKey = createPropertyKey(
+          p.address,
+          p.city,
+          p.state,
+          p.zipCode,
+        );
         const isMatch = existingKey === newPropertyKey;
         if (isMatch) {
-          console.log('❌ Duplicate found:', existingKey);
+          console.log("❌ Duplicate found:", existingKey);
         }
         return isMatch;
       });
@@ -155,7 +180,7 @@ const CondensedPropertyCard = ({
         ownerPhoneNumbers: property.ownerPhoneNumbers,
         ownerMailingAddress: property.ownerMailingAddress,
         ownerDncPhone: property.ownerDncPhone,
-        status: "new"
+        status: "new",
       };
 
       console.log("🏠 Property data being sent:", propertyData);
@@ -187,8 +212,6 @@ const CondensedPropertyCard = ({
       });
     }
   };
-
-
 
   return (
     <Card className="w-full max-w-2xl mx-auto overflow-hidden bg-white border border-gray-200 shadow-sm">
@@ -290,9 +313,9 @@ const CondensedPropertyCard = ({
         >
           <Plus className="h-4 w-4 mr-2" /> Add to CRM
         </Button>
-        <Button 
-          size="sm" 
-          variant="outline" 
+        <Button
+          size="sm"
+          variant="outline"
           className="flex-1 bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
         >
           I'll Pass
@@ -1148,24 +1171,50 @@ const PropertyCard = ({ content }: { content: string }) => {
     }
 
     try {
-      console.log("🏠 Attempting to add property to CRM:", propertyData.address);
+      console.log(
+        "🏠 Attempting to add property to CRM:",
+        propertyData.address,
+      );
 
       // Check if property already exists to prevent duplicates
-      const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
+      const existingProperties = queryClient.getQueryData([
+        "/api/properties",
+      ]) as Property[] | undefined;
 
       // Create a unique identifier for comparison
-      const createPropertyKey = (addr: string, city: string, state: string, zip?: string) => {
-        const normalizedAddr = addr?.toLowerCase().trim().replace(/[^\w\s]/g, '');
-        const normalizedCity = city?.toLowerCase().trim().replace(/[^\w\s]/g, '');
+      const createPropertyKey = (
+        addr: string,
+        city: string,
+        state: string,
+        zip?: string,
+      ) => {
+        const normalizedAddr = addr
+          ?.toLowerCase()
+          .trim()
+          .replace(/[^\w\s]/g, "");
+        const normalizedCity = city
+          ?.toLowerCase()
+          .trim()
+          .replace(/[^\w\s]/g, "");
         const normalizedState = state?.toLowerCase().trim();
         const normalizedZip = zip?.toLowerCase().trim();
-        return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip || ''}`;
+        return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip || ""}`;
       };
 
-      const newPropertyKey = createPropertyKey(propertyData.address, propertyData.city, propertyData.state, propertyData.zipCode);
+      const newPropertyKey = createPropertyKey(
+        propertyData.address,
+        propertyData.city,
+        propertyData.state,
+        propertyData.zipCode,
+      );
 
-      const propertyExists = existingProperties?.some(p => {
-        const existingKey = createPropertyKey(p.address, p.city, p.state, p.zipCode);
+      const propertyExists = existingProperties?.some((p) => {
+        const existingKey = createPropertyKey(
+          p.address,
+          p.city,
+          p.state,
+          p.zipCode,
+        );
         return existingKey === newPropertyKey;
       });
 
@@ -1228,21 +1277,44 @@ const PropertyCard = ({ content }: { content: string }) => {
       console.log("🏠 Confirming add property to CRM:", propertyData.address);
 
       // Check if property already exists to prevent duplicates
-      const existingProperties = queryClient.getQueryData(["/api/properties"]) as Property[] | undefined;
+      const existingProperties = queryClient.getQueryData([
+        "/api/properties",
+      ]) as Property[] | undefined;
 
       // Create a unique identifier for comparison
-      const createPropertyKey = (addr: string, city: string, state: string, zip?: string) => {
-        const normalizedAddr = addr?.toLowerCase().trim().replace(/[^\w\s]/g, '');
-        const normalizedCity = city?.toLowerCase().trim().replace(/[^\w\s]/g, '');
+      const createPropertyKey = (
+        addr: string,
+        city: string,
+        state: string,
+        zip?: string,
+      ) => {
+        const normalizedAddr = addr
+          ?.toLowerCase()
+          .trim()
+          .replace(/[^\w\s]/g, "");
+        const normalizedCity = city
+          ?.toLowerCase()
+          .trim()
+          .replace(/[^\w\s]/g, "");
         const normalizedState = state?.toLowerCase().trim();
         const normalizedZip = zip?.toLowerCase().trim();
-        return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip || ''}`;
+        return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip || ""}`;
       };
 
-      const newPropertyKey = createPropertyKey(propertyData.address, propertyData.city, propertyData.state, propertyData.zipCode);
+      const newPropertyKey = createPropertyKey(
+        propertyData.address,
+        propertyData.city,
+        propertyData.state,
+        propertyData.zipCode,
+      );
 
-      const propertyExists = existingProperties?.some(p => {
-        const existingKey = createPropertyKey(p.address, p.city, p.state, p.zipCode);
+      const propertyExists = existingProperties?.some((p) => {
+        const existingKey = createPropertyKey(
+          p.address,
+          p.city,
+          p.state,
+          p.zipCode,
+        );
         return existingKey === newPropertyKey;
       });
 
@@ -1292,8 +1364,6 @@ const PropertyCard = ({ content }: { content: string }) => {
       });
     }
   };
-
-
 
   // Remove any action sections from content for display
   const displayContent = content
@@ -2384,7 +2454,10 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
 
     try {
       // Call real BatchData API for cash buyers with proper quickLists
-      console.log("🔍 Calling BatchData API for cash buyers with quickLists:", buyerWizardData.quickLists);
+      console.log(
+        "🔍 Calling BatchData API for cash buyers with quickLists:",
+        buyerWizardData.quickLists,
+      );
 
       const response = await apiRequest("POST", "/api/cash-buyers/search", {
         location: location,
@@ -2456,56 +2529,57 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
 
           // Extract bed/bath from multiple possible fields
           const bedrooms = building.bedroomCount || building.bedrooms || "N/A";
-          const bathrooms = building.bathroomCount || building.bathrooms || "N/A";
-          const squareFeet = building.totalBuildingAreaSquareFeet || building.livingArea || building.squareFeet || null;
+          const bathrooms =
+            building.bathroomCount || building.bathrooms || "N/A";
+          const squareFeet =
+            building.totalBuildingAreaSquareFeet ||
+            building.livingArea ||
+            building.squareFeet ||
+            null;
 
-          // Store buyer data in a format that can be retrieved later
-          const buyerData = {
-            name: owner.fullName || "ACTIVE CASH INVESTOR",
-            email: emailList,
-            phone: formatPhoneNumbers(regularPhones),
-            address: `${address.street}, ${address.city}, ${address.state} ${address.zip}`,
-            portfolioValue: ownerProfile.propertiesTotalEstimatedValue,
-            propertiesCount: ownerProfile.propertiesCount,
-          };
-
-          // Create modern, sleek card design with JSON wrapper for interactive buttons
-          const cardData = {
-            type: 'cash_buyer_card',
-            buyerNumber: index + 1,
-            buyerData: buyerData,
-            content: `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 QUALIFIED CASH BUYER #${index + 1}
+          // Create modern, sleek card design
+          let cardContent = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ QUALIFIED CASH BUYER #${index + 1}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-👤 𝗜𝗡𝗩𝗘𝗦𝗧𝗢𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘
-${owner.fullName || "ACTIVE CASH INVESTOR"}
-📍 Based in ${address.city}, ${address.state}
+`;
 
-💰 𝗣𝗢𝗥𝗧𝗙𝗢𝗟𝗜𝗢 𝗢𝗩𝗘𝗥𝗩𝗜𝗘𝗪
-• Total Portfolio Value: $${ownerProfile.propertiesTotalEstimatedValue ? parseInt(ownerProfile.propertiesTotalEstimatedValue).toLocaleString() : "N/A"}
-• Properties Owned: ${ownerProfile.propertiesCount || "N/A"} properties
-• Avg Purchase Price: $${ownerProfile.averagePurchasePrice ? parseInt(ownerProfile.averagePurchasePrice).toLocaleString() : "N/A"}
-• Last Activity: ${lastSaleDate}
+          cardContent += `👤 𝗜𝗡𝗩𝗘𝗦𝗧𝗢𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘\n`;
+          cardContent += `${owner.fullName || "ACTIVE CASH INVESTOR"}\n`;
+          cardContent += `📍 Based in ${address.city}, ${address.state}\n\n`;
 
-🏠 𝗥𝗘𝗖𝗘𝗡𝗧 𝗣𝗨𝗥𝗖𝗛𝗔𝗦𝗘
-📍 ${address.street}
-    ${address.city}, ${address.state} ${address.zip}
-🏘️ ${building.propertyType || "Single Family"} • ${squareFeet ? parseInt(squareFeet).toLocaleString() + " sqft" : "N/A"}
-🛏️ ${bedrooms} bed • 🛁 ${bathrooms} bath
-💵 Last Sale: $${sale.lastSalePrice ? parseInt(sale.lastSalePrice).toLocaleString() : valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : "N/A"}
+          cardContent += `💰 𝗣𝗢𝗥𝗧𝗙𝗢𝗟𝗜𝗢 𝗢𝗩𝗘𝗥𝗩𝗜𝗘𝗪\n`;
+          cardContent += `• Total Portfolio Value: $${ownerProfile.propertiesTotalEstimatedValue ? parseInt(ownerProfile.propertiesTotalEstimatedValue).toLocaleString() : "N/A"}\n`;
+          cardContent += `• Properties Owned: ${ownerProfile.propertiesCount || "N/A"} properties\n`;
+          cardContent += `• Avg Purchase Price: $${ownerProfile.averagePurchasePrice ? parseInt(ownerProfile.averagePurchasePrice).toLocaleString() : "N/A"}\n`;
+          cardContent += `• Last Activity: ${lastSaleDate}\n\n`;
 
-📞 𝗖𝗢𝗡𝗧𝗔𝗖𝗧 𝗗𝗘𝗧𝗔𝗜𝗟𝗦
-📧 ${emailList}
-📮 ${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}
-${regularPhones.length > 0 ? `📱 ${formatPhoneNumbers(regularPhones)}` : ''}
-${dncPhones.length > 0 ? `🚫 DNC: ${formatPhoneNumbers(dncPhones)}` : ''}
-${regularPhones.length === 0 && dncPhones.length === 0 ? '📱 Contact for details' : ''}
+          cardContent += `🏠 𝗥𝗘𝗖𝗘𝗡𝗧 𝗣𝗨𝗥𝗖𝗛𝗔𝗦𝗘\n`;
+          cardContent += `📍 ${address.street}\n`;
+          cardContent += `    ${address.city}, ${address.state} ${address.zip}\n`;
+          cardContent += `🏘️ ${building.propertyType || "Single Family"} • ${squareFeet ? parseInt(squareFeet).toLocaleString() + " sqft" : "N/A"}\n`;
+          cardContent += `🛏️ ${bedrooms} bed • 🛁 ${bathrooms} bath\n`;
+          cardContent += `💵 Last Sale: $${sale.lastSalePrice ? parseInt(sale.lastSalePrice).toLocaleString() : valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : "N/A"}\n\n`;
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
-          };
+          cardContent += `📞 𝗖𝗢𝗡𝗧𝗔𝗖𝗧 𝗗𝗘𝗧𝗔𝗜𝗟𝗦\n`;
+          cardContent += `📧 ${emailList}\n`;
+          cardContent += `📮 ${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}\n`;
 
-          return JSON.stringify(cardData);
+          if (regularPhones.length > 0) {
+            cardContent += `📱 ${formatPhoneNumbers(regularPhones)}\n`;
+          }
+
+          if (dncPhones.length > 0) {
+            cardContent += `🚫 DNC: ${formatPhoneNumbers(dncPhones)}\n`;
+          }
+
+          if (regularPhones.length === 0 && dncPhones.length === 0) {
+            cardContent += `📱 Contact for details\n`;
+          }
+
+          cardContent += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+
+          return cardContent;
         });
 
         localStorage.setItem(
@@ -3469,56 +3543,6 @@ ${regularPhones.length === 0 && dncPhones.length === 0 ? '📱 Contact for detai
                             property={parsed.data}
                             onViewDetails={handleViewDetails}
                           />
-                        );
-                      }
-                      // Handle cash_buyer_card type
-                      if (parsed.type === 'cash_buyer_card') {
-                        // Render a custom card component for cash buyers
-                        return (
-                          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-                            <div className="bg-gray-800 text-white p-3 flex justify-between items-center">
-                              <div className="flex items-center gap-2">
-                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                                  <path d="M12,2A2,2 0 0,1 14,4A2,2 0 0,1 12,6A2,2 0 0,1 10,4A2,2 0 0,1 12,2M21,9V7L15,1H5A2,2 0 0,0 3,3V21A2,2 0 0,0 5,23H19A2,2 0 0,0 21,21V9M19,21H5V3H13V9H19Z" />
-                                  <span className="font-semibold">🎯 CASH BUYER #{parsed.buyerNumber}</span>
-                                </svg>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button size="sm" variant="outline" className="text-white border-white hover:bg-white hover:text-gray-800">Add to CRM</Button>
-                                <Button size="sm" variant="outline" className="text-white border-white hover:bg-white hover:text-gray-800">I'll Pass</Button>
-                                <Button size="sm" variant="outline" className="text-white border-white hover:bg-white hover:text-gray-800">Contact Buyer</Button>
-                              </div>
-                            </div>
-                            <div className="p-4 space-y-3">
-                              <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div>
-                                  <p className="text-gray-500">Investor Name</p>
-                                  <p className="font-medium text-gray-800">{parsed.buyerData.name}</p>
-                                </div>
-                                <div>
-                                  <p className="text-gray-500">Portfolio Value</p>
-                                  <p className="font-medium text-gray-800">${parseInt(parsed.buyerData.portfolioValue).toLocaleString()}</p>
-                                </div>
-                                <div>
-                                  <p className="text-gray-500">Properties Owned</p>
-                                  <p className="font-medium text-gray-800">{parsed.buyerData.propertiesCount}</p>
-                                </div>
-                                <div>
-                                  <p className="text-gray-500">Contact Email</p>
-                                  <p className="font-medium text-gray-800">{parsed.buyerData.email}</p>
-                                </div>
-                                <div>
-                                  <p className="text-gray-500">Contact Phone</p>
-                                  <p className="font-medium text-gray-800">{parsed.buyerData.phone}</p>
-                                </div>
-                                <div>
-                                  <p className="text-gray-500">Address</p>
-                                  <p className="font-medium text-gray-800">{parsed.buyerData.address}</p>
-                                </div>
-                              </div>
-                              <p className="text-sm text-gray-700 font-mono whitespace-pre-wrap">{parsed.content}</p>
-                            </div>
-                          </div>
                         );
                       }
                     } catch (e) {
