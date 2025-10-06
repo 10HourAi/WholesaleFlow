@@ -2752,6 +2752,134 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
     );
   };
 
+  const renderSellerWizard = () => {
+    if (!showWizard) return null;
+
+    return (
+      <Card className="mb-4 border-2 border-blue-200">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Search className="h-5 w-5 text-blue-600" />
+            Seller Lead Wizard - Step {wizardStep} of 2
+          </CardTitle>
+          <p className="text-sm text-gray-600 mt-1">
+            Find motivated sellers and distressed properties
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {wizardStep === 1 && (
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg">
+                Where are you looking for properties?
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="city">City or ZIP Code</Label>
+                  <Input
+                    id="city"
+                    placeholder="e.g., Miami, Philadelphia, 33132"
+                    value={wizardData.city}
+                    onChange={(e) =>
+                      setWizardData({
+                        ...wizardData,
+                        city: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="state">State</Label>
+                  <Select
+                    value={wizardData.state}
+                    onValueChange={(value) =>
+                      setWizardData({ ...wizardData, state: value })
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {states.map((state) => (
+                        <SelectItem key={state} value={state}>
+                          {state}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {wizardStep === 2 && (
+            <div className="space-y-4">
+              <h3 className="font-semibold text-lg">
+                What type of seller are you looking for?
+              </h3>
+              <div className="grid grid-cols-1 gap-3">
+                {sellerTypes.map((type) => (
+                  <div
+                    key={type.value}
+                    className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                      wizardData.sellerType === type.value
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 hover:border-blue-300"
+                    }`}
+                    onClick={() =>
+                      setWizardData({
+                        ...wizardData,
+                        sellerType: type.value,
+                      })
+                    }
+                  >
+                    <div className="font-medium text-sm">{type.label}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="flex justify-between pt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (wizardStep === 1) {
+                  setShowWizard(false);
+                  setWizardStep(1);
+                  setWizardData({ city: "", state: "", sellerType: "", propertyType: "" });
+                } else {
+                  setWizardStep(1);
+                }
+              }}
+            >
+              {wizardStep === 1 ? "Cancel" : "Back"}
+            </Button>
+
+            {wizardStep === 1 ? (
+              <Button
+                onClick={() => setWizardStep(2)}
+                disabled={!wizardData.city || !wizardData.state}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+              >
+                Next
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            ) : (
+              <Button
+                onClick={handleWizardSubmit}
+                disabled={!wizardData.sellerType}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700"
+              >
+                <Search className="h-4 w-4" />
+                Find Properties
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -2779,6 +2907,7 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        {renderSellerWizard()}
         {renderBuyerWizard()}
 
         {/* Target Market Finder Results - Separate Output Page */}
