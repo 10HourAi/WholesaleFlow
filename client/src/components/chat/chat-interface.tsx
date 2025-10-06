@@ -2459,49 +2459,53 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
           const bathrooms = building.bathroomCount || building.bathrooms || "N/A";
           const squareFeet = building.totalBuildingAreaSquareFeet || building.livingArea || building.squareFeet || null;
 
-          // Create modern, sleek card design
-          let cardContent = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- QUALIFIED CASH BUYER #${index + 1}
+          // Store buyer data in a format that can be retrieved later
+          const buyerData = {
+            name: owner.fullName || "ACTIVE CASH INVESTOR",
+            email: emailList,
+            phone: formatPhoneNumbers(regularPhones),
+            address: `${address.street}, ${address.city}, ${address.state} ${address.zip}`,
+            portfolioValue: ownerProfile.propertiesTotalEstimatedValue,
+            propertiesCount: ownerProfile.propertiesCount,
+          };
+
+          // Create modern, sleek card design with JSON wrapper for interactive buttons
+          const cardData = {
+            type: 'cash_buyer_card',
+            buyerNumber: index + 1,
+            buyerData: buyerData,
+            content: `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎯 QUALIFIED CASH BUYER #${index + 1}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-`;
+👤 𝗜𝗡𝗩𝗘𝗦𝗧𝗢𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘
+${owner.fullName || "ACTIVE CASH INVESTOR"}
+📍 Based in ${address.city}, ${address.state}
 
-          cardContent += `👤 𝗜𝗡𝗩𝗘𝗦𝗧𝗢𝗥 𝗣𝗥𝗢𝗙𝗜𝗟𝗘\n`;
-          cardContent += `${owner.fullName || "ACTIVE CASH INVESTOR"}\n`;
-          cardContent += `📍 Based in ${address.city}, ${address.state}\n\n`;
+💰 𝗣𝗢𝗥𝗧𝗙𝗢𝗟𝗜𝗢 𝗢𝗩𝗘𝗥𝗩𝗜𝗘𝗪
+• Total Portfolio Value: $${ownerProfile.propertiesTotalEstimatedValue ? parseInt(ownerProfile.propertiesTotalEstimatedValue).toLocaleString() : "N/A"}
+• Properties Owned: ${ownerProfile.propertiesCount || "N/A"} properties
+• Avg Purchase Price: $${ownerProfile.averagePurchasePrice ? parseInt(ownerProfile.averagePurchasePrice).toLocaleString() : "N/A"}
+• Last Activity: ${lastSaleDate}
 
-          cardContent += `💰 𝗣𝗢𝗥𝗧𝗙𝗢𝗟𝗜𝗢 𝗢𝗩𝗘𝗥𝗩𝗜𝗘𝗪\n`;
-          cardContent += `• Total Portfolio Value: $${ownerProfile.propertiesTotalEstimatedValue ? parseInt(ownerProfile.propertiesTotalEstimatedValue).toLocaleString() : "N/A"}\n`;
-          cardContent += `• Properties Owned: ${ownerProfile.propertiesCount || "N/A"} properties\n`;
-          cardContent += `• Avg Purchase Price: $${ownerProfile.averagePurchasePrice ? parseInt(ownerProfile.averagePurchasePrice).toLocaleString() : "N/A"}\n`;
-          cardContent += `• Last Activity: ${lastSaleDate}\n\n`;
+🏠 𝗥𝗘𝗖𝗘𝗡𝗧 𝗣𝗨𝗥𝗖𝗛𝗔𝗦𝗘
+📍 ${address.street}
+    ${address.city}, ${address.state} ${address.zip}
+🏘️ ${building.propertyType || "Single Family"} • ${squareFeet ? parseInt(squareFeet).toLocaleString() + " sqft" : "N/A"}
+🛏️ ${bedrooms} bed • 🛁 ${bathrooms} bath
+💵 Last Sale: $${sale.lastSalePrice ? parseInt(sale.lastSalePrice).toLocaleString() : valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : "N/A"}
 
-          cardContent += `🏠 𝗥𝗘𝗖𝗘𝗡𝗧 𝗣𝗨𝗥𝗖𝗛𝗔𝗦𝗘\n`;
-          cardContent += `📍 ${address.street}\n`;
-          cardContent += `    ${address.city}, ${address.state} ${address.zip}\n`;
-          cardContent += `🏘️ ${building.propertyType || "Single Family"} • ${squareFeet ? parseInt(squareFeet).toLocaleString() + " sqft" : "N/A"}\n`;
-          cardContent += `🛏️ ${bedrooms} bed • 🛁 ${bathrooms} bath\n`;
-          cardContent += `💵 Last Sale: $${sale.lastSalePrice ? parseInt(sale.lastSalePrice).toLocaleString() : valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : "N/A"}\n\n`;
+📞 𝗖𝗢𝗡𝗧𝗔𝗖𝗧 𝗗𝗘𝗧𝗔𝗜𝗟𝗦
+📧 ${emailList}
+📮 ${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}
+${regularPhones.length > 0 ? `📱 ${formatPhoneNumbers(regularPhones)}` : ''}
+${dncPhones.length > 0 ? `🚫 DNC: ${formatPhoneNumbers(dncPhones)}` : ''}
+${regularPhones.length === 0 && dncPhones.length === 0 ? '📱 Contact for details' : ''}
 
-          cardContent += `📞 𝗖𝗢𝗡𝗧𝗔𝗖𝗧 𝗗𝗘𝗧𝗔𝗜𝗟𝗦\n`;
-          cardContent += `📧 ${emailList}\n`;
-          cardContent += `📮 ${owner.mailingAddress?.street || address.street}, ${owner.mailingAddress?.city || address.city}, ${owner.mailingAddress?.state || address.state} ${owner.mailingAddress?.zip || address.zip}\n`;
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`
+          };
 
-          if (regularPhones.length > 0) {
-            cardContent += `📱 ${formatPhoneNumbers(regularPhones)}\n`;
-          }
-
-          if (dncPhones.length > 0) {
-            cardContent += `🚫 DNC: ${formatPhoneNumbers(dncPhones)}\n`;
-          }
-
-          if (regularPhones.length === 0 && dncPhones.length === 0) {
-            cardContent += `📱 Contact for details\n`;
-          }
-
-          cardContent += `\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
-
-          return cardContent;
+          return JSON.stringify(cardData);
         });
 
         localStorage.setItem(
@@ -3465,6 +3469,56 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                             property={parsed.data}
                             onViewDetails={handleViewDetails}
                           />
+                        );
+                      }
+                      // Handle cash_buyer_card type
+                      if (parsed.type === 'cash_buyer_card') {
+                        // Render a custom card component for cash buyers
+                        return (
+                          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+                            <div className="bg-gray-800 text-white p-3 flex justify-between items-center">
+                              <div className="flex items-center gap-2">
+                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M12,2A2,2 0 0,1 14,4A2,2 0 0,1 12,6A2,2 0 0,1 10,4A2,2 0 0,1 12,2M21,9V7L15,1H5A2,2 0 0,0 3,3V21A2,2 0 0,0 5,23H19A2,2 0 0,0 21,21V9M19,21H5V3H13V9H19Z" />
+                                  <span className="font-semibold">🎯 CASH BUYER #{parsed.buyerNumber}</span>
+                                </svg>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button size="sm" variant="outline" className="text-white border-white hover:bg-white hover:text-gray-800">Add to CRM</Button>
+                                <Button size="sm" variant="outline" className="text-white border-white hover:bg-white hover:text-gray-800">I'll Pass</Button>
+                                <Button size="sm" variant="outline" className="text-white border-white hover:bg-white hover:text-gray-800">Contact Buyer</Button>
+                              </div>
+                            </div>
+                            <div className="p-4 space-y-3">
+                              <div className="grid grid-cols-2 gap-4 text-sm">
+                                <div>
+                                  <p className="text-gray-500">Investor Name</p>
+                                  <p className="font-medium text-gray-800">{parsed.buyerData.name}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">Portfolio Value</p>
+                                  <p className="font-medium text-gray-800">${parseInt(parsed.buyerData.portfolioValue).toLocaleString()}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">Properties Owned</p>
+                                  <p className="font-medium text-gray-800">{parsed.buyerData.propertiesCount}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">Contact Email</p>
+                                  <p className="font-medium text-gray-800">{parsed.buyerData.email}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">Contact Phone</p>
+                                  <p className="font-medium text-gray-800">{parsed.buyerData.phone}</p>
+                                </div>
+                                <div>
+                                  <p className="text-gray-500">Address</p>
+                                  <p className="font-medium text-gray-800">{parsed.buyerData.address}</p>
+                                </div>
+                              </div>
+                              <p className="text-sm text-gray-700 font-mono whitespace-pre-wrap">{parsed.content}</p>
+                            </div>
+                          </div>
                         );
                       }
                     } catch (e) {
