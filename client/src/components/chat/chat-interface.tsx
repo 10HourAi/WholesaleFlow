@@ -1,3 +1,4 @@
+//import { CashBuyerCard } from "@/components/chat/cash-buyer-card";
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,6 +31,8 @@ import {
   ArrowRight,
   ArrowLeft,
   Plus,
+  X,
+  MessageCircle,
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
@@ -100,51 +103,12 @@ const CondensedPropertyCard = ({
       const existingProperties = queryClient.getQueryData([
         "/api/properties",
       ]) as Property[] | undefined;
-
-      // Create a unique identifier for comparison (more strict)
-      const createPropertyKey = (
-        addr: string,
-        city: string,
-        state: string,
-        zip?: string,
-      ) => {
-        const normalizedAddr = (addr || "")
-          .toLowerCase()
-          .trim()
-          .replace(/[^\w\s]/g, "")
-          .replace(/\s+/g, "");
-        const normalizedCity = (city || "")
-          .toLowerCase()
-          .trim()
-          .replace(/[^\w\s]/g, "")
-          .replace(/\s+/g, "");
-        const normalizedState = (state || "").toLowerCase().trim();
-        const normalizedZip = (zip || "").toLowerCase().trim();
-        return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip}`;
-      };
-
-      const newPropertyKey = createPropertyKey(
-        property.address,
-        property.city,
-        property.state,
-        property.zipCode,
+      const propertyExists = existingProperties?.some(
+        (p) =>
+          p.address === property.address &&
+          p.city === property.city &&
+          p.state === property.state,
       );
-
-      console.log("🔍 Checking for duplicate property:", newPropertyKey);
-
-      const propertyExists = existingProperties?.some((p) => {
-        const existingKey = createPropertyKey(
-          p.address,
-          p.city,
-          p.state,
-          p.zipCode,
-        );
-        const isMatch = existingKey === newPropertyKey;
-        if (isMatch) {
-          console.log("❌ Duplicate found:", existingKey);
-        }
-        return isMatch;
-      });
 
       if (propertyExists) {
         toast({
@@ -304,26 +268,28 @@ const CondensedPropertyCard = ({
       </CardContent>
 
       {/* Action buttons */}
+
       <div className="bg-gray-50 p-4 flex gap-2 justify-between border-t">
         <Button
           size="sm"
           variant="outline"
-          className="flex-1 bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100"
+          className="flex-1 bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100"
           onClick={handleAddToCRM}
         >
           <Plus className="h-4 w-4 mr-2" /> Add to CRM
         </Button>
         <Button
+          onClick={() => console.log("I'll Pass clicked")}
           size="sm"
           variant="outline"
-          className="flex-1 bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
+          className="flex-1 bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100"
         >
           I'll Pass
         </Button>
         <Button
           size="sm"
           variant="outline"
-          className="flex-1 bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100"
+          className="flex-1 bg-sky-50 border border-sky-200 text-sky-700 hover:bg-sky-100"
           onClick={() => onViewDetails(property)}
         >
           View Details
@@ -732,7 +698,7 @@ const PropertyDetailsModal = ({
                     viewBox="0 0 24 24"
                     fill="currentColor"
                   >
-                    <path d="M20,8L12,13L4,8M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,1.89 21.1,4 20,4Z" />
+                    <path d="M20,8L12,13L4,8V6L12,11L20,6M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,1.89 21.1,4 20,4Z" />
                   </svg>
                   <span className="font-medium text-green-700">
                     Email Addresses
@@ -863,7 +829,15 @@ const PropertyCard = ({ content }: { content: string }) => {
 
   // Detect card type and extract number
   const isSellerLead = content.includes("🏠 SELLER LEAD");
-  const isCashBuyer = content.includes("🎯 QUALIFIED CASH BUYER");
+  const isCashBuyer = content.includes("QUALIFIED CASH BUYER #");
+
+  // Debug logging
+  console.log("Card detection:", {
+    isSellerLead,
+    isCashBuyer,
+    content: content.substring(0, 200),
+  });
+  console.log("Full content preview:", content.substring(0, 500));
 
   const cardNumber = isSellerLead
     ? content.match(/🏠 SELLER LEAD (\d+)/)?.[1] || "1"
@@ -1180,43 +1154,12 @@ const PropertyCard = ({ content }: { content: string }) => {
       const existingProperties = queryClient.getQueryData([
         "/api/properties",
       ]) as Property[] | undefined;
-
-      // Create a unique identifier for comparison
-      const createPropertyKey = (
-        addr: string,
-        city: string,
-        state: string,
-        zip?: string,
-      ) => {
-        const normalizedAddr = addr
-          ?.toLowerCase()
-          .trim()
-          .replace(/[^\w\s]/g, "");
-        const normalizedCity = city
-          ?.toLowerCase()
-          .trim()
-          .replace(/[^\w\s]/g, "");
-        const normalizedState = state?.toLowerCase().trim();
-        const normalizedZip = zip?.toLowerCase().trim();
-        return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip || ""}`;
-      };
-
-      const newPropertyKey = createPropertyKey(
-        propertyData.address,
-        propertyData.city,
-        propertyData.state,
-        propertyData.zipCode,
+      const propertyExists = existingProperties?.some(
+        (p) =>
+          p.address === propertyData.address &&
+          p.city === propertyData.city &&
+          p.state === propertyData.state,
       );
-
-      const propertyExists = existingProperties?.some((p) => {
-        const existingKey = createPropertyKey(
-          p.address,
-          p.city,
-          p.state,
-          p.zipCode,
-        );
-        return existingKey === newPropertyKey;
-      });
 
       if (propertyExists) {
         toast({
@@ -1280,43 +1223,12 @@ const PropertyCard = ({ content }: { content: string }) => {
       const existingProperties = queryClient.getQueryData([
         "/api/properties",
       ]) as Property[] | undefined;
-
-      // Create a unique identifier for comparison
-      const createPropertyKey = (
-        addr: string,
-        city: string,
-        state: string,
-        zip?: string,
-      ) => {
-        const normalizedAddr = addr
-          ?.toLowerCase()
-          .trim()
-          .replace(/[^\w\s]/g, "");
-        const normalizedCity = city
-          ?.toLowerCase()
-          .trim()
-          .replace(/[^\w\s]/g, "");
-        const normalizedState = state?.toLowerCase().trim();
-        const normalizedZip = zip?.toLowerCase().trim();
-        return `${normalizedAddr}|${normalizedCity}|${normalizedState}|${normalizedZip || ""}`;
-      };
-
-      const newPropertyKey = createPropertyKey(
-        propertyData.address,
-        propertyData.city,
-        propertyData.state,
-        propertyData.zipCode,
+      const propertyExists = existingProperties?.some(
+        (p) =>
+          p.address === propertyData.address &&
+          p.city === propertyData.city &&
+          p.state === propertyData.state,
       );
-
-      const propertyExists = existingProperties?.some((p) => {
-        const existingKey = createPropertyKey(
-          p.address,
-          p.city,
-          p.state,
-          p.zipCode,
-        );
-        return existingKey === newPropertyKey;
-      });
 
       if (propertyExists) {
         toast({
@@ -1381,6 +1293,18 @@ const PropertyCard = ({ content }: { content: string }) => {
       color: "green",
       action: handleAddToCRM,
     },
+    {
+      label: "I'll Pass",
+      icon: X,
+      color: "red",
+      action: () => console.log("I'll Pass clicked"),
+    },
+    {
+      label: "Contact Buyer",
+      icon: MessageCircle,
+      color: "blue",
+      action: () => setShowDetailsDialog(true),
+    },
   ];
 
   const minimalDetails = extractMinimalDetails(content);
@@ -1400,9 +1324,9 @@ const PropertyCard = ({ content }: { content: string }) => {
             const colorClasses = {
               green:
                 "bg-green-50 border-green-200 text-green-700 hover:bg-green-100",
+              red: "bg-red-50 border-red-200 text-red-700 hover:bg-red-100",
               blue: "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100",
-              orange:
-                "bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100",
+              //blue: "bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100",
             };
 
             return (
@@ -1415,6 +1339,7 @@ const PropertyCard = ({ content }: { content: string }) => {
                 data-testid={`button-${button.label.toLowerCase().replace(/\s+/g, "-")}-${cardNumber}`}
               >
                 <button.icon className="h-4 w-4" />
+
                 {button.label}
               </Button>
             );
@@ -1425,179 +1350,227 @@ const PropertyCard = ({ content }: { content: string }) => {
   }
 
   // For seller leads, show minimal card view
-  return (
-    <div className="space-y-4">
-      {/* Minimal Property Card */}
-      <Card className="w-full max-w-md bg-white border border-gray-200 rounded-lg shadow-sm">
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-gray-600">
-              {minimalDetails?.address
-                ? `${minimalDetails.address.split(",").slice(-2).join(",").trim()}`
-                : "Location"}
-            </h3>
-            <Badge
-              variant="secondary"
-              className="text-xs bg-green-100 text-green-800"
-            >
-              Seller
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {/* Address */}
-          <div>
-            <p className="text-sm text-gray-600">Address:</p>
-            <p className="font-medium text-gray-900">
-              {minimalDetails?.address || "Address not available"}
-            </p>
-          </div>
-
-          {/* Owner */}
-          <div>
-            <p className="text-sm text-gray-600">Owner name:</p>
-            <p className="font-medium text-gray-900">
-              {minimalDetails?.ownerName &&
-              minimalDetails.ownerName !== "undefined"
-                ? minimalDetails.ownerName
-                : "Not Available"}
-            </p>
-          </div>
-
-          {/* Property Details Grid */}
-          <div className="grid grid-cols-2 gap-4 py-2">
-            <div className="text-center">
-              <p className="text-xs text-gray-500">Beds</p>
-              <p className="font-semibold text-gray-900">
-                {minimalDetails?.bedrooms || "N/A"}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-xs text-gray-500">Baths</p>
-              <p className="font-semibold text-gray-900">
-                {minimalDetails?.bathrooms || "N/A"}
-              </p>
-            </div>
-          </div>
-
-          {/* Sale Information */}
-          <div className="grid grid-cols-2 gap-4 py-2">
-            <div>
-              <p className="text-xs text-gray-500">Last Sale Price</p>
-              <p className="font-semibold text-gray-900">
-                {minimalDetails?.lastSalePrice &&
-                minimalDetails.lastSalePrice !== "N/A" &&
-                minimalDetails.lastSalePrice !== "null"
-                  ? minimalDetails.lastSalePrice.startsWith("$")
-                    ? minimalDetails.lastSalePrice
-                    : `$${minimalDetails.lastSalePrice}`
-                  : "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Last Sale Date</p>
-              <p className="font-semibold text-gray-900">
-                {minimalDetails?.lastSaleDate &&
-                minimalDetails.lastSaleDate !== "N/A" &&
-                minimalDetails.lastSaleDate !== "null"
-                  ? minimalDetails.lastSaleDate
-                  : "N/A"}
-              </p>
-            </div>
-          </div>
-
-          {/* Financial Information */}
-          <div className="grid grid-cols-2 gap-4 py-2">
-            <div>
-              <p className="text-xs text-gray-500">Equity Percent</p>
-              <p className="font-semibold text-green-600">
-                {minimalDetails?.equityPercent
-                  ? `${minimalDetails.equityPercent}%`
-                  : "N/A"}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-gray-500">Equity Value</p>
-              <p className="font-semibold text-green-600">
-                {minimalDetails?.equityValue
-                  ? minimalDetails.equityValue.startsWith("$")
-                    ? minimalDetails.equityValue
-                    : `$${minimalDetails.equityValue}`
-                  : "N/A"}
-              </p>
-            </div>
-          </div>
-
-          {/* Estimated Value */}
-          <div className="py-2">
-            <p className="text-sm text-gray-600">Estimated Value</p>
-            <p className="text-lg font-bold text-blue-600">
-              {minimalDetails?.estimatedValue
-                ? minimalDetails.estimatedValue.startsWith("$")
-                  ? minimalDetails.estimatedValue
-                  : `$${minimalDetails.estimatedValue}`
-                : "N/A"}
-            </p>
-          </div>
-
-          {/* Action buttons */}
-          <div className="flex gap-2 pt-3">
-            <Button
-              onClick={handleAddToCRM}
-              variant="outline"
-              size="sm"
-              className="flex-1 items-center gap-1 bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-xs px-3 py-1"
-            >
-              <Plus className="h-3 w-3" />
-              Add to CRM
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="flex-1 text-xs px-3 py-1 bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
-            >
-              I'll Pass
-            </Button>
-            <Button
-              onClick={() => setShowDetailsDialog(true)}
-              variant="outline"
-              size="sm"
-              className="flex-1 text-xs px-3 py-1 bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100"
-            >
-              View Details
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Detailed Property Information Dialog */}
-      <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-bold text-green-700">
-              🏠 Seller Lead {cardNumber} - Complete Details
-            </DialogTitle>
-          </DialogHeader>
-
-          <div className="space-y-6">
-            {/* Full property details in formatted view */}
-            <div className="text-sm whitespace-pre-wrap font-mono bg-slate-50 p-4 rounded border max-h-96 overflow-y-auto">
-              {displayContent}
-            </div>
-
-            {/* Action buttons in dialog */}
-            <div className="flex flex-wrap gap-3 pt-4 border-t">
-              <Button
-                onClick={handleConfirmAddToCRM}
-                className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+  if (isSellerLead) {
+    return (
+      <div className="space-y-4">
+        {/* Minimal Property Card */}
+        <Card className="w-full max-w-md bg-white border border-gray-200 rounded-lg shadow-sm">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-medium text-gray-600">
+                {minimalDetails?.address
+                  ? `${minimalDetails.address.split(",").slice(-2).join(",").trim()}`
+                  : "Location"}
+              </h3>
+              <Badge
+                variant="secondary"
+                className="text-xs bg-green-100 text-green-800"
               >
-                <Plus className="h-4 w-4" />
-                Confirm Add to CRM
+                Seller
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {/* Address */}
+            <div>
+              <p className="text-sm text-gray-600">Address:</p>
+              <p className="font-medium text-gray-900">
+                {minimalDetails?.address || "Address not available"}
+              </p>
+            </div>
+
+            {/* Owner */}
+            <div>
+              <p className="text-sm text-gray-600">Owner name:</p>
+              <p className="font-medium text-gray-900">
+                {minimalDetails?.ownerName &&
+                minimalDetails.ownerName !== "undefined"
+                  ? minimalDetails.ownerName
+                  : "Not Available"}
+              </p>
+            </div>
+
+            {/* Property Details Grid */}
+            <div className="grid grid-cols-2 gap-4 py-2">
+              <div className="text-center">
+                <p className="text-xs text-gray-500">Beds</p>
+                <p className="font-semibold text-gray-900">
+                  {minimalDetails?.bedrooms || "N/A"}
+                </p>
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-gray-500">Baths</p>
+                <p className="font-semibold text-gray-900">
+                  {minimalDetails?.bathrooms || "N/A"}
+                </p>
+              </div>
+            </div>
+
+            {/* Sale Information */}
+            <div className="grid grid-cols-2 gap-4 py-2">
+              <div>
+                <p className="text-xs text-gray-500">Last Sale Price</p>
+                <p className="font-semibold text-gray-900">
+                  {minimalDetails?.lastSalePrice &&
+                  minimalDetails.lastSalePrice !== "N/A" &&
+                  minimalDetails.lastSalePrice !== "null"
+                    ? minimalDetails.lastSalePrice.startsWith("$")
+                      ? minimalDetails.lastSalePrice
+                      : `$${minimalDetails.lastSalePrice}`
+                    : "N/A"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Last Sale Date</p>
+                <p className="font-semibold text-gray-900">
+                  {minimalDetails?.lastSaleDate &&
+                  minimalDetails.lastSaleDate !== "N/A" &&
+                  minimalDetails.lastSaleDate !== "null"
+                    ? minimalDetails.lastSaleDate
+                    : "N/A"}
+                </p>
+              </div>
+            </div>
+
+            {/* Financial Information */}
+            <div className="grid grid-cols-2 gap-4 py-2">
+              <div>
+                <p className="text-xs text-gray-500">Equity Percent</p>
+                <p className="font-semibold text-green-600">
+                  {minimalDetails?.equityPercent
+                    ? `${minimalDetails.equityPercent}%`
+                    : "N/A"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500">Equity Value</p>
+                <p className="font-semibold text-green-600">
+                  {minimalDetails?.equityValue
+                    ? minimalDetails.equityValue.startsWith("$")
+                      ? minimalDetails.equityValue
+                      : `$${minimalDetails.equityValue}`
+                    : "N/A"}
+                </p>
+              </div>
+            </div>
+
+            {/* Estimated Value */}
+            <div className="py-2">
+              <p className="text-sm text-gray-600">Estimated Value</p>
+              <p className="text-lg font-bold text-blue-600">
+                {minimalDetails?.estimatedValue
+                  ? minimalDetails.estimatedValue.startsWith("$")
+                    ? minimalDetails.estimatedValue
+                    : `$${minimalDetails.estimatedValue}`
+                  : "N/A"}
+              </p>
+            </div>
+
+            {/* Action buttons seller wizard  */}
+            <div className="flex gap-2 pt-3">
+              <Button
+                onClick={handleAddToCRM}
+                variant="outline"
+                size="sm"
+                className="flex-1 items-center gap-1 bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-xs px-3 py-1"
+              >
+                <Plus className="h-3 w-3" />
+                Add to CRM
+              </Button>
+              <Button
+                onClick={() => console.log("I'll Pass clicked")}
+                variant="outline"
+                size="sm"
+                className="flex-1 text-xs px-3 py-1 bg-rose-50 border-rose-200 text-rose-600 hover:bg-rose-100"
+              >
+                I'll Pass
+              </Button>
+              <Button
+                onClick={() => setShowDetailsDialog(true)}
+                variant="outline"
+                size="sm"
+                className="flex-1 text-xs px-3 py-1 bg-sky-50 border-sky-200 text-sky-700 hover:bg-sky-100"
+              >
+                View Details
               </Button>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </CardContent>
+        </Card>
+
+        {/* Detailed Property Information Dialog */}
+        <Dialog open={showDetailsDialog} onOpenChange={setShowDetailsDialog}>
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold text-green-700">
+                🏠 Seller Lead {cardNumber} - Complete Details
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-6">
+              {/* Full property details in formatted view */}
+              <div className="text-sm whitespace-pre-wrap font-mono bg-slate-50 p-4 rounded border max-h-96 overflow-y-auto">
+                {displayContent}
+              </div>
+              cash
+              {/* Action buttons in dialog */}
+              <div className="flex flex-wrap gap-3 pt-4 border-t">
+                <Button
+                  onClick={handleConfirmAddToCRM}
+                  className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+                >
+                  <Plus className="h-4 w-4" />
+                  Confirm Add to CRM
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  // For  buyer cards, show the full card with action buttons
+  console.log("Rendering Cash Buyer card with buttons");
+  return (
+    <div className="space-y-4">
+      {/* Display the formatted content */}
+      <div className="text-sm whitespace-pre-wrap font-mono bg-slate-50 p-3 rounded border">
+        {displayContent}
+      </div>
+
+      {/* Action buttons for Cash Buyer cards */}
+      <div className="pt-3 border-t bg-gray-50 p-4">
+        <div className="text-xs text-gray-500 mb-2">Action Buttons:</div>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleAddToCRM}
+            variant="ghost"
+            size="sm"
+            className=" flex-1 items-center gap-1 bg-red-100 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-xs px-3 py-1"
+          >
+            <Plus className="h-3 w-3" />
+            Add to CRM
+          </Button>
+
+          <Button
+            onClick={() => console.log("I'll Pass clicked")}
+            variant="ghost"
+            size="sm"
+            className="flex-1 text-xs px-3 py-1 bg-rose-50 border border-rose-200 text-rose-600 hover:bg-rose-100"
+          >
+            I'll Pass
+          </Button>
+
+          <Button
+            onClick={() => setShowDetailsDialog(true)}
+            variant="ghost"
+            size="sm"
+            className="flex-1 text-xs px-3 py-1 bg-sky-50 border border-sky-200 text-sky-700 hover:bg-sky-100"
+          >
+            Contact Buyer
+          </Button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -1746,7 +1719,13 @@ export default function ChatInterface() {
       const pendingResponse = localStorage.getItem("pendingCashBuyerResponse");
       const pendingCards = localStorage.getItem("pendingCashBuyerCards");
 
+      console.log("Checking for pending cards:", {
+        pendingResponse: !!pendingResponse,
+        pendingCards: !!pendingCards,
+      });
+
       if (pendingResponse) {
+        console.log("Found pending response, sending cards...");
         localStorage.removeItem("pendingCashBuyerResponse");
         localStorage.removeItem("pendingCashBuyerCards");
 
@@ -1766,7 +1745,9 @@ export default function ChatInterface() {
             // If we have individual buyer cards, send each as a separate message
             if (pendingCards) {
               const buyerCards = JSON.parse(pendingCards);
+              console.log("Sending buyer cards:", buyerCards.length, "cards");
               for (let i = 0; i < buyerCards.length; i++) {
+                console.log("Sending card", i + 1, "of", buyerCards.length);
                 await new Promise((resolve) => setTimeout(resolve, 300)); // Small delay between cards
                 await apiRequest(
                   "POST",
@@ -2439,11 +2420,6 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
       location = `${cityInput}, ${buyerWizardData.state}`;
     }
 
-    console.log("🔍 BUYER WIZARD: Constructed location:", location);
-    console.log("🔍 BUYER WIZARD: City input:", cityInput);
-    console.log("🔍 BUYER WIZARD: State:", buyerWizardData.state);
-    console.log("🔍 BUYER WIZARD: QuickLists:", buyerWizardData.quickLists);
-
     setBuyerWizardProcessing(true);
     setShowBuyerWizard(false);
     setBuyerWizardStep(1);
@@ -2453,16 +2429,13 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
     localStorage.removeItem("pendingCashBuyerCards");
 
     try {
-      // Call real BatchData API for cash buyers with proper quickLists
-      console.log(
-        "🔍 Calling BatchData API for cash buyers with quickLists:",
-        buyerWizardData.quickLists,
-      );
+      // Call real BatchData API for cash buyers
+      console.log("🔍 Calling BatchData API for cash buyers in:", location);
 
       const response = await apiRequest("POST", "/api/cash-buyers/search", {
         location: location,
         buyerType: buyerWizardData.buyerType,
-        quickLists: buyerWizardData.quickLists, // Pass quickLists array directly
+        quickLists: buyerWizardData.quickLists || ["cash-buyer"],
         minProperties: 3, // Looking for investors with 3+ properties
       });
 
@@ -2527,16 +2500,6 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
           const regularPhones = phoneNumbers.filter((p: any) => !p.dnc);
           const dncPhones = phoneNumbers.filter((p: any) => p.dnc);
 
-          // Extract bed/bath from multiple possible fields
-          const bedrooms = building.bedroomCount || building.bedrooms || "N/A";
-          const bathrooms =
-            building.bathroomCount || building.bathrooms || "N/A";
-          const squareFeet =
-            building.totalBuildingAreaSquareFeet ||
-            building.livingArea ||
-            building.squareFeet ||
-            null;
-
           // Create modern, sleek card design
           let cardContent = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  QUALIFIED CASH BUYER #${index + 1}
@@ -2557,8 +2520,8 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
           cardContent += `🏠 𝗥𝗘𝗖𝗘𝗡𝗧 𝗣𝗨𝗥𝗖𝗛𝗔𝗦𝗘\n`;
           cardContent += `📍 ${address.street}\n`;
           cardContent += `    ${address.city}, ${address.state} ${address.zip}\n`;
-          cardContent += `🏘️ ${building.propertyType || "Single Family"} • ${squareFeet ? parseInt(squareFeet).toLocaleString() + " sqft" : "N/A"}\n`;
-          cardContent += `🛏️ ${bedrooms} bed • 🛁 ${bathrooms} bath\n`;
+          cardContent += `🏘️ ${building.propertyType || "Single Family"} • ${building.squareFeet ? parseInt(building.squareFeet).toLocaleString() + " sqft" : "N/A"}\n`;
+          cardContent += `🛏️ ${building.bedrooms || "N/A"} bed • 🛁 ${building.bathrooms || "N/A"} bath\n`;
           cardContent += `💵 Last Sale: $${sale.lastSalePrice ? parseInt(sale.lastSalePrice).toLocaleString() : valuation.estimatedValue ? parseInt(valuation.estimatedValue).toLocaleString() : "N/A"}\n\n`;
 
           cardContent += `📞 𝗖𝗢𝗡𝗧𝗔𝗖𝗧 𝗗𝗘𝗧𝗔𝗜𝗟𝗦\n`;
@@ -2734,30 +2697,32 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
               <div className="grid grid-cols-1 gap-3">
                 {[
                   {
-                    id: "active-landlord",
+                    id: "active_landlord",
                     name: "🏠 Active Landlord Buyers",
                     description:
                       "Investors focused on rental properties and portfolio growth",
                     quickLists: ["active-landlord"],
                   },
                   {
-                    id: "fix-flip",
-                    name: "🔨 Fix & Flip Investors",
-                    description: "Investors who renovate and resell properties",
+                    id: "fix_and_flip",
+                    name: "🔨 Fix and Flip Buyers",
+                    description:
+                      "Investors who buy, renovate, and resell properties",
                     quickLists: ["fix-flip"],
                   },
                   {
-                    id: "cash-buyer",
-                    name: "💰 All Cash Buyers",
+                    id: "cash_buyers",
+                    name: "💰 Cash Buyers",
                     description:
-                      "Any investor who has purchased properties with cash",
+                      "General cash buyers looking for investment opportunities",
                     quickLists: ["cash-buyer"],
                   },
                   {
-                    id: "cash-buyer",
-                    name: "📊 Portfolio Investors",
-                    description: "Large-scale investors with 5+ properties",
-                    quickLists: ["cash-buyer"],
+                    id: "builders",
+                    name: "🏗️ Builders",
+                    description:
+                      "Construction companies and developers looking for projects",
+                    quickLists: ["builder"],
                   },
                 ].map((type) => (
                   <div
@@ -3546,14 +3511,25 @@ Last Sale Date               ${property.lastSaleDate || "N/A"}
                         );
                       }
                     } catch (e) {
-                      // Not JSON, continue to legacy format check
+                      // Not JSON, check for legacy format
                     }
 
-                    // Only render PropertyCard for legacy text format (not JSON)
+                    console.log("Message content check:", {
+                      hasSellerLead: message.content.includes("🏠 SELLER LEAD"),
+                      hasCashBuyer: message.content.includes(
+                        "QUALIFIED CASH BUYER #",
+                      ),
+                      contentPreview: message.content.substring(0, 100),
+                    });
+
                     if (
                       message.content.includes("🏠 SELLER LEAD") ||
-                      message.content.includes("🎯 QUALIFIED CASH BUYER #")
+                      message.content.includes("QUALIFIED CASH BUYER #")
                     ) {
+                      console.log(
+                        "Rendering PropertyCard for:",
+                        message.content.substring(0, 50),
+                      );
                       return <PropertyCard content={message.content} />;
                     }
 
